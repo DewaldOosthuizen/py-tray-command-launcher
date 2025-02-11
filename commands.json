@@ -3,9 +3,10 @@
         "Open Terminal": "terminator"
     },
     "Media": {
-        "Youtube Music": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=123"
+        "Youtube Music": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=cinhimbnkkaeohfgghhklpknlkffjgod"
     },
     "Utilities": {
-        "Connect Tailscale": "terminator --command 'bash -c \"sudo tailscale up; exec bash\"'"
+        "Connect Forticlient": "terminator --command 'bash -c \"/home/dewald/Workspace/RankGroup/VPN/reset_vpn_custom.sh; exec bash\"'",
+        "Connect Tailscale": "terminator --command 'bash -c \"/home/dewald/Workspace/RankGroup/VPN/restart_tailscale.sh; exec bash\"'"
     }
 }
