@@ -52,18 +52,56 @@ pip install -r requirements.txt
     ```json
     {
         "System": {
-            "Open Terminal": "terminator",
-            "System Update": "terminator --command 'bash -c \"sudo apt update; sudo apt upgrade -y; exec bash\"'",
-            "xkill": "xkill"
+            "Open Terminal": {
+                "command": "terminator",
+                "showOutput": false
+            },
+            "System Update": {
+                "command": "terminator --command 'bash -c \"sudo apt update; sudo apt upgrade -y; exec bash\"'",
+                "showOutput": false
+            },
+            "xkill": {
+                "command": "xkill",
+                "showOutput": false
+            }
         },
         "Media": {
-            "Youtube Music": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=123"
+            "Youtube Music": {
+                "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=111",
+                "showOutput": false
+            }
         },
         "Utilities": {
-            "Screenshot": "gnome-screenshot -i"
+            "Screenshot": {
+                "command": "gnome-screenshot -i",
+                "icon": "org.gnome.Screenshot",
+                "showOutput": false
+            }
+        },
+        "Development": {
+            "VSCode": {
+                "command": "code",
+                "showOutput": false
+            },
+            "DBeaver": {
+                "command": "dbeaver",
+                "icon": "/usr/share/dbeaver-ce/dbeaver.png",
+                "showOutput": false
+            }
         },
         "Networking": {
-            "Connect Tailscale": "terminator --command 'bash -c \"sudo tailscale up; exec bash\"'"
+            "Tailscale Status": {
+                "command": "tailscale status",
+                "showOutput": true
+            },
+            "Show IP Routes": {
+                "command": "ip route show",
+                "showOutput": true
+            },
+            "Show Interfaces": {
+                "command": "ip link show",
+                "showOutput": true
+            }
         }
     }
     ```
