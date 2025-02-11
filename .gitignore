@@ -119,3 +119,4 @@ dmypy.json
 
 #configs
 commands.json
+./commands.json
