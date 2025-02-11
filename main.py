@@ -2,7 +2,7 @@ import sys
 import json
 import subprocess
 import os
-from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QMessageBox
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QCoreApplication
 
@@ -45,8 +45,26 @@ class TrayApp:
                 submenu.addAction(label, lambda cmd=command: execute_command(cmd))
             self.menu.addMenu(submenu)
         self.menu.addSeparator()
-        self.menu.addAction("Exit", self.app.quit)
-        self.menu.addAction("Force Quit", lambda: self.force_quit())
+        self.menu.addAction("Exit", self.confirm_exit)
+        self.menu.addAction("Force Quit", self.confirm_force_quit)
+
+    def confirm_exit(self):
+        """Show confirmation dialog for exiting the application."""
+        reply = QMessageBox.question(None, 'Exit Confirmation', 
+                                     'Are you sure you want to exit?', 
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                                     QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.app.quit()
+
+    def confirm_force_quit(self):
+        """Show confirmation dialog for force quitting the application."""
+        reply = QMessageBox.question(None, 'Force Quit Confirmation', 
+                                     'Are you sure you want to force quit?', 
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                                     QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.force_quit()
 
     def force_quit(self):
         """Force quit the application."""

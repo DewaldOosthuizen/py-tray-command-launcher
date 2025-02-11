@@ -52,12 +52,17 @@ pip install -r requirements.txt
     ```json
     {
         "System": {
-            "Open Terminal": "terminator"
+            "Open Terminal": "terminator",
+            "System Update": "terminator --command 'bash -c \"sudo apt update; sudo apt upgrade -y; exec bash\"'",
+            "xkill": "xkill"
         },
         "Media": {
             "Youtube Music": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=123"
         },
         "Utilities": {
+            "Screenshot": "gnome-screenshot -i"
+        },
+        "Networking": {
             "Connect Tailscale": "terminator --command 'bash -c \"sudo tailscale up; exec bash\"'"
         }
     }
