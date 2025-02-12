@@ -196,3 +196,5 @@ pip install -r requirements.txt
     ```sh
     .venv/bin/python3 main.py
     ```
+    
+![Screenshot from 2025-02-12 19-58-12](https://github.com/user-attachments/assets/834e778d-5905-4523-a77b-c533ffb152e9)
