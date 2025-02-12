@@ -36,22 +36,18 @@ class TrayApp:
         for group, items in commands.items():
             submenu = QMenu(group, self.menu)
             for label, item in items.items():
-                print(f"Adding label : {label}")
-                print(f"Adding item : {item}")
                 if isinstance(item, dict):
                     command = item.get("command")
                     icon_path = os.path.join(BASE_DIR, item.get("icon", ICON_FILE))
                     show_output = item.get("showOutput", False)
+                    confirm = item.get("confirm", False)
                     action = QAction(QIcon(icon_path), label, self.menu)
                     if show_output:
-                        print(f"Adding output command: {command}")
-                        action.triggered.connect(lambda _, cmd=command, lbl=label: self.show_command_output(lbl, cmd))
+                        action.triggered.connect(lambda _, cmd=command, lbl=label, conf=confirm: self.execute_with_confirmation(lbl, cmd, conf, show_output=True))
                     else:
-                        print(f"Adding shell command: {command}")
-                        action.triggered.connect(lambda _, cmd=command: execute_command(cmd))
+                        action.triggered.connect(lambda _, cmd=command, conf=confirm: self.execute_with_confirmation(None, cmd, conf, show_output=False))
                     submenu.addAction(action)
                 else:
-                    print(f"Invalid item: {item}")
                     action = QAction(label, self.menu)
                     action.triggered.connect(lambda _, cmd=item: execute_command(cmd))
                     submenu.addAction(action)
@@ -59,6 +55,21 @@ class TrayApp:
         self.menu.addSeparator()
         self.menu.addAction("Exit", self.confirm_exit)
         self.menu.addAction("Force Quit", self.confirm_force_quit)
+
+    def execute_with_confirmation(self, title, command, confirm, show_output):
+        """Execute a command with optional confirmation."""
+        if confirm:
+            reply = QMessageBox.question(None, 'Confirmation',
+                                        f'Are you sure you want to execute "{command}"?',
+                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                        QMessageBox.StandardButton.No)
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
+        if show_output:
+            self.show_command_output(title, command)
+        else:
+            execute_command(command)
     
     def show_command_output(self, title, command):
         """Execute a command and show the output in a new window."""
