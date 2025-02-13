@@ -196,5 +196,15 @@ pip install -r requirements.txt
     ```sh
     .venv/bin/python3 main.py
     ```
-    
+
+4. Features:
+
+    - Launch applications
+    - Launch custom commands
+    - Optional confirmation dialog before executing commands
+    - Output display for commands that show output (Either through terminal or new window depending on command configuration)
+    - Tray icon with menu to launch commands
+    - Tray icon with menu to quit the application
+    - Tray icon with menu to open the `commands.json` file for editing
+  
 ![Screenshot from 2025-02-12 19-58-12](https://github.com/user-attachments/assets/834e778d-5905-4523-a77b-c533ffb152e9)

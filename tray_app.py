@@ -6,12 +6,15 @@ from PyQt6.QtCore import QProcess
 from output_window import OutputWindow
 from command_executor import execute_command
 from utils import load_commands
+import subprocess
 
+# Define the base directory and icon file path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ICON_FILE = os.path.join(BASE_DIR, "icons/icon.png")
 
 class TrayApp:
     def __init__(self, app):
+        """Initialize the TrayApp with the given QApplication instance."""
         self.app = app
         self.app.aboutToQuit.connect(self.cleanup)
         # Keep the app running even if all windows are closed
@@ -43,8 +46,10 @@ class TrayApp:
                     confirm = item.get("confirm", False)
                     action = QAction(QIcon(icon_path), label, self.menu)
                     if show_output:
+                        # Connect the action to execute_with_confirmation with show_output=True
                         action.triggered.connect(lambda _, cmd=command, lbl=label, conf=confirm: self.execute_with_confirmation(lbl, cmd, conf, show_output=True))
                     else:
+                        # Connect the action to execute_with_confirmation with show_output=False
                         action.triggered.connect(lambda _, cmd=command, conf=confirm: self.execute_with_confirmation(None, cmd, conf, show_output=False))
                     submenu.addAction(action)
                 else:
@@ -53,8 +58,23 @@ class TrayApp:
                     submenu.addAction(action)
             self.menu.addMenu(submenu)
         self.menu.addSeparator()
+        self.menu.addAction('Edit commands.json', self.open_commands_json)
         self.menu.addAction("Exit", self.confirm_exit)
         self.menu.addAction("Force Quit", self.confirm_force_quit)
+
+    def open_commands_json(self):
+        """Open the commands.json file with the default text editor."""
+        commands_json_path = os.path.join(BASE_DIR, "commands.json")
+        try:
+            if sys.platform == "win32":
+                os.startfile(commands_json_path)
+            elif sys.platform == "darwin":
+                subprocess.call(("open", commands_json_path))
+            else:
+                subprocess.call(("xdg-open", commands_json_path))
+        except Exception as e:
+            QMessageBox.critical(None, "Error", f"Failed to open commands.json: {e}")
+        
 
     def execute_with_confirmation(self, title, command, confirm, show_output):
         """Execute a command with optional confirmation."""
@@ -117,4 +137,5 @@ class TrayApp:
         QCoreApplication.exit()
 
     def run(self):
+        """Run the application event loop."""
         sys.exit(self.app.exec())

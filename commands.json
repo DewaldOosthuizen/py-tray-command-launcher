@@ -39,6 +39,11 @@
             "command": "sudo shutdown now",
             "showOutput": false,
             "confirm": true
+        },
+        "Cinnamon Reload": {
+            "command": "killall -HUP cinnamon",
+            "showOutput": false,
+            "confirm": true
         }
     },
     "Media": {
@@ -110,9 +115,19 @@
             "showOutput": false,
             "confirm": false
         },
-        "Tailscale Connect": {
+        "Tailscale Refresh": {
             "command": "terminator --command 'bash -c \"/home/dewald/Workspace/RankGroup/VPN/restart_tailscale.sh; exec bash\"'",
             "showOutput": false,
+            "confirm": false
+        },
+        "Tailscale Connect": {
+            "command": "terminator --command 'bash -c \"sudo tailscale up; exec bash\"'",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Tailscale Disconnect": {
+            "command": "terminator --command 'bash -c \"sudo tailscale down; exec bash\"'",
+            "showOutput": true,
             "confirm": false
         },
         "Tailscale Status": {
