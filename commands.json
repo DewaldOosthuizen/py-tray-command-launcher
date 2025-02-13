@@ -48,7 +48,7 @@
     },
     "Media": {
         "Youtube Music": {
-            "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=cinhimbnkkaeohfgghhklpknlkffjgod",
+            "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=111",
             "showOutput": false,
             "confirm": false
         }
@@ -92,12 +92,6 @@
             "showOutput": false,
             "confirm": false
         },
-        "Postman": {
-            "command": "/home/dewald/Programs/Postman/Postman",
-            "icon": "/home/dewald/Programs/Postman/app/icons/icon_128x128.png",
-            "showOutput": false,
-            "confirm": false
-        },
         "Docker PS": {
             "command": "terminator --command 'bash -c \"sudo docker ps; exec bash\"'",
             "showOutput": true,
@@ -110,16 +104,6 @@
         }
     },
     "Networking": {
-        "Forticlient Connect": {
-            "command": "terminator --command 'bash -c \"/home/dewald/Workspace/RankGroup/VPN/reset_vpn_custom.sh; exec bash\"'",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Tailscale Refresh": {
-            "command": "terminator --command 'bash -c \"/home/dewald/Workspace/RankGroup/VPN/restart_tailscale.sh; exec bash\"'",
-            "showOutput": false,
-            "confirm": false
-        },
         "Tailscale Connect": {
             "command": "terminator --command 'bash -c \"sudo tailscale up; exec bash\"'",
             "showOutput": false,
