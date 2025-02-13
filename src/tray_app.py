@@ -83,7 +83,7 @@ class TrayApp:
 
     def open_commands_json(self):
         """Open the commands.json file with the default text editor."""
-        commands_json_path = os.path.join(BASE_DIR, "commands.json")
+        commands_json_path = os.path.join(BASE_DIR, "../config/commands.json")
         try:
             # Open the commands.json file with the default text editor
             if sys.platform == "win32":
