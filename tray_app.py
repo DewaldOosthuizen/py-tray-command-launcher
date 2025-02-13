@@ -62,9 +62,9 @@ class TrayApp:
                 confirm = item.get("confirm", False)
                 action = QAction(QIcon(icon_path), label, self.menu)
                 
-                # Connect the action to execute_with_confirmation
+                # Connect the action to execute command
                 action.triggered.connect(
-                    lambda _, cmd=command, lbl=label, conf=confirm, show=show_output: self.execute_with_confirmation(lbl, cmd, conf, show)
+                    lambda _, cmd=command, lbl=label, conf=confirm, show=show_output: self.execute(lbl, cmd, conf, show)
                 )
                 
                 # Add the action to the submenu
@@ -107,7 +107,7 @@ class TrayApp:
         # Use os.execl to replace the current process with a new one
         os.execl(python, python, *sys.argv)
 
-    def execute_with_confirmation(self, title, command, confirm, show_output):
+    def execute(self, title, command, confirm, show_output):
         """Execute a command with optional confirmation."""
         if confirm:
             reply = QMessageBox.question(None, 'Confirmation',

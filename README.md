@@ -91,11 +91,16 @@ pip install -r requirements.txt
                 "command": "sudo shutdown now",
                 "showOutput": false,
                 "confirm": true
+            },
+            "Cinnamon Reload": {
+                "command": "killall -HUP cinnamon",
+                "showOutput": false,
+                "confirm": true
             }
         },
         "Media": {
             "Youtube Music": {
-                "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=111",
+                "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=cinhimbnkkaeohfgghhklpknlkffjgod",
                 "showOutput": false,
                 "confirm": false
             }
@@ -139,6 +144,12 @@ pip install -r requirements.txt
                 "showOutput": false,
                 "confirm": false
             },
+            "Postman": {
+                "command": "~/Programs/Postman/Postman",
+                "icon": "~/Programs/Postman/app/icons/icon_128x128.png",
+                "showOutput": false,
+                "confirm": false
+            },
             "Docker PS": {
                 "command": "terminator --command 'bash -c \"sudo docker ps; exec bash\"'",
                 "showOutput": true,
@@ -151,6 +162,16 @@ pip install -r requirements.txt
             }
         },
         "Networking": {
+            "Tailscale Connect": {
+                "command": "terminator --command 'bash -c \"sudo tailscale up; exec bash\"'",
+                "showOutput": false,
+                "confirm": false
+            },
+            "Tailscale Disconnect": {
+                "command": "terminator --command 'bash -c \"sudo tailscale down; exec bash\"'",
+                "showOutput": true,
+                "confirm": false
+            },
             "Tailscale Status": {
                 "command": "systemctl status tailscaled; tailscale status;",
                 "showOutput": true,
@@ -206,5 +227,7 @@ pip install -r requirements.txt
     - Tray icon with menu to launch commands
     - Tray icon with menu to quit the application
     - Tray icon with menu to open the `commands.json` file for editing
+    - Ability to reload the app after editing the `commands.json` file
+    - App will automatically validate the `commands.json` file structure and prompt the user if there are any issues
   
 ![Screenshot from 2025-02-12 19-58-12](https://github.com/user-attachments/assets/834e778d-5905-4523-a77b-c533ffb152e9)
