@@ -10,7 +10,7 @@ import subprocess
 
 # Define the base directory and icon file path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ICON_FILE = os.path.join(BASE_DIR, "icons/icon.png")
+ICON_FILE = os.path.join(BASE_DIR, "../icons/icon.png")
 
 class TrayApp:
     def __init__(self, app):
