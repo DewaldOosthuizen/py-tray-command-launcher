@@ -59,8 +59,8 @@ class TrayApp:
             self.menu.addMenu(submenu)
         self.menu.addSeparator()
         self.menu.addAction('Edit commands.json', self.open_commands_json)
+        self.menu.addAction("Restart App", self.restart_app)
         self.menu.addAction("Exit", self.confirm_exit)
-        self.menu.addAction("Force Quit", self.confirm_force_quit)
 
     def open_commands_json(self):
         """Open the commands.json file with the default text editor."""
@@ -74,7 +74,12 @@ class TrayApp:
                 subprocess.call(("xdg-open", commands_json_path))
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to open commands.json: {e}")
-        
+    
+    def restart_app(self):
+        """Restart the application."""
+        self.cleanup()
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
     def execute_with_confirmation(self, title, command, confirm, show_output):
         """Execute a command with optional confirmation."""
@@ -120,21 +125,6 @@ class TrayApp:
                                      QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             self.app.quit()
-
-    def confirm_force_quit(self):
-        """Show confirmation dialog for force quitting the application."""
-        reply = QMessageBox.question(None, 'Force Quit Confirmation',
-                                     'Are you sure you want to force quit?',
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                     QMessageBox.StandardButton.No)
-        if reply == QMessageBox.StandardButton.Yes:
-            self.force_quit()
-
-    def force_quit(self):
-        """Force quit the application."""
-        self.cleanup()
-        sys.exit()
-        QCoreApplication.exit()
 
     def run(self):
         """Run the application event loop."""
