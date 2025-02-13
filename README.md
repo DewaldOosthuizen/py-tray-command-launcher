@@ -47,7 +47,7 @@ pip install -r requirements.txt
 
 1. Ensure the virtual environment is activated.
 
-2. Create `commands.json` file in the root directory and define your content. For example:
+2. Create `commands.json` file in the config directory and define your content. For example:
 
     ```json
     {
@@ -209,13 +209,13 @@ pip install -r requirements.txt
 3. Run the application:
 
     ```sh
-    python3 main.py
+    python3 src/main.py
     ```
 
     If you are having trouble with your virtual environment not being used, then try:
 
     ```sh
-    .venv/bin/python3 main.py
+    .venv/bin/python3 src/main.py
     ```
 
 4. Features:
