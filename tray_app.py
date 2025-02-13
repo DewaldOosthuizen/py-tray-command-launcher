@@ -71,6 +71,7 @@ class TrayApp:
                     submenu.addAction(action)
                 else:
                     # WE SHOULD NEVER REACH THIS POINT, COMMANDS.JSON IS MALFORMED
+                    QMessageBox.critical(None, "Error", "Invalid command format in commands.json. Stopping the process to avoid app from misbehaving.")
                     raise Exception("Invalid command format in commands.json. Stopping the process to avoid app from misbehaving.")
                 
             self.menu.addMenu(submenu)
