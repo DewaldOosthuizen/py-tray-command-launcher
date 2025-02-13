@@ -48,7 +48,7 @@
     },
     "Media": {
         "Youtube Music": {
-            "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=111",
+            "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=cinhimbnkkaeohfgghhklpknlkffjgod",
             "showOutput": false,
             "confirm": false
         }
@@ -89,6 +89,12 @@
         "DBeaver": {
             "command": "dbeaver",
             "icon": "/usr/share/dbeaver-ce/dbeaver.png",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Postman": {
+            "command": "~/Programs/Postman/Postman",
+            "icon": "~/Programs/Postman/app/icons/icon_128x128.png",
             "showOutput": false,
             "confirm": false
         },

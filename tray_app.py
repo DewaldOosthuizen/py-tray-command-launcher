@@ -44,7 +44,8 @@ class TrayApp:
                 # Check if the item is a dictionary
                 if isinstance(item, dict):
                     command = item.get("command")
-                    icon_path = os.path.join(BASE_DIR, item.get("icon", ICON_FILE))
+                    # icon_path = os.path.join(BASE_DIR, item.get("icon", ICON_FILE))
+                    icon_path = os.path.expanduser(item.get("icon", ICON_FILE))
                     show_output = item.get("showOutput", False)
                     confirm = item.get("confirm", False)
                     action = QAction(QIcon(icon_path), label, self.menu)
