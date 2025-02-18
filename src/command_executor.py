@@ -6,15 +6,15 @@ def execute_command(command):
     print(f"Executing shell command: {command}")
     subprocess.Popen(command, shell=True)
     
-def execute_command_process(self, command):
+def execute_command_process(app, command):
     """Execute a shell command."""
     print(f"Executing shell command: {command}")
-    process = QProcess(self.app)
+    process = QProcess(app)
     process.setProgram("bash")
     process.setArguments(["-c", command])
-    return process;
+    return process
 
-def execute_command_process_silently(self, command):
+def execute_command_process_silently(app, command):
     """Execute a command without showing the output."""
-    process = self.execute_command_process(command)
+    process = execute_command_process(app, command)
     process.start()

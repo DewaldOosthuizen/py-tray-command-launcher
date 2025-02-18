@@ -31,12 +31,12 @@
             "confirm": false
         },
         "Reboot": {
-            "command": "sudo reboot",
+            "command": "pkexec reboot",
             "showOutput": false,
             "confirm": true
         },
         "Shutdown": {
-            "command": "sudo shutdown now",
+            "command": "pkexec shutdown now",
             "showOutput": false,
             "confirm": true
         },
@@ -44,11 +44,30 @@
             "command": "killall -HUP cinnamon",
             "showOutput": false,
             "confirm": true
+        },
+        "System Report": {
+            "command": "mintreport",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Kill Process on Port": {
+            "command": "pkexec fuser -k {promptInput}/tcp",
+            "showOutput": false,
+            "confirm": true,
+            "prompt": "Enter the port number:"
         }
     },
     "Media": {
         "Youtube Music": {
             "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=cinhimbnkkaeohfgghhklpknlkffjgod",
+            "showOutput": false,
+            "confirm": false
+        }
+    },
+    "Studies": {
+        "Anki": {
+            "command": "~/Programs/anki-25.02-linux-qt6/anki",
+            "icon": "~/Programs/anki-25.02-linux-qt6/anki.png",
             "showOutput": false,
             "confirm": false
         }
@@ -86,6 +105,11 @@
             "showOutput": false,
             "confirm": false
         },
+        "Geany": {
+            "command": "geany",
+            "showOutput": false,
+            "confirm": false
+        },
         "DBeaver": {
             "command": "dbeaver",
             "icon": "/usr/share/dbeaver-ce/dbeaver.png",
@@ -111,12 +135,12 @@
     },
     "Networking": {
         "Tailscale Connect": {
-            "command": "terminator --command 'bash -c \"sudo tailscale up; exec bash\"'",
-            "showOutput": false,
+            "command": "pkexec tailscale up; tailscale status;",
+            "showOutput": true,
             "confirm": false
         },
         "Tailscale Disconnect": {
-            "command": "terminator --command 'bash -c \"sudo tailscale down; exec bash\"'",
+            "command": "pkexec tailscale down; tailscale status;",
             "showOutput": true,
             "confirm": false
         },

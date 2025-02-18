@@ -1,0 +1,142 @@
+{
+    "System": {
+        "Open Command Prompt": {
+            "command": "cmd.exe",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Open PowerShell": {
+            "command": "powershell.exe",
+            "showOutput": false,
+            "confirm": false
+        },
+        "System Update": {
+            "command": "powershell.exe -Command \"Start-Process powershell -ArgumentList 'sfc /scannow' -Verb runAs\"",
+            "showOutput": false,
+            "confirm": true
+        },
+        "Task Manager": {
+            "command": "taskmgr.exe",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Disk Usage": {
+            "command": "powershell.exe -Command \"Get-PSDrive -PSProvider FileSystem\"",
+            "showOutput": true,
+            "confirm": false
+        },
+        "Memory Usage": {
+            "command": "powershell.exe -Command \"Get-Process | Sort-Object -Property WS -Descending | Select-Object -First 10\"",
+            "showOutput": true,
+            "confirm": false
+        },
+        "System Info": {
+            "command": "systeminfo",
+            "showOutput": true,
+            "confirm": false
+        },
+        "Reboot": {
+            "command": "shutdown /r /t 0",
+            "showOutput": false,
+            "confirm": true
+        },
+        "Shutdown": {
+            "command": "shutdown /s /t 0",
+            "showOutput": false,
+            "confirm": true
+        }
+    },
+    "Media": {
+        "Open Spotify": {
+            "command": "\"C:\\Users\\<YourUsername>\\AppData\\Roaming\\Spotify\\Spotify.exe\"",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Open VLC": {
+            "command": "\"C:\\Program Files\\VideoLAN\\VLC\\vlc.exe\"",
+            "showOutput": false,
+            "confirm": false
+        }
+    },
+    "Utilities": {
+        "Screenshot": {
+            "command": "powershell.exe -Command \"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('%{PRTSC}')\"",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Disk Cleanup": {
+            "command": "cleanmgr.exe",
+            "showOutput": false,
+            "confirm": false
+        },
+        "System Monitor": {
+            "command": "perfmon.exe",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Text Editor": {
+            "command": "notepad.exe",
+            "showOutput": false,
+            "confirm": false
+        }
+    },
+    "Development": {
+        "VSCode": {
+            "command": "\"C:\\Users\\<YourUsername>\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe\"",
+            "showOutput": false,
+            "confirm": false
+        },
+        "DBeaver": {
+            "command": "\"C:\\Program Files\\DBeaver\\dbeaver.exe\"",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Postman": {
+            "command": "\"C:\\Users\\<YourUsername>\\AppData\\Local\\Postman\\Postman.exe\"",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Git Bash": {
+            "command": "\"C:\\Program Files\\Git\\git-bash.exe\"",
+            "showOutput": false,
+            "confirm": false
+        },
+        "Docker PS": {
+            "command": "powershell.exe -Command \"docker ps\"",
+            "showOutput": true,
+            "confirm": false
+        },
+        "Docker Images": {
+            "command": "powershell.exe -Command \"docker images\"",
+            "showOutput": true,
+            "confirm": false
+        }
+    },
+    "Networking": {
+        "Show IP Config": {
+            "command": "ipconfig",
+            "showOutput": true,
+            "confirm": false
+        },
+        "Show Network Connections": {
+            "command": "netstat -an",
+            "showOutput": true,
+            "confirm": false
+        },
+        "Ping Google": {
+            "command": "ping google.com",
+            "showOutput": true,
+            "confirm": false
+        },
+        "Network Status": {
+            "command": "powershell.exe -Command \"Get-NetAdapter\"",
+            "showOutput": true,
+            "confirm": false
+        },
+        "WiFi Networks": {
+            "command": "powershell.exe -Command \"netsh wlan show networks\"",
+            "showOutput": true,
+            "confirm": false
+        }
+    }
+}
