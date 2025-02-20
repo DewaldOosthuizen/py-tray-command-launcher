@@ -1,3 +1,4 @@
+from ast import Str
 import os
 import subprocess
 import sys
@@ -41,11 +42,19 @@ class TrayApp:
             if not isinstance(items, dict):
                 show_error_and_raise(f"Invalid command group format in commands.json: {group}. Each group must be a dictionary.")
                 
-            # Create a submenu for each group
+            # Check if the icon entry exists, else default to ICON_FILE
+            icon_path = os.path.expanduser(items.get("icon", ICON_FILE))
+            
+            # Check if the icon file exists, else default to ICON_FILE
+            if icon_path != ICON_FILE and not os.path.isfile(icon_path):
+                icon_path = ICON_FILE
+            
+             # Create a submenu for each group
             submenu = QMenu(group, self.menu)
+            submenu.setIcon(QIcon(icon_path))
             
             # Recursively add items to the submenu
-            self.add_menu_items(submenu, items)
+            self.add_menu_items(submenu, items, icon_path)
             
             self.menu.addMenu(submenu)
         self.menu.addSeparator()
@@ -53,15 +62,24 @@ class TrayApp:
         self.menu.addAction("Restart App", self.restart_app)
         self.menu.addAction("Exit", self.confirm_exit)
 
-    def add_menu_items(self, menu, items):
+    def add_menu_items(self, menu, items, parent_icon_path):
         """Recursively add items to the menu."""
         for label, item in items.items():
             if isinstance(item, dict) and "command" not in item:
+                
+                # Check if the icon entry exists, else default to parent_icon_path
+                icon_path = os.path.expanduser(items.get("icon", parent_icon_path))
+                
+                # Check if the icon file exists, else default to parent_icon_path
+                if icon_path != parent_icon_path and not os.path.isfile(icon_path):
+                    icon_path = parent_icon_path
+                
                 # Create a submenu for nested dictionaries
                 submenu = QMenu(label, menu)
-                self.add_menu_items(submenu, item)
+                submenu.setIcon(QIcon(icon_path))
+                self.add_menu_items(submenu, item, icon_path)
                 menu.addMenu(submenu)
-            else:
+            elif isinstance(item, dict):
                 # Add a command item to the menu
                 command = item.get("command")
                 
@@ -69,7 +87,7 @@ class TrayApp:
                 if not command:
                     show_error_and_raise(f"Invalid command format in commands.json: {label}. 'command' is required.")
                 
-                icon_path = os.path.expanduser(item.get("icon", ICON_FILE))
+                icon_path = os.path.expanduser(item.get("icon", parent_icon_path))
                 show_output = item.get("showOutput", False)
                 confirm = item.get("confirm", False)
                 prompt = item.get("prompt", None)

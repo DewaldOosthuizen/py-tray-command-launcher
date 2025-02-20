@@ -1,5 +1,6 @@
 {
     "System": {
+        "icon": "icons/system.jpeg",
         "Open Terminal": {
             "command": "terminator",
             "showOutput": false,
@@ -58,6 +59,7 @@
         }
     },
     "Media": {
+        "icon": "icons/media.jpeg",
         "Youtube Music": {
             "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=111",
             "showOutput": false,
@@ -65,6 +67,7 @@
         }
     },
     "Studies": {
+        "icon": "icons/education.jpeg",
         "Anki": {
             "command": "~/Programs/anki-25.02-linux-qt6/anki",
             "icon": "~/Programs/anki-25.02-linux-qt6/anki.png",
@@ -73,6 +76,7 @@
         }
     },
     "Utilities": {
+        "icon": "icons/utilities.jpeg",
         "Screenshot": {
             "command": "gnome-screenshot -i",
             "showOutput": false,
@@ -100,6 +104,7 @@
         }
     },
     "Development": {
+        "icon": "icons/developer.jpeg",
         "VSCode": {
             "command": "code",
             "showOutput": false,
@@ -134,22 +139,23 @@
         }
     },
     "Networking": {
+        "icon": "icons/networking.jpeg",
         "Tailscale": {
-			"Tailscale Connect": {
-				"command": "pkexec tailscale up; tailscale status;",
-				"showOutput": true,
-				"confirm": false
-			},
-			"Tailscale Disconnect": {
-				"command": "pkexec tailscale down; tailscale status;",
-				"showOutput": true,
-				"confirm": false
-			},
-			"Tailscale Status": {
-				"command": "systemctl status tailscaled; tailscale status;",
-				"showOutput": true,
-				"confirm": false
-			}
+            "Tailscale Connect": {
+                "command": "pkexec tailscale up; tailscale status;",
+                "showOutput": true,
+                "confirm": false
+            },
+            "Tailscale Disconnect": {
+                "command": "pkexec tailscale down; tailscale status;",
+                "showOutput": true,
+                "confirm": false
+            },
+            "Tailscale Status": {
+                "command": "systemctl status tailscaled; tailscale status;",
+                "showOutput": true,
+                "confirm": false
+            }
         },
         "Show IP Routes": {
             "command": "ip route show",
