@@ -59,7 +59,7 @@
     },
     "Media": {
         "Youtube Music": {
-            "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=cinhimbnkkaeohfgghhklpknlkffjgod",
+            "command": "/opt/brave.com/brave/brave-browser --profile-directory=Default --app-id=111",
             "showOutput": false,
             "confirm": false
         }
