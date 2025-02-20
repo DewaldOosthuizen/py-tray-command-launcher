@@ -134,20 +134,22 @@
         }
     },
     "Networking": {
-        "Tailscale Connect": {
-            "command": "pkexec tailscale up; tailscale status;",
-            "showOutput": true,
-            "confirm": false
-        },
-        "Tailscale Disconnect": {
-            "command": "pkexec tailscale down; tailscale status;",
-            "showOutput": true,
-            "confirm": false
-        },
-        "Tailscale Status": {
-            "command": "systemctl status tailscaled; tailscale status;",
-            "showOutput": true,
-            "confirm": false
+        "Tailscale": {
+			"Tailscale Connect": {
+				"command": "pkexec tailscale up; tailscale status;",
+				"showOutput": true,
+				"confirm": false
+			},
+			"Tailscale Disconnect": {
+				"command": "pkexec tailscale down; tailscale status;",
+				"showOutput": true,
+				"confirm": false
+			},
+			"Tailscale Status": {
+				"command": "systemctl status tailscaled; tailscale status;",
+				"showOutput": true,
+				"confirm": false
+			}
         },
         "Show IP Routes": {
             "command": "ip route show",

@@ -1,7 +1,7 @@
 import os
 import subprocess
 import sys
-from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QInputDialog
+from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QMessageBox, QInputDialog
 from PyQt6.QtGui import QIcon, QAction
 from command_executor import execute_command, execute_command_process
 from utils import load_commands
@@ -44,12 +44,25 @@ class TrayApp:
             # Create a submenu for each group
             submenu = QMenu(group, self.menu)
             
-            # Iterate over the items in the group
-            for label, item in items.items():
-                # Check if the item is a dictionary
-                if not isinstance(item, dict):
-                    show_error_and_raise("Invalid command format in commands.json. Stopping the process to avoid app from misbehaving.")
-                    
+            # Recursively add items to the submenu
+            self.add_menu_items(submenu, items)
+            
+            self.menu.addMenu(submenu)
+        self.menu.addSeparator()
+        self.menu.addAction('Edit commands.json', self.open_commands_json)
+        self.menu.addAction("Restart App", self.restart_app)
+        self.menu.addAction("Exit", self.confirm_exit)
+
+    def add_menu_items(self, menu, items):
+        """Recursively add items to the menu."""
+        for label, item in items.items():
+            if isinstance(item, dict) and "command" not in item:
+                # Create a submenu for nested dictionaries
+                submenu = QMenu(label, menu)
+                self.add_menu_items(submenu, item)
+                menu.addMenu(submenu)
+            else:
+                # Add a command item to the menu
                 command = item.get("command")
                 
                 # Validate required fields
@@ -60,21 +73,15 @@ class TrayApp:
                 show_output = item.get("showOutput", False)
                 confirm = item.get("confirm", False)
                 prompt = item.get("prompt", None)
-                action = QAction(QIcon(icon_path), label, self.menu)
+                action = QAction(QIcon(icon_path), label, menu)
                 
                 # Connect the action to execute command
                 action.triggered.connect(
                     lambda _, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: self.execute(lbl, cmd, conf, show, prmpt)
                 )
                 
-                # Add the action to the submenu
-                submenu.addAction(action)
-                
-            self.menu.addMenu(submenu)
-        self.menu.addSeparator()
-        self.menu.addAction('Edit commands.json', self.open_commands_json)
-        self.menu.addAction("Restart App", self.restart_app)
-        self.menu.addAction("Exit", self.confirm_exit)
+                # Add the action to the menu
+                menu.addAction(action)
 
     def open_commands_json(self):
         """Open the commands.json file with the default text editor."""
