@@ -240,7 +240,23 @@ pip install -r requirements.txt
     If you are having trouble with your virtual environment not being used, then try:
 
     ```sh
-    .venv/bin/python3 src/main.py
+    venv/bin/python3 src/main.py
+    ```
+
+    If you want to run it while not hogging the terminal then:
+
+    - Method 1: Using nohup Command
+    You can use the nohup command to run the script in the background and detach it from the terminal.
+
+    ```sh
+    nohup python3 src/main.py
+    ```
+
+    - Method 2: Using & to Run in Background
+    You can simply add & at the end of the command to run the script in the background.
+
+    ```sh
+    python3 src/main.py &
     ```
 
 4. Features:
