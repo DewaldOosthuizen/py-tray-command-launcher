@@ -2,6 +2,9 @@ from ast import Str
 import os
 import subprocess
 import sys
+import datetime
+import json
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QMessageBox, QInputDialog, QLineEdit, QDialog, QVBoxLayout, QListWidget, QPushButton
 from PyQt6.QtGui import QIcon, QAction
 from command_executor import execute_command, execute_command_process
@@ -23,10 +26,11 @@ class TrayApp:
         self.tray_icon = QSystemTrayIcon(QIcon(ICON_FILE))
         self.tray_icon.setVisible(True)
         self.menu = QMenu()
+        self.output_windows = []
+        self.command_history = self.load_command_history()
         self.load_tray_menu()
         self.tray_icon.setContextMenu(self.menu)
         self.tray_icon.show()
-        self.output_windows = []
 
     def load_tray_menu(self):
         """Load commands into the tray menu."""
@@ -57,6 +61,12 @@ class TrayApp:
             self.add_menu_items(submenu, items, icon_path)
             
             self.menu.addMenu(submenu)
+        
+        history_menu = QMenu("Recent Commands", self.menu)
+        history_menu.setIcon(QIcon(ICON_FILE))
+        self.populate_history_menu(history_menu)
+        self.menu.addMenu(history_menu)
+        
         self.menu.addSeparator()
         self.menu.addAction('Search Commands', self.show_search_dialog)
         self.menu.addAction('Edit commands.json', self.open_commands_json)
@@ -124,6 +134,9 @@ class TrayApp:
 
     def execute(self, title, command, confirm, show_output, prompt):
         """Execute a command with optional confirmation and input prompt."""
+        # Add to history first
+        self.add_to_history(title, command, confirm, show_output, prompt)
+        
         if confirm:
             if not confirm_execute(command):
                 return
@@ -197,14 +210,16 @@ class TrayApp:
             search_text = search_box.text().lower()
             for i in range(command_list.count()):
                 item = command_list.item(i)
-                item.setHidden(search_text not in item.text().lower())
+                if item is not None:
+                    item.setHidden(search_text not in item.text().lower())
         
         search_box.textChanged.connect(filter_commands)
         
         # Execute the selected command
         def on_execute():
-            if command_list.currentItem():
-                selected = command_list.currentItem().text()
+            current_item = command_list.currentItem()
+            if current_item is not None:
+                selected = current_item.text()
                 for cmd_info in all_commands:
                     if f"{cmd_info['group']} → {cmd_info['label']}" == selected:
                         self.execute(
@@ -256,3 +271,73 @@ class TrayApp:
                 process_items(group_name, items)
         
         return result
+
+    def load_command_history(self):
+        """Load command history from file."""
+        history_file = os.path.join(BASE_DIR, "../config/history.json")
+        try:
+            if os.path.exists(history_file):
+                with open(history_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            return []
+        except Exception:
+            return []
+
+    def save_command_history(self):
+        """Save command history to file."""
+        history_file = os.path.join(BASE_DIR, "../config/history.json")
+        try:
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(self.command_history, f, indent=4)
+        except Exception as e:
+            print(f"Failed to save command history: {e}")
+
+    def add_to_history(self, title, command, confirm, show_output, prompt):
+        """Add a command to history."""
+        # Limit history to 10 items
+        self.command_history = [cmd for cmd in self.command_history 
+                               if cmd['command'] != command][:9]
+        
+        # Add the new command to the beginning
+        self.command_history.insert(0, {
+            'title': title,
+            'command': command,
+            'confirm': confirm,
+            'showOutput': show_output,
+            'prompt': prompt,
+            'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        # Save the updated history
+        self.save_command_history()
+
+    def populate_history_menu(self, menu):
+        """Populate the history menu."""
+        menu.clear()
+        if not self.command_history:
+            action = QAction("No Recent Commands", menu)
+            action.setEnabled(False)
+            menu.addAction(action)
+            return
+        
+        for cmd in self.command_history:
+            action = QAction(f"{cmd['title']} ({cmd['timestamp']})", menu)
+            action.triggered.connect(
+                lambda _, cmd=cmd: self.execute(
+                    cmd['title'],
+                    cmd['command'],
+                    cmd['confirm'],
+                    cmd['showOutput'],
+                    cmd.get('prompt')
+                )
+            )
+            menu.addAction(action)
+        
+        menu.addSeparator()
+        menu.addAction("Clear History", self.clear_history)
+
+    def clear_history(self):
+        """Clear the command history."""
+        self.command_history = []
+        self.save_command_history()
+        self.load_tray_menu()
