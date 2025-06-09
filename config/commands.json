@@ -1,4 +1,7 @@
 {
+    "Favorites": {
+        "icon": "icons/icon.png"
+    },
     "System": {
         "icon": "icons/system.jpeg",
         "Open Terminal": {
