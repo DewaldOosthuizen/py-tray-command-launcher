@@ -13,6 +13,8 @@ from command_executor import execute_command, execute_command_process
 from utils import load_commands
 from dialogs import confirm_execute, show_error_and_raise, confirm_exit
 from output_window import OutputWindow
+
+# Modules for various functionalities
 from modules.command_history import CommandHistory
 from modules.command_creator import CommandCreator
 from modules.command_search import CommandSearch
@@ -41,6 +43,8 @@ class TrayApp:
         self.output_windows = []
         
         # Initialize module components
+        self.command_menu = load_commands();
+        self.history_menu = load_commands();
         self.history = CommandHistory(self)
         self.creator = CommandCreator(self)
         self.search = CommandSearch(self)
@@ -56,14 +60,14 @@ class TrayApp:
     # Core menu handling methods
     def load_tray_menu(self):
         """Load commands into the tray menu."""
-        commands = load_commands()
+        self.reload_commands()
         
         # Check if commands is a dictionary
-        if not isinstance(commands, dict):
+        if not isinstance(self.command_menu, dict):
             show_error_and_raise("Invalid commands.json format. Root element must be a dictionary.")
     
         # Iterate over the commands and create menu items
-        for group, items in commands.items():
+        for group, items in self.command_menu.items():
             # Check if each group is a dictionary
             if not isinstance(items, dict):
                 show_error_and_raise(f"Invalid command group format in commands.json: {group}. Each group must be a dictionary.")
@@ -85,10 +89,10 @@ class TrayApp:
             self.menu.addMenu(submenu)
         
         # Add history menu
-        history_menu = QMenu("Recent Commands", self.menu)
-        history_menu.setIcon(QIcon(ICON_FILE))
-        self.history.populate_menu(history_menu)
-        self.menu.addMenu(history_menu)
+        self.history_menu = QMenu("Recent Commands", self.menu)
+        self.history_menu.setIcon(QIcon(ICON_FILE))
+        self.menu.addMenu(self.history_menu)
+        self.reload_history_commands()
         
         self.menu.addSeparator()
         
@@ -98,6 +102,8 @@ class TrayApp:
         commands_menu.addAction('Search Commands', self.search.show_dialog)
         commands_menu.addAction('Create New Command', self.creator.show_dialog)
         commands_menu.addAction('Edit commands.json', self.open_commands_json)
+        commands_menu.addAction('Reload Commands', self.reload_commands)
+        commands_menu.addAction('Reload History Commands', self.reload_history_commands)
         # commands_menu.addAction('Add command to Fav', self.favorites.add_to_favorites)
         self.menu.addMenu(commands_menu)
 
@@ -184,6 +190,9 @@ class TrayApp:
             self.show_command_output(title, command)
         else:
             execute_command(command)
+        
+        self.reload_commands()
+        self.reload_history_commands()
 
     def show_command_output(self, title, command):
         """Execute a command and show the output in a new window."""
@@ -258,6 +267,15 @@ class TrayApp:
                 subprocess.call(("xdg-open", commands_json_path))
         except Exception as e:
             show_error_and_raise(f"Failed to open commands.json: {e}")
+            
+    def reload_commands(self):
+        """Reload the commands from the configuration file."""
+        self.command_menu = load_commands()
+        # self.history.populate_menu(self.history_menu)
+        
+    def reload_history_commands(self):
+        """Reload the commands from the configuration file."""
+        self.history.populate_menu(self.history_menu)
 
     def restart_app(self):
         """Restart the application."""
