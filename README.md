@@ -1,6 +1,9 @@
 # py-tray-command-launcher
 
-A simple tray application to launch predefined commands.
+A  simple and lightweight tray application developed in Python. It allows users to easily launch custom commands 
+or scripts directly from the system tray, enhancing productivity and quick access to frequently used operations. 
+The application is designed with flexibility and user convenience in mind, supporting a variety of use cases such 
+as script execution, command shortcuts, and task automation.
 
 ## Installation
 
@@ -264,7 +267,7 @@ pip install -r requirements.txt
     - Launch applications
     - Launch custom commands
     - Optional confirmation dialog before executing commands
-    - Output display for commands that show output (Either through terminal or new window depending on command configuration)
+    - Output display for commands that show output (Either through terminal or a new window, depending on command configuration)
     - Tray icon with menu to launch commands
     - Tray icon with menu to quit the application
     - Tray icon with menu to open the `commands.json` file for editing
