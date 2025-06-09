@@ -2,7 +2,7 @@ from ast import Str
 import os
 import subprocess
 import sys
-from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QMessageBox, QInputDialog
+from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QMessageBox, QInputDialog, QLineEdit, QDialog, QVBoxLayout, QListWidget, QPushButton
 from PyQt6.QtGui import QIcon, QAction
 from command_executor import execute_command, execute_command_process
 from utils import load_commands
@@ -58,6 +58,7 @@ class TrayApp:
             
             self.menu.addMenu(submenu)
         self.menu.addSeparator()
+        self.menu.addAction('Search Commands', self.show_search_dialog)
         self.menu.addAction('Edit commands.json', self.open_commands_json)
         self.menu.addAction("Restart App", self.restart_app)
         self.menu.addAction("Exit", self.confirm_exit)
@@ -167,3 +168,91 @@ class TrayApp:
     def run(self):
         """Run the application event loop."""
         sys.exit(self.app.exec())
+
+    def show_search_dialog(self):
+        """Show a dialog to search for commands."""
+        dialog = QDialog()
+        dialog.setWindowTitle("Search Commands")
+        layout = QVBoxLayout()
+        
+        search_box = QLineEdit()
+        search_box.setPlaceholderText("Type to search...")
+        layout.addWidget(search_box)
+        
+        command_list = QListWidget()
+        layout.addWidget(command_list)
+        
+        execute_button = QPushButton("Execute")
+        layout.addWidget(execute_button)
+        
+        dialog.setLayout(layout)
+        
+        # Populate the list with all commands
+        all_commands = self.get_all_commands()
+        for cmd_info in all_commands:
+            command_list.addItem(f"{cmd_info['group']} → {cmd_info['label']}")
+        
+        # Filter as user types
+        def filter_commands():
+            search_text = search_box.text().lower()
+            for i in range(command_list.count()):
+                item = command_list.item(i)
+                item.setHidden(search_text not in item.text().lower())
+        
+        search_box.textChanged.connect(filter_commands)
+        
+        # Execute the selected command
+        def on_execute():
+            if command_list.currentItem():
+                selected = command_list.currentItem().text()
+                for cmd_info in all_commands:
+                    if f"{cmd_info['group']} → {cmd_info['label']}" == selected:
+                        self.execute(
+                            cmd_info['label'],
+                            cmd_info['command'],
+                            cmd_info['confirm'],
+                            cmd_info['showOutput'],
+                            cmd_info.get('prompt')
+                        )
+                        dialog.accept()
+                        break
+        
+        execute_button.clicked.connect(on_execute)
+        command_list.itemDoubleClicked.connect(lambda: on_execute())
+        
+        dialog.exec()
+
+    def get_all_commands(self):
+        """Get all commands from the configuration."""
+        commands = load_commands()
+        result = []
+        
+        def process_items(group_name, items):
+            for label, item in items.items():
+                if isinstance(item, dict) and "command" in item:
+                    result.append({
+                        'group': group_name,
+                        'label': label,
+                        'command': item['command'],
+                        'confirm': item.get('confirm', False),
+                        'showOutput': item.get('showOutput', False),
+                        'prompt': item.get('prompt')
+                    })
+                elif isinstance(item, dict) and "command" not in item:
+                    # For nested menus
+                    for sublabel, subitem in item.items():
+                        if isinstance(subitem, dict) and "command" in subitem:
+                            result.append({
+                                'group': f"{group_name} → {label}",
+                                'label': sublabel,
+                                'command': subitem['command'],
+                                'confirm': subitem.get('confirm', False),
+                                'showOutput': subitem.get('showOutput', False),
+                                'prompt': subitem.get('prompt')
+                            })
+        
+        for group_name, items in commands.items():
+            if isinstance(items, dict) and "command" not in items:
+                process_items(group_name, items)
+        
+        return result

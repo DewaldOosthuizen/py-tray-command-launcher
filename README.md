@@ -272,3 +272,40 @@ pip install -r requirements.txt
     - App will automatically validate the `commands.json` file structure and prompt the user if there are any issues
   
 ![Screenshot from 2025-02-12 19-58-12](https://github.com/user-attachments/assets/834e778d-5905-4523-a77b-c533ffb152e9)
+
+## Contributing
+
+Contributions are welcome! If you'd like to contribute to this project, please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix:
+
+    ```sh
+    git checkout -b feature-name
+    ```
+
+3. Make your changes and commit them with clear and concise messages:
+
+    ```sh
+    git commit -m "Add feature-name: description of changes"
+    ```
+
+4. Push your changes to your forked repository:
+
+    ```sh
+    git push origin feature-name
+    ```
+
+5. Open a pull request to the main repository and provide a detailed description of your changes.
+
+## Issues
+
+If you encounter any issues or have feature requests, please open an issue in the [GitHub Issues](https://github.com/user/repository/issues) section of this repository. Provide as much detail as possible to help us address the problem or consider your suggestion.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
+## Future Enhancements
+
+Stay tuned for updates, and feel free to suggest additional features!
