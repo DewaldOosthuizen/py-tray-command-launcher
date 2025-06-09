@@ -1,59 +1,101 @@
 # py-tray-command-launcher
 
-A  simple and lightweight tray application developed in Python. It allows users to easily launch custom commands 
-or scripts directly from the system tray, enhancing productivity and quick access to frequently used operations. 
-The application is designed with flexibility and user convenience in mind, supporting a variety of use cases such 
-as script execution, command shortcuts, and task automation.
+A simple and lightweight tray application developed in Python. It allows users to easily launch custom commands or scripts directly from the system tray, enhancing productivity and quick access to frequently used operations. The application is designed with flexibility and user convenience in mind, supporting a variety of use cases such as script execution, command shortcuts, and task automation.
+
+---
+
+## Table of Contents
+
+- [py-tray-command-launcher](#py-tray-command-launcher)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Installation](#installation)
+    - [1. Install Required System Packages](#1-install-required-system-packages)
+    - [2. Clone the Repository](#2-clone-the-repository)
+    - [3. Create and Activate a Virtual Environment](#3-create-and-activate-a-virtual-environment)
+    - [4. Install Python Dependencies](#4-install-python-dependencies)
+  - [Configuration](#configuration)
+  - [Running the App](#running-the-app)
+  - [Screenshots](#screenshots)
+  - [Contributing](#contributing)
+  - [Issues](#issues)
+  - [License](#license)
+  - [Future Enhancements](#future-enhancements)
+
+---
+
+## Features
+
+- **System Tray Integration:** Seamlessly integrates with your system's notification area.
+- **Hierarchical Command Menu:** Organizes commands in categories and subcategories.
+- **Custom Icons:** Support for custom icons for each category and command.
+- **Command Execution:** Execute shell commands directly from the tray menu.
+- **Multi-platform Support:** Works on Linux, with Windows support via `win-commands.json`.
+- **Confirmation Dialogs:** Optionally require confirmation before executing potentially dangerous commands.
+- **Output Display:** Show command output in a dedicated window when needed.
+- **Input Prompts:** Prompt for user input with customizable messages using the `{promptInput}` placeholder.
+- **Command Search:** Quickly find and execute any command using the search dialog.
+- **Recent Commands:** Access recently executed commands from the "Recent Commands" menu.
+- **Command Creator:** Create new commands via a user-friendly dialog without editing JSON directly.
+- **JSON Editor:** Direct access to edit the `commands.json` configuration file.
+- **App Restart:** Reload the application after making changes to the configuration.
+- **Backup and Restore:** Create timestamped backups and restore or import/export command groups.
+- **Favorites:** Add frequently used commands to a Favorites section.
+- **Clean UI:** Well-organized menu structure with icons, output, confirmation, and input dialogs.
+- **Robust Configuration:** Simple, human-readable JSON format with automatic validation.
+- **Process Management:** Proper handling of command execution and output capture.
+- **Error Handling:** Graceful error handling with informative messages.
+- **Virtual Environment Support:** Works within Python virtual environments.
+
+---
 
 ## Installation
 
-### Install missing system packages
+### 1. Install Required System Packages
 
 ```sh
 sudo bash install_packages.sh
 ```
 
-### Clone the repository
+### 2. Clone the Repository
 
 ```sh
 git clone <repository_url>
 cd py-tray-command-launcher
 ```
 
-### Create a virtual environment
+### 3. Create and Activate a Virtual Environment
 
 ```sh
 python3 -m venv venv
 ```
 
-### Activate the virtual environment
-
-- On Windows:
+- **On Windows:**
 
     ```sh
     venv\Scripts\activate
     ```
 
-- On Unix or MacOS:
+- **On Unix or macOS:**
 
     ```sh
     source venv/bin/activate
     ```
 
-### Install dependencies
+### 4. Install Python Dependencies
 
 ```sh
 pip install -r requirements.txt
 ```
 
-## Running the App
+---
 
-1. Ensure the virtual environment is activated.
+## Configuration
 
-2. Create `commands.json` file in the config directory and define your content. For example:
+Create a `commands.json` file in the `config` directory to define your commands. Example structure:
 
-    ```json
-    {
+```json
+{
     "System": {
         "Open Terminal": {
             "command": "terminator",
@@ -64,53 +106,8 @@ pip install -r requirements.txt
             "command": "terminator --command 'bash -c \"sudo apt update; sudo apt upgrade -y; exec bash\"'",
             "showOutput": false,
             "confirm": true
-        },
-        "xkill": {
-            "command": "xkill",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Disk Usage": {
-            "command": "df -h",
-            "showOutput": true,
-            "confirm": false
-        },
-        "Memory Usage": {
-            "command": "free -h",
-            "showOutput": true,
-            "confirm": false
-        },
-        "System Info": {
-            "command": "uname -a",
-            "showOutput": true,
-            "confirm": false
-        },
-        "Reboot": {
-            "command": "pkexec reboot",
-            "showOutput": false,
-            "confirm": true
-        },
-        "Shutdown": {
-            "command": "pkexec shutdown now",
-            "showOutput": false,
-            "confirm": true
-        },
-        "Cinnamon Reload": {
-            "command": "killall -HUP cinnamon",
-            "showOutput": false,
-            "confirm": true
-        },
-        "System Report": {
-            "command": "mintreport",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Kill Process on Port": {
-            "command": "pkexec fuser -k {promptInput}/tcp",
-            "showOutput": false,
-            "confirm": true,
-            "prompt": "Enter the port number:"
         }
+        // ... more commands
     },
     "Media": {
         "Youtube Music": {
@@ -118,197 +115,100 @@ pip install -r requirements.txt
             "showOutput": false,
             "confirm": false
         }
-    },
-    "Studies": {
-        "Anki": {
-            "command": "~/Programs/anki-25.02-linux-qt6/anki",
-            "icon": "~/Programs/anki-25.02-linux-qt6/anki.png",
-            "showOutput": false,
-            "confirm": false
-        }
-    },
-    "Utilities": {
-        "Screenshot": {
-            "command": "gnome-screenshot -i",
-            "showOutput": false,
-            "confirm": false
-        },
-        "CPU-X": {
-            "command": "cpu-x",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Disk Usage Analyzer": {
-            "command": "baobab",
-            "showOutput": false,
-            "confirm": false
-        },
-        "System Monitor": {
-            "command": "gnome-system-monitor",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Text Editor": {
-            "command": "geany",
-            "showOutput": false,
-            "confirm": false
-        }
-    },
-    "Development": {
-        "VSCode": {
-            "command": "code",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Geany": {
-            "command": "geany",
-            "showOutput": false,
-            "confirm": false
-        },
-        "DBeaver": {
-            "command": "dbeaver",
-            "icon": "/usr/share/dbeaver-ce/dbeaver.png",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Postman": {
-            "command": "~/Programs/Postman/Postman",
-            "icon": "~/Programs/Postman/app/icons/icon_128x128.png",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Docker PS": {
-            "command": "terminator --command 'bash -c \"sudo docker ps; exec bash\"'",
-            "showOutput": true,
-            "confirm": false
-        },
-        "Docker Images": {
-            "command": "terminator --command 'bash -c \"sudo docker images; exec bash\"'",
-            "showOutput": true,
-            "confirm": false
-        }
-    },
-    "Networking": {
-        "Tailscale": {
-   "Tailscale Connect": {
-    "command": "pkexec tailscale up; tailscale status;",
-    "showOutput": true,
-    "confirm": false
-   },
-   "Tailscale Disconnect": {
-    "command": "pkexec tailscale down; tailscale status;",
-    "showOutput": true,
-    "confirm": false
-   },
-   "Tailscale Status": {
-    "command": "systemctl status tailscaled; tailscale status;",
-    "showOutput": true,
-    "confirm": false
-   }
-        },
-        "Show IP Routes": {
-            "command": "ip route show",
-            "showOutput": true,
-            "confirm": false
-        },
-        "Show Interfaces": {
-            "command": "ip link show",
-            "showOutput": true,
-            "confirm": false
-        },
-        "Ping Google": {
-            "command": "ping -c 4 google.com",
-            "showOutput": true,
-            "confirm": false
-        },
-        "Network Status": {
-            "command": "nmcli general status",
-            "showOutput": true,
-            "confirm": false
-        },
-        "WiFi Networks": {
-            "command": "nmcli device wifi list",
-            "showOutput": true,
-            "confirm": false
-        }
     }
-    ```
+    // ... more categories
+}
+```
 
-3. Run the application:
+- Use `{promptInput}` in commands to prompt for user input.
+- Specify `"icon"` for custom icons.
+- Specify `"showOutput"` if the output should be displayed in a separate window.
+- Set `"confirm": true` for commands that require confirmation.
+
+---
+
+## Running the App
+
+1. **Activate the virtual environment.**
+2. **Run the application:**
 
     ```sh
     python3 src/main.py
     ```
 
-    If you are having trouble with your virtual environment not being used, then try:
+    If you encounter issues with the virtual environment, try:
 
     ```sh
     venv/bin/python3 src/main.py
     ```
 
-    If you want to run it while not hogging the terminal then:
+3. **Run in the background:**
+    - Using `nohup`:
 
-    - Method 1: Using nohup Command
-    You can use the nohup command to run the script in the background and detach it from the terminal.
+        ```sh
+        nohup python3 src/main.py &
+        ```
 
-    ```sh
-    nohup python3 src/main.py
-    ```
+    - Using `&`:
 
-    - Method 2: Using & to Run in Background
-    You can simply add & at the end of the command to run the script in the background.
+        ```sh
+        python3 src/main.py &
+        ```
 
-    ```sh
-    python3 src/main.py &
-    ```
+---
 
-4. Features:
+## Screenshots
 
-    - Launch applications
-    - Launch custom commands
-    - Optional confirmation dialog before executing commands
-    - Output display for commands that show output (Either through terminal or a new window, depending on command configuration)
-    - Tray icon with menu to launch commands
-    - Tray icon with menu to quit the application
-    - Tray icon with menu to open the `commands.json` file for editing
-    - Ability to reload the app after editing the `commands.json` file
-    - App will automatically validate the `commands.json` file structure and prompt the user if there are any issues
-  
 ![Screenshot from 2025-02-12 19-58-12](https://github.com/user-attachments/assets/834e778d-5905-4523-a77b-c533ffb152e9)
+
+---
 
 ## Contributing
 
-Contributions are welcome! If you'd like to contribute to this project, please follow these steps:
+Contributions are welcome! To contribute:
 
 1. Fork the repository.
-2. Create a new branch for your feature or bug fix:
+2. Create a new branch:
 
     ```sh
     git checkout -b feature-name
     ```
 
-3. Make your changes and commit them with clear and concise messages:
+3. Make your changes and commit:
 
     ```sh
     git commit -m "Add feature-name: description of changes"
     ```
 
-4. Push your changes to your forked repository:
+4. Push to your fork:
 
     ```sh
     git push origin feature-name
     ```
 
-5. Open a pull request to the main repository and provide a detailed description of your changes.
+5. Open a pull request with a detailed description.
+
+---
 
 ## Issues
 
-If you encounter any issues or have feature requests, please open an issue in the [GitHub Issues](https://github.com/user/repository/issues) section of this repository. Provide as much detail as possible to help us address the problem or consider your suggestion.
+If you encounter issues or have feature requests, open an issue in the [GitHub Issues](https://github.com/user/repository/issues) section. Please provide as much detail as possible.
+
+---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
 
 ## Future Enhancements
+
+- Global keyboard shortcuts for frequently used commands
+- Auto-start on system boot
+- Command scheduling and automation
+- Themes and appearance customization
+- Scripting support for advanced command sequences
+- Localization for multiple languages
 
 Stay tuned for updates, and feel free to suggest additional features!
