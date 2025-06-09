@@ -271,7 +271,6 @@ class TrayApp:
     def reload_commands(self):
         """Reload the commands from the configuration file."""
         self.command_menu = load_commands()
-        # self.history.populate_menu(self.history_menu)
         
     def reload_history_commands(self):
         """Reload the commands from the configuration file."""

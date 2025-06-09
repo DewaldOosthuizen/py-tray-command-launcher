@@ -80,4 +80,4 @@ class CommandHistory:
         """Clear the command history."""
         self.history = []
         self.save_history()
-        self.app.load_tray_menu()
+        self.populate_menu(self.app.history_menu)
