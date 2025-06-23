@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QTextEdit, QWidget
 from PyQt6.QtCore import Qt
 
+
 class OutputWindow(QMainWindow):
     def __init__(self, title, output, parent=None):
         super().__init__(parent)  # Explicitly set parent to keep app alive
@@ -20,6 +21,6 @@ class OutputWindow(QMainWindow):
         # Create a container widget to hold the layout
         container = QWidget()
         container.setLayout(layout)
-        
+
         # Set the central widget of the window
         self.setCentralWidget(container)

@@ -1,7 +1,4 @@
 {
-    "Favorites": {
-        "icon": "icons/icon.png"
-    },
     "System": {
         "icon": "icons/system.jpeg",
         "Open Terminal": {
@@ -184,6 +181,17 @@
             "command": "nmcli device wifi list",
             "showOutput": true,
             "confirm": false
+        }
+    },
+    "Favorites": {
+        "icon": "icons/icon.png",
+        "Open Terminal": {
+            "ref": "System.Open Terminal",
+            "original": "terminator"
+        },
+        "Tailscale Refresh": {
+            "ref": "Networking.Rank Interactive.Tailscale Refresh",
+            "original": "terminator --command 'bash -c \"~/Workspace/RankGroup/VPN/restart_tailscale.sh; exec bash\"'"
         }
     }
 }
