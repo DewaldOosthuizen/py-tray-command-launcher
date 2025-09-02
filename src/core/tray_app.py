@@ -177,8 +177,8 @@ class TrayApp:
             if label == "icon":
                 continue
 
-            # Handle submenu case (nested dictionaries without command)
-            if isinstance(item, dict) and "command" not in item:
+            # Handle submenu case (nested dictionaries without command and not a reference)
+            if isinstance(item, dict) and "command" not in item and "ref" not in item:
                 # Create submenu for nested dictionaries
                 icon_path = self._resolve_icon_path(item.get("icon"))
 
@@ -191,8 +191,8 @@ class TrayApp:
                 self.add_menu_items(submenu, item, icon_path, new_group)
                 menu.addMenu(submenu)
 
-            # Handle command case
-            elif isinstance(item, dict) and "command" in item:
+            # Handle command case (direct commands or references)
+            elif isinstance(item, dict) and ("command" in item or "ref" in item):
                 # Add command item to menu
                 action = self._add_command_to_menu(
                     menu, label, item, parent_icon_path, group_name
