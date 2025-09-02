@@ -251,12 +251,8 @@ class TrayApp:
                     ref_command = path_parts[-1]
                     resolved = current.get(ref_command, {})
 
-                # Validate the resolved command matches the original when added
+                # Validate the resolved command
                 if isinstance(resolved, dict) and "command" in resolved:
-                    # Check if the original command has changed
-                    if "original" in item and item["original"] != resolved["command"]:
-                        print(f"Referenced command has changed: {ref_path}")
-
                     return resolved
                 else:
                     print(f"Referenced command is invalid: {ref_path}")
@@ -275,8 +271,8 @@ class TrayApp:
             The created QAction object
         """
         # Check if this is a reference and resolve it
-        if group_name == "Favorites" and isinstance(item, dict) and "ref" in item:
-            resolved_item = self._resolve_command_reference("Favorites", label, item)
+        if isinstance(item, dict) and "ref" in item:
+            resolved_item = self._resolve_command_reference(group_name, label, item)
             if resolved_item != item:
                 # Use the resolved item but keep track of the reference
                 command = resolved_item.get("command", "")

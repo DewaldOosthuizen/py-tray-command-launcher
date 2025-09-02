@@ -191,12 +191,10 @@
     "Favorites": {
         "icon": "icons/icon.png",
         "Open Terminal": {
-            "ref": "System.Open Terminal",
-            "original": "terminator"
+            "ref": "System.Open Terminal"
         },
         "Tailscale Status": {
-            "ref": "Networking.Tailscale.Tailscale Status",
-            "original": "systemctl status tailscaled; tailscale status;"
+            "ref": "Networking.Tailscale.Tailscale Status"
         }
     }
 }

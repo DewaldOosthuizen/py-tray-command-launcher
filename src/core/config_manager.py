@@ -447,12 +447,9 @@ class ConfigManager:
             # Use custom label or the original command name
             label = custom_label or command_name
 
-            # Add a reference entry to favorites
+            # Add a reference entry to favorites (only store ref, resolve dynamically)
             commands["Favorites"][label] = {
-                "ref": command_path,
-                "original": command_obj.get(
-                    "command", ""
-                ),  # Store original command for validation
+                "ref": command_path
             }
 
             # Save the updated commands
