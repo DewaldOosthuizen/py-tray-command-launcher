@@ -189,9 +189,9 @@
             "ref": "System.Open Terminal",
             "original": "terminator"
         },
-        "Tailscale Refresh": {
-            "ref": "Networking.Rank Interactive.Tailscale Refresh",
-            "original": "terminator --command 'bash -c \"~/Workspace/RankGroup/VPN/restart_tailscale.sh; exec bash\"'"
+        "Tailscale Status": {
+            "ref": "Networking.Tailscale.Tailscale Status",
+            "original": "systemctl status tailscaled; tailscale status;"
         }
     }
 }
