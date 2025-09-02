@@ -184,13 +184,4 @@ class Favorites:
                         prmpt=prompt: self.tray_app.execute(lbl, cmd, conf, show, prmpt)
                     )
 
-                    # Add submenu for removing from favorites
-                    remove_menu = QMenu("More", menu)
-                    remove_action = QAction("Remove from Favorites", remove_menu)
-                    remove_action.triggered.connect(
-                        lambda checked=False, lbl=label: self.remove_from_favorites(lbl)
-                    )
-                    remove_menu.addAction(remove_action)
-                    action.setMenu(remove_menu)
-
                     menu.addAction(action)
