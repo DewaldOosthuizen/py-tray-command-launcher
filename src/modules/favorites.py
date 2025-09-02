@@ -150,38 +150,38 @@ class Favorites:
             if label == "icon":
                 continue
 
-            if isinstance(item, dict) and "command" in item:
-                icon_path = os.path.expanduser(
-                    item.get(
-                        "icon",
-                        os.path.join(
-                            config_manager.get_base_dir(), "../icons/icon.png"
-                        ),
+            if isinstance(item, dict):
+                # Handle both direct commands and references
+                resolved_item = item
+                
+                # If this is a reference, resolve it to get the actual command data
+                if "ref" in item:
+                    resolved_item = self.tray_app._resolve_command_reference("Favorites", label, item)
+                
+                # Check if we have a valid command (either direct or resolved)
+                if "command" in resolved_item:
+                    icon_path = os.path.expanduser(
+                        resolved_item.get(
+                            "icon",
+                            os.path.join(
+                                config_manager.get_base_dir(), "../icons/icon.png"
+                            ),
+                        )
                     )
-                )
-                action = QAction(QIcon(icon_path), label, menu)
+                    action = QAction(QIcon(icon_path), label, menu)
 
-                command = item.get("command")
-                show_output = item.get("showOutput", False)
-                confirm = item.get("confirm", False)
-                prompt = item.get("prompt", None)
+                    command = resolved_item.get("command")
+                    show_output = resolved_item.get("showOutput", False)
+                    confirm = resolved_item.get("confirm", False)
+                    prompt = resolved_item.get("prompt", None)
 
-                action.triggered.connect(
-                    lambda checked=False,
-                    cmd=command,
-                    lbl=label,
-                    conf=confirm,
-                    show=show_output,
-                    prmpt=prompt: self.tray_app.execute(lbl, cmd, conf, show, prmpt)
-                )
+                    action.triggered.connect(
+                        lambda checked=False,
+                        cmd=command,
+                        lbl=label,
+                        conf=confirm,
+                        show=show_output,
+                        prmpt=prompt: self.tray_app.execute(lbl, cmd, conf, show, prmpt)
+                    )
 
-                # Add submenu for removing from favorites
-                remove_menu = QMenu("More", menu)
-                remove_action = QAction("Remove from Favorites", remove_menu)
-                remove_action.triggered.connect(
-                    lambda checked=False, lbl=label: self.remove_from_favorites(lbl)
-                )
-                remove_menu.addAction(remove_action)
-                action.setMenu(remove_menu)
-
-                menu.addAction(action)
+                    menu.addAction(action)
