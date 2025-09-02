@@ -33,6 +33,29 @@ print(f"Icon file: {ICON_FILE}")
 class TrayApp:
     """Main tray application class that manages the system tray icon and menu."""
 
+    def _resolve_icon_path(self, icon_path):
+        """
+        Resolve an icon path to an absolute path, handling relative paths correctly.
+        
+        Args:
+            icon_path: The icon path from configuration (can be relative, absolute, or with ~)
+            
+        Returns:
+            Absolute path to the icon file
+        """
+        if not icon_path:
+            return ICON_FILE
+        
+        # Expand user path (handles ~)
+        expanded_path = os.path.expanduser(icon_path)
+        
+        # If it's already absolute, use as-is
+        if os.path.isabs(expanded_path):
+            return expanded_path
+        
+        # If it's relative, make it relative to the project base directory
+        return os.path.join(BASE_DIR, "resources", expanded_path)
+
     def __init__(self, app):
         """Initialize the TrayApp with the given QApplication instance."""
         self.app = app
@@ -86,8 +109,8 @@ class TrayApp:
                     f"Invalid command group format: {group}. Each group must be a dictionary."
                 )
 
-            # Check if the icon entry exists, else default to ICON_FILE
-            icon_path = os.path.expanduser(items.get("icon", ICON_FILE))
+            # Resolve the icon path correctly
+            icon_path = self._resolve_icon_path(items.get("icon"))
 
             # Check if the icon file exists, else default to ICON_FILE
             if icon_path != ICON_FILE and not os.path.isfile(icon_path):
@@ -157,7 +180,7 @@ class TrayApp:
             # Handle submenu case (nested dictionaries without command)
             if isinstance(item, dict) and "command" not in item:
                 # Create submenu for nested dictionaries
-                icon_path = os.path.expanduser(item.get("icon", parent_icon_path))
+                icon_path = self._resolve_icon_path(item.get("icon"))
 
                 if icon_path != parent_icon_path and not os.path.isfile(icon_path):
                     icon_path = parent_icon_path
@@ -257,9 +280,9 @@ class TrayApp:
             if resolved_item != item:
                 # Use the resolved item but keep track of the reference
                 command = resolved_item.get("command", "")
-                icon_path = os.path.expanduser(
-                    resolved_item.get("icon", parent_icon_path)
-                )
+                icon_path = self._resolve_icon_path(
+                    resolved_item.get("icon")
+                ) or parent_icon_path
                 show_output = resolved_item.get("showOutput", False)
                 confirm = resolved_item.get("confirm", False)
                 prompt = resolved_item.get("prompt", None)
@@ -290,7 +313,7 @@ class TrayApp:
                 f"Invalid command format in commands.json: {label}. 'command' is required."
             )
 
-        icon_path = os.path.expanduser(item.get("icon", parent_icon_path))
+        icon_path = self._resolve_icon_path(item.get("icon")) or parent_icon_path
         show_output = item.get("showOutput", False)
         confirm = item.get("confirm", False)
         prompt = item.get("prompt", None)

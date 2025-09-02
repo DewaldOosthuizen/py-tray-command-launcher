@@ -181,6 +181,11 @@
             "command": "nmcli device wifi list",
             "showOutput": true,
             "confirm": false
+        },
+        "Speed Test": {
+            "command": "terminator --command 'bash -c \"speedtest-cli; exec bash\"'",
+            "showOutput": false,
+            "confirm": false
         }
     },
     "Favorites": {
