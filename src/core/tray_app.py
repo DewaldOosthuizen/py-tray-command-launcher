@@ -45,20 +45,21 @@ class TrayApp:
         """
         if not icon_path:
             return ICON_FILE
-        
+
         # Expand user path (handles ~)
         expanded_path = os.path.expanduser(icon_path)
-        
+
         # If it's already absolute, use as-is
         if os.path.isabs(expanded_path):
             return expanded_path
-        
+
         # If it's relative, make it relative to the project base directory
         return os.path.join(BASE_DIR, "resources", expanded_path)
 
-    def __init__(self, app):
+    def __init__(self, app, instance_checker):
         """Initialize the TrayApp with the given QApplication instance."""
         self.app = app
+        self.instance_checker = instance_checker
         self.app.aboutToQuit.connect(self.cleanup)
         # Keep the app running even if all windows are closed
         self.app.setQuitOnLastWindowClosed(False)
@@ -454,6 +455,8 @@ class TrayApp:
     def restart_app(self):
         """Restart the application."""
         self.cleanup()
+        # Detach single instance lock before restarting
+        self.instance_checker.cleanup()
         python = sys.executable
         os.execl(python, python, *sys.argv)
 

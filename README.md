@@ -209,6 +209,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - Command scheduling and automation
 - Themes and appearance customization
 - Scripting support for advanced command sequences
-- Localization for multiple languages
+- AI Search Integration for command suggestions
+- Packaging for easy installation (e.g., DEB, RPM, EXE)
 
 Stay tuned for updates, and feel free to suggest additional features!
