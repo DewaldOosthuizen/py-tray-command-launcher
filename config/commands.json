@@ -141,6 +141,7 @@
     "Networking": {
         "icon": "icons/networking.jpeg",
         "Tailscale": {
+            "icon": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSaP2gRnAelceFgSFREZ23XclYAj23ddYIj03SJn-EbpxbIm4XGUCG27kjFyalse86hxaI&usqp=CAU",
             "Tailscale Connect": {
                 "command": "pkexec tailscale up; tailscale status;",
                 "showOutput": true,

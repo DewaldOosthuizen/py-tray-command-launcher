@@ -241,9 +241,14 @@ class TrayApp:
             # Handle submenu case (nested dictionaries without command and not a reference)
             if isinstance(item, dict) and "command" not in item and "ref" not in item:
                 # Create submenu for nested dictionaries
-                icon_path = self._resolve_icon_path(item.get("icon"))
-
-                if icon_path != parent_icon_path and not os.path.isfile(icon_path):
+                # If the item has an "icon" key, use it; otherwise inherit from parent
+                if "icon" in item:
+                    icon_path = self._resolve_icon_path(item.get("icon"))
+                    # If the resolved icon path doesn't exist or resolution failed, fall back to parent
+                    if not icon_path or not os.path.isfile(icon_path):
+                        icon_path = parent_icon_path
+                else:
+                    # No icon specified, inherit from parent
                     icon_path = parent_icon_path
 
                 submenu = QMenu(label, menu)
@@ -337,9 +342,15 @@ class TrayApp:
             if resolved_item != item:
                 # Use the resolved item but keep track of the reference
                 command = resolved_item.get("command", "")
-                icon_path = self._resolve_icon_path(
-                    resolved_item.get("icon")
-                ) or parent_icon_path
+                # If the resolved item has an icon, use it; otherwise inherit from parent
+                if "icon" in resolved_item:
+                    icon_path = self._resolve_icon_path(resolved_item.get("icon"))
+                    # If the resolved icon path doesn't exist or resolution failed, fall back to parent
+                    if not icon_path or not os.path.isfile(icon_path):
+                        icon_path = parent_icon_path
+                else:
+                    # No icon specified in resolved item, inherit from parent
+                    icon_path = parent_icon_path
                 show_output = resolved_item.get("showOutput", False)
                 confirm = resolved_item.get("confirm", False)
                 prompt = resolved_item.get("prompt", None)
@@ -370,7 +381,16 @@ class TrayApp:
                 f"Invalid command format in commands.json: {label}. 'command' is required."
             )
 
-        icon_path = self._resolve_icon_path(item.get("icon")) or parent_icon_path
+        # If the item has an "icon" key, use it; otherwise inherit from parent
+        if "icon" in item:
+            icon_path = self._resolve_icon_path(item.get("icon"))
+            # If the resolved icon path doesn't exist or resolution failed, fall back to parent
+            if not icon_path or not os.path.isfile(icon_path):
+                icon_path = parent_icon_path
+        else:
+            # No icon specified, inherit from parent
+            icon_path = parent_icon_path
+
         show_output = item.get("showOutput", False)
         confirm = item.get("confirm", False)
         prompt = item.get("prompt", None)
