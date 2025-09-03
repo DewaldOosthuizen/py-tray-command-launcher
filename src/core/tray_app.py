@@ -85,12 +85,12 @@ class TrayApp:
 
     def _resolve_icon_path(self, icon_path):
         """
-        Resolve an icon path to an absolute path, handling relative paths and
-        URLs correctly.
+        Resolve an icon path to an absolute path, handling relative paths,
+        URLs, and base64 data URLs correctly.
 
         Args:
             icon_path: The icon path from configuration (can be relative,
-                      absolute, URL, or with ~)
+                      absolute, URL, base64 data URL, or with ~)
 
         Returns:
             Absolute path to the icon file
@@ -98,8 +98,43 @@ class TrayApp:
         if not icon_path:
             return ICON_FILE
 
+        # Handle base64 data URL (data:image/png;base64,...)
+        if icon_path.startswith("data:image"):
+            try:
+                import base64
+                import re
+
+                # Extract extension and base64 data
+                match = re.match(
+                    r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", icon_path
+                )
+                if not match:
+                    return ICON_FILE
+                ext = match.group("ext")
+                b64_data = match.group("data")
+
+                # Cache directory for base64 icons
+                cache_dir = os.path.join(
+                    tempfile.gettempdir(), "py-tray-launcher-icons"
+                )
+                os.makedirs(cache_dir, exist_ok=True)
+
+                # Hash the base64 string for filename uniqueness
+                url_hash = hashlib.md5(icon_path.encode()).hexdigest()
+                cached_file = os.path.join(cache_dir, f"{url_hash}.{ext}")
+
+                # Write the file if not already cached
+                if not os.path.exists(cached_file):
+                    with open(cached_file, "wb") as f:
+                        f.write(base64.b64decode(b64_data))
+
+                return cached_file
+            except Exception as e:
+                print(f"Failed to decode base64 icon: {str(e)}")
+                return ICON_FILE
+
         # Check if it's a URL (starts with http or https)
-        if icon_path.startswith(('http://', 'https://')):
+        if icon_path.startswith(("http://", "https://")):
             downloaded_path = self._download_icon(icon_path)
             if downloaded_path and os.path.exists(downloaded_path):
                 return downloaded_path
