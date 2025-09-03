@@ -5,6 +5,10 @@ import sys
 import datetime
 import json
 import shutil
+import urllib.request
+import urllib.error
+import hashlib
+import tempfile
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QMessageBox, QInputDialog
 from PyQt6.QtGui import QIcon, QAction
@@ -33,17 +37,73 @@ print(f"Icon file: {ICON_FILE}")
 class TrayApp:
     """Main tray application class that manages the system tray icon and menu."""
 
+    def _download_icon(self, url):
+        """
+        Download an icon from a URL and cache it locally.
+
+        Args:
+            url: The HTTP/HTTPS URL of the icon
+
+        Returns:
+            Local path to the downloaded icon, or None if download failed
+        """
+        try:
+            # Create a cache directory for downloaded icons
+            cache_dir = os.path.join(tempfile.gettempdir(),
+                                     "py-tray-launcher-icons")
+            os.makedirs(cache_dir, exist_ok=True)
+
+            # Generate a filename based on URL hash to avoid conflicts
+            url_hash = hashlib.md5(url.encode()).hexdigest()
+
+            # Try to determine file extension from URL
+            extension = ""
+            url_lower = url.lower()
+            if url_lower.endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp',
+                                   '.ico')):
+                extension = url_lower.split('.')[-1]
+            else:
+                extension = "png"  # Default extension
+
+            cached_file = os.path.join(cache_dir, f"{url_hash}.{extension}")
+
+            # If file already cached and exists, return it
+            if os.path.exists(cached_file):
+                return cached_file
+
+            # Download the icon
+            with urllib.request.urlopen(url, timeout=10) as response:
+                with open(cached_file, 'wb') as f:
+                    f.write(response.read())
+
+            return cached_file
+
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError,
+                Exception) as e:
+            print(f"Failed to download icon from {url}: {str(e)}")
+            return None
+
     def _resolve_icon_path(self, icon_path):
         """
-        Resolve an icon path to an absolute path, handling relative paths correctly.
-        
+        Resolve an icon path to an absolute path, handling relative paths and
+        URLs correctly.
+
         Args:
-            icon_path: The icon path from configuration (can be relative, absolute, or with ~)
-            
+            icon_path: The icon path from configuration (can be relative,
+                      absolute, URL, or with ~)
+
         Returns:
             Absolute path to the icon file
         """
         if not icon_path:
+            return ICON_FILE
+
+        # Check if it's a URL (starts with http or https)
+        if icon_path.startswith(('http://', 'https://')):
+            downloaded_path = self._download_icon(icon_path)
+            if downloaded_path and os.path.exists(downloaded_path):
+                return downloaded_path
+            # If download failed, fall back to default icon
             return ICON_FILE
 
         # Expand user path (handles ~)
