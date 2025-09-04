@@ -50,8 +50,7 @@ class TrayApp:
         """
         try:
             # Create a cache directory for downloaded icons
-            cache_dir = os.path.join(tempfile.gettempdir(),
-                                     "py-tray-launcher-icons")
+            cache_dir = os.path.join(tempfile.gettempdir(), "py-tray-launcher-icons")
             os.makedirs(cache_dir, exist_ok=True)
 
             # Generate a filename based on URL hash to avoid conflicts
@@ -60,9 +59,8 @@ class TrayApp:
             # Try to determine file extension from URL
             extension = ""
             url_lower = url.lower()
-            if url_lower.endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp',
-                                   '.ico')):
-                extension = url_lower.split('.')[-1]
+            if url_lower.endswith((".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico")):
+                extension = url_lower.split(".")[-1]
             else:
                 extension = "png"  # Default extension
 
@@ -74,13 +72,12 @@ class TrayApp:
 
             # Download the icon
             with urllib.request.urlopen(url, timeout=10) as response:
-                with open(cached_file, 'wb') as f:
+                with open(cached_file, "wb") as f:
                     f.write(response.read())
 
             return cached_file
 
-        except (urllib.error.URLError, urllib.error.HTTPError, OSError,
-                Exception) as e:
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError, Exception) as e:
             print(f"Failed to download icon from {url}: {str(e)}")
             return None
 
@@ -234,6 +231,7 @@ class TrayApp:
         self.history_menu.setIcon(QIcon(ICON_FILE))
         self.menu.addMenu(self.history_menu)
         self.reload_history_commands()
+        self.reload_favorites_commands()
 
         self.menu.addSeparator()
 
@@ -273,8 +271,12 @@ class TrayApp:
         # Encryption submenu
         encryption_menu = QMenu("Encrypt/Decrypt", tools_menu)
         encryption_menu.setIcon(QIcon(ICON_FILE))
-        encryption_menu.addAction("Encrypt File/Folder", self.file_encryptor.encrypt_file_or_folder)
-        encryption_menu.addAction("Decrypt File/Folder", self.file_encryptor.decrypt_file_or_folder)
+        encryption_menu.addAction(
+            "Encrypt File/Folder", self.file_encryptor.encrypt_file_or_folder
+        )
+        encryption_menu.addAction(
+            "Decrypt File/Folder", self.file_encryptor.decrypt_file_or_folder
+        )
         tools_menu.addMenu(encryption_menu)
 
         self.menu.addMenu(tools_menu)
@@ -410,12 +412,9 @@ class TrayApp:
 
                 # Connect the action to execute command
                 action.triggered.connect(
-                    lambda checked=False,
-                    cmd=command,
-                    lbl=label,
-                    conf=confirm,
-                    show=show_output,
-                    prmpt=prompt: self.execute(lbl, cmd, conf, show, prmpt)
+                    lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: self.execute(
+                        lbl, cmd, conf, show, prmpt
+                    )
                 )
 
                 # QAction does not support context menus directly; consider adding a "Remove from Favorites" action elsewhere if needed.
@@ -448,12 +447,9 @@ class TrayApp:
 
         # Connect the action to execute command
         action.triggered.connect(
-            lambda checked=False,
-            cmd=command,
-            lbl=label,
-            conf=confirm,
-            show=show_output,
-            prmpt=prompt: self.execute(lbl, cmd, conf, show, prmpt)
+            lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: self.execute(
+                lbl, cmd, conf, show, prmpt
+            )
         )
 
         menu.addAction(action)
@@ -490,6 +486,7 @@ class TrayApp:
 
         self.reload_commands()
         self.reload_history_commands()
+        self.reload_favorites_commands()
 
     def show_command_output(self, title, command):
         """Execute a command and show the output in a new window."""
@@ -502,9 +499,11 @@ class TrayApp:
             output_window = OutputWindow(title, output, parent=self.app.activeWindow())
             self.output_windows.append(output_window)
             output_window.destroyed.connect(
-                lambda _,: self.output_windows.remove(output_window)
-                if output_window in self.output_windows
-                else None
+                lambda _,: (
+                    self.output_windows.remove(output_window)
+                    if output_window in self.output_windows
+                    else None
+                )
             )
             output_window.show()
 
