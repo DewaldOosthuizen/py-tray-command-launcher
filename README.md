@@ -47,6 +47,51 @@ A simple and lightweight tray application developed in Python. It allows users t
 - **Process Management:** Proper handling of command execution and output capture.
 - **Error Handling:** Graceful error handling with informative messages.
 - **Virtual Environment Support:** Works within Python virtual environments.
+- **Easy Packaging:** Available as standalone executables, .deb packages, AppImages, and Windows .exe
+
+---
+
+## Installation and Packaging
+
+### Pre-built Packages
+
+For easy installation, you can build ready-to-use packages:
+
+- **Linux Executable**: Standalone executable (63MB) - no installation required
+- **Debian Package (.deb)**: For Ubuntu/Debian systems with desktop integration
+- **AppImage**: Universal Linux format that works on most distributions
+- **Windows Executable (.exe)**: For Windows systems - no installation required
+
+### Quick Package Build
+
+```sh
+# Build all package formats (Linux)
+./scripts/build-all.sh
+
+# Build specific formats
+./scripts/build-linux.sh      # Linux executable
+./scripts/build-deb.sh        # Debian package  
+./scripts/build-appimage.sh   # AppImage
+scripts\build-windows.bat     # Windows (run on Windows)
+```
+
+See [BUILD.md](BUILD.md) for detailed build instructions and troubleshooting.
+
+### Development Installation
+- **Output Display:** Show command output in a dedicated window when needed.
+- **Input Prompts:** Prompt for user input with customizable messages using the `{promptInput}` placeholder.
+- **Command Search:** Quickly find and execute any command using the search dialog.
+- **Recent Commands:** Access recently executed commands from the "Recent Commands" menu.
+- **Command Creator:** Create new commands via a user-friendly dialog without editing JSON directly.
+- **JSON Editor:** Direct access to edit the `commands.json` configuration file.
+- **App Restart:** Reload the application after making changes to the configuration.
+- **Backup and Restore:** Create timestamped backups and restore or import/export command groups.
+- **Favorites:** Add frequently used commands to a Favorites section.
+- **Clean UI:** Well-organized menu structure with icons, output, confirmation, and input dialogs.
+- **Robust Configuration:** Simple, human-readable JSON format with automatic validation.
+- **Process Management:** Proper handling of command execution and output capture.
+- **Error Handling:** Graceful error handling with informative messages.
+- **Virtual Environment Support:** Works within Python virtual environments.
 
 ---
 

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=py-tray-command-launcher
+Comment=System tray command launcher
+Exec=py-tray-command-launcher
+Icon=py-tray-command-launcher
+Terminal=false
+Type=Application
+Categories=Utility;
+StartupNotify=false
+StartupWMClass=py-tray-command-launcher
