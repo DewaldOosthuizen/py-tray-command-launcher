@@ -223,6 +223,12 @@ class TrayApp:
 
             self.menu.addMenu(submenu)
 
+        # Add favorites menu
+        self.favorites_menu = QMenu("Favorites", self.menu)
+        self.favorites_menu.setIcon(QIcon(ICON_FILE))
+        self.favorites.populate_favorites_menu(self.favorites_menu)
+        self.menu.addMenu(self.favorites_menu)
+
         # Add history menu
         self.history_menu = QMenu("Recent Commands", self.menu)
         self.history_menu.setIcon(QIcon(ICON_FILE))
@@ -575,6 +581,11 @@ class TrayApp:
     def reload_history_commands(self):
         """Reload the history commands."""
         self.history.populate_menu(self.history_menu)
+
+    def reload_favorites_commands(self):
+        """Reload the favorites menu with current favorites."""
+        self.favorites_menu.clear()
+        self.favorites.populate_favorites_menu(self.favorites_menu)
 
     def restart_app(self):
         """Restart the application."""

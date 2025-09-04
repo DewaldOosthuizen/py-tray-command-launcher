@@ -245,14 +245,14 @@ class ConfigManager:
                     with open(self.favorites_file, "r", encoding="utf-8") as f:
                         favorites = json.load(f)
                 else:
-                    # Default favorites structure with icon
-                    favorites = {"icon": "icons/icon.png"}
+                    # Default empty favorites structure (no icon stored)
+                    favorites = {}
 
                 self._favorites_cache = favorites
                 logger.debug(f"Favorites loaded successfully from {self.favorites_file}")
             except Exception as e:
                 logger.warning(f"Failed to load favorites, using empty favorites: {str(e)}")
-                self._favorites_cache = {"icon": "icons/icon.png"}
+                self._favorites_cache = {}
 
         return self._favorites_cache
 
@@ -526,7 +526,7 @@ class ConfigManager:
             favorites = self.get_favorites()
 
             # Remove the command from favorites
-            if label in favorites and label != "icon":  # Don't remove the icon entry
+            if label in favorites:
                 del favorites[label]
 
                 # Save the updated favorites
@@ -561,8 +561,11 @@ class ConfigManager:
                 
             logger.info("Migrating existing favorites from commands.json to favorites.json")
             
-            # Extract favorites from commands
-            favorites_to_migrate = commands["Favorites"].copy()
+            # Extract favorites from commands (skip icon)
+            favorites_to_migrate = {
+                k: v for k, v in commands["Favorites"].items() 
+                if k != "icon"
+            }
             
             # Get existing favorites (might be empty)
             existing_favorites = self.get_favorites()
