@@ -128,12 +128,10 @@ class Favorites:
 
     def populate_favorites_menu(self, menu):
         """Populate the favorites menu with favorite commands."""
-        commands = load_commands()
+        favorites = config_manager.get_favorites()
 
-        # Ensure Favorites group exists
-        if (
-            "Favorites" not in commands or len(commands["Favorites"]) <= 1
-        ):  # 1 for the icon
+        # Ensure favorites exist and has more than just the icon
+        if len(favorites) <= 1:  # 1 for the icon
             action = QAction("No Favorites", menu)
             action.setEnabled(False)
             menu.addAction(action)
@@ -146,7 +144,7 @@ class Favorites:
             return
 
         # Add favorite commands to menu
-        for label, item in commands["Favorites"].items():
+        for label, item in favorites.items():
             if label == "icon":
                 continue
 
