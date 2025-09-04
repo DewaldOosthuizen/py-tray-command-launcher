@@ -141,4 +141,5 @@ dmypy.json
 
 # Application specific files
 config/history.json
+config/favorites.json
 config/backups

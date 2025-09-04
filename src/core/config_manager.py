@@ -61,15 +61,20 @@ class ConfigManager:
         self.commands_file = self.config_dir / "commands.json"
         self.win_commands_file = self.config_dir / "win-commands.json"
         self.history_file = self.config_dir / "history.json"
+        self.favorites_file = self.config_dir / "favorites.json"
 
         # Cache for loaded configurations
         self._commands_cache = None
         self._history_cache = None
+        self._favorites_cache = None
         self._is_windows = os.name == "nt"
 
         # Mark as initialized
         self._initialized = True
         logger.info("ConfigManager initialized")
+        
+        # Migrate existing favorites if needed
+        self.migrate_favorites_from_commands()
 
     def get_commands(self, refresh: bool = False) -> Dict[str, Dict[str, Any]]:
         """
@@ -223,6 +228,50 @@ class ConfigManager:
         """Clear the command history."""
         self.save_history([])
         logger.info("Command history cleared")
+
+    def get_favorites(self, refresh: bool = False) -> Dict[str, Any]:
+        """
+        Get favorites data.
+
+        Args:
+            refresh: If True, force reload from disk instead of using cache
+
+        Returns:
+            Dictionary containing favorites entries
+        """
+        if self._favorites_cache is None or refresh:
+            try:
+                if self.favorites_file.exists():
+                    with open(self.favorites_file, "r", encoding="utf-8") as f:
+                        favorites = json.load(f)
+                else:
+                    # Default empty favorites structure (no icon stored)
+                    favorites = {}
+
+                self._favorites_cache = favorites
+                logger.debug(f"Favorites loaded successfully from {self.favorites_file}")
+            except Exception as e:
+                logger.warning(f"Failed to load favorites, using empty favorites: {str(e)}")
+                self._favorites_cache = {}
+
+        return self._favorites_cache
+
+    def save_favorites(self, favorites: Dict[str, Any]) -> None:
+        """
+        Save favorites to file.
+
+        Args:
+            favorites: Dictionary containing favorites entries
+        """
+        try:
+            with open(self.favorites_file, "w", encoding="utf-8") as f:
+                json.dump(favorites, f, indent=4)
+
+            # Update the cache
+            self._favorites_cache = favorites
+            logger.debug(f"Favorites saved successfully to {self.favorites_file}")
+        except Exception as e:
+            logger.error(f"Failed to save favorites: {str(e)}")
 
     def backup_commands(self) -> str:
         """
@@ -410,12 +459,8 @@ class ConfigManager:
             True if addition was successful, False otherwise
         """
         try:
-            # Get current commands
+            # Get current commands to validate the path exists
             commands = self.get_commands()
-
-            # Ensure Favorites group exists
-            if "Favorites" not in commands:
-                commands["Favorites"] = {"icon": "icons/icon.png"}
 
             # Parse the command path
             path_parts = command_path.split(".")
@@ -447,13 +492,16 @@ class ConfigManager:
             # Use custom label or the original command name
             label = custom_label or command_name
 
+            # Get current favorites
+            favorites = self.get_favorites()
+
             # Add a reference entry to favorites (only store ref, resolve dynamically)
-            commands["Favorites"][label] = {
+            favorites[label] = {
                 "ref": command_path
             }
 
-            # Save the updated commands
-            self.save_commands(commands)
+            # Save the updated favorites
+            self.save_favorites(favorites)
 
             logger.info(
                 f"Added reference '{label}' to Favorites pointing to {command_path}"
@@ -474,19 +522,15 @@ class ConfigManager:
             True if removal was successful, False otherwise
         """
         try:
-            # Get current commands
-            commands = self.get_commands()
-
-            # Ensure Favorites group exists
-            if "Favorites" not in commands:
-                return False
+            # Get current favorites
+            favorites = self.get_favorites()
 
             # Remove the command from favorites
-            if label in commands["Favorites"]:
-                del commands["Favorites"][label]
+            if label in favorites:
+                del favorites[label]
 
-                # Save the updated commands
-                self.save_commands(commands)
+                # Save the updated favorites
+                self.save_favorites(favorites)
 
                 logger.info(f"Removed '{label}' from Favorites")
                 return True
@@ -494,6 +538,54 @@ class ConfigManager:
             return False
         except Exception as e:
             logger.error(f"Failed to remove from favorites: {str(e)}")
+            return False
+
+    def migrate_favorites_from_commands(self) -> bool:
+        """
+        Migrate existing favorites from commands.json to the separate favorites.json file.
+        
+        This method is called during initialization to ensure existing favorites
+        are moved to the new separate file structure.
+        
+        Returns:
+            True if migration was successful or not needed, False if failed
+        """
+        try:
+            # Get current commands to check for existing favorites
+            commands = self.get_commands()
+            
+            # Check if there are favorites in the commands file
+            if "Favorites" not in commands or len(commands["Favorites"]) <= 1:
+                # No favorites to migrate (only icon or empty)
+                return True
+                
+            logger.info("Migrating existing favorites from commands.json to favorites.json")
+            
+            # Extract favorites from commands (skip icon)
+            favorites_to_migrate = {
+                k: v for k, v in commands["Favorites"].items() 
+                if k != "icon"
+            }
+            
+            # Get existing favorites (might be empty)
+            existing_favorites = self.get_favorites()
+            
+            # Merge with existing favorites (commands.json takes precedence for conflicts)
+            for label, item in favorites_to_migrate.items():
+                existing_favorites[label] = item
+            
+            # Save the merged favorites
+            self.save_favorites(existing_favorites)
+            
+            # Remove favorites from commands.json
+            del commands["Favorites"]
+            self.save_commands(commands)
+            
+            logger.info("Successfully migrated favorites to separate file")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to migrate favorites: {str(e)}")
             return False
 
     def _validate_commands(self, commands: Dict[str, Dict[str, Any]]) -> None:
