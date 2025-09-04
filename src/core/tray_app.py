@@ -26,6 +26,7 @@ from modules.command_search import CommandSearch
 from modules.backup_restore import BackupRestore
 from modules.import_export import ImportExport
 from modules.favorites import Favorites
+from modules.file_encryptor import FileEncryptor
 
 # Define the base directory and icon file path
 BASE_DIR = config_manager.get_base_dir()
@@ -180,6 +181,7 @@ class TrayApp:
         self.backup = BackupRestore(self)
         self.importExport = ImportExport(self)
         self.favorites = Favorites(self)
+        self.file_encryptor = FileEncryptor(self)
 
         # Load menu and set up tray icon
         self.load_tray_menu()
@@ -261,6 +263,13 @@ class TrayApp:
         backup_restore_menu.addAction("Backup Commands", self.backup.backup_commands)
         backup_restore_menu.addAction("Restore Commands", self.backup.restore_commands)
         tools_menu.addMenu(backup_restore_menu)
+
+        # Encryption submenu
+        encryption_menu = QMenu("Encrypt/Decrypt", tools_menu)
+        encryption_menu.setIcon(QIcon(ICON_FILE))
+        encryption_menu.addAction("Encrypt File/Folder", self.file_encryptor.encrypt_file_or_folder)
+        encryption_menu.addAction("Decrypt File/Folder", self.file_encryptor.decrypt_file_or_folder)
+        tools_menu.addMenu(encryption_menu)
 
         self.menu.addMenu(tools_menu)
         self.menu.addAction("Restart App", self.restart_app)
