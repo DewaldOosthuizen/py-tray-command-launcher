@@ -71,7 +71,7 @@ class Favorites:
                         "Added to Favorites",
                         f"'{label}' has been added to Favorites as a reference to the original command.",
                     )
-                    self.tray_app.reload_commands()
+                    self.tray_app.reload_favorites_commands()
                 else:
                     QMessageBox.warning(
                         None, "Failed", "Failed to add command to Favorites."
@@ -94,7 +94,7 @@ class Favorites:
             QMessageBox.information(
                 None, "Added to Favorites", f"'{label}' has been added to Favorites."
             )
-            self.tray_app.reload_commands()
+            self.tray_app.reload_favorites_commands()
         else:
             QMessageBox.warning(None, "Failed", "Failed to add command to Favorites.")
 
@@ -106,7 +106,7 @@ class Favorites:
                 "Removed from Favorites",
                 f"'{label}' has been removed from Favorites.",
             )
-            self.tray_app.reload_commands()
+            self.tray_app.reload_favorites_commands()
         else:
             QMessageBox.warning(
                 None, "Failed", f"Failed to remove '{label}' from Favorites."
@@ -130,8 +130,8 @@ class Favorites:
         """Populate the favorites menu with favorite commands."""
         favorites = config_manager.get_favorites()
 
-        # Ensure favorites exist and has more than just the icon
-        if len(favorites) <= 1:  # 1 for the icon
+        # Check if favorites exist
+        if not favorites:
             action = QAction("No Favorites", menu)
             action.setEnabled(False)
             menu.addAction(action)
@@ -145,9 +145,6 @@ class Favorites:
 
         # Add favorite commands to menu
         for label, item in favorites.items():
-            if label == "icon":
-                continue
-
             if isinstance(item, dict):
                 # Handle both direct commands and references
                 resolved_item = item
@@ -158,14 +155,17 @@ class Favorites:
                 
                 # Check if we have a valid command (either direct or resolved)
                 if "command" in resolved_item:
-                    icon_path = os.path.expanduser(
-                        resolved_item.get(
-                            "icon",
-                            os.path.join(
-                                config_manager.get_base_dir(), "../icons/icon.png"
-                            ),
+                    # Get icon from the resolved command, not from favorites
+                    icon_path = None
+                    if "icon" in resolved_item:
+                        icon_path = self.tray_app._resolve_icon_path(resolved_item.get("icon"))
+                    
+                    # Fall back to default icon if no icon specified or resolution failed
+                    if not icon_path or not os.path.isfile(icon_path):
+                        icon_path = os.path.join(
+                            config_manager.get_base_dir(), "resources/icons/icon.png"
                         )
-                    )
+
                     action = QAction(QIcon(icon_path), label, menu)
 
                     command = resolved_item.get("command")
