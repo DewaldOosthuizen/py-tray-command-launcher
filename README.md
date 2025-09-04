@@ -20,6 +20,7 @@ A simple and lightweight tray application developed in Python. It allows users t
   - [Contributing](#contributing)
   - [Issues](#issues)
   - [License](#license)
+  - [Features](#features-1)
   - [Future Enhancements](#future-enhancements)
 
 ---
@@ -199,6 +200,33 @@ If you encounter issues or have feature requests, open an issue in the [GitHub I
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## Features
+
+The py-tray-command-launcher currently provides the following capabilities:
+
+- Launch custom shell commands and scripts directly from the system tray.
+- Organize commands into hierarchical categories and subcategories.
+- Assign custom icons to categories and individual commands.
+- Search for commands using a built-in search dialog.
+- Prompt for user input using `{promptInput}` placeholders in commands.
+- Display command output in a dedicated window when required.
+- Require confirmation before executing sensitive commands.
+- Track and access recently executed commands.
+- Add commands to a Favorites section for quick access.
+- Create new commands via a graphical command creator dialog.
+- Edit the configuration JSON directly from the UI.
+- Backup and restore command configurations with timestamped backups.
+- Import/export command groups for sharing or migration.
+- Reload the application to apply configuration changes instantly.
+- Robust error handling and informative messages.
+- Works within Python virtual environments.
+- Supports Linux and Windows (via separate config).
+- Clean, organized UI with icons and dialogs.
+- Encrypt/decrypt files/folder
+- Single instance enforcement
 
 ---
 
