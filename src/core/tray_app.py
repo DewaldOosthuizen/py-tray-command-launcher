@@ -250,10 +250,10 @@ class TrayApp:
         import_export_menu = QMenu("Import/Export", tools_menu)
         import_export_menu.setIcon(QIcon(ICON_FILE))
         import_export_menu.addAction(
-            "Export Command Group", self.importExport.export_command_group
+            "Import Command Group", self.importExport.import_command_group
         )
         import_export_menu.addAction(
-            "Import Command Group", self.importExport.import_command_group
+            "Export Command Group", self.importExport.export_command_group
         )
         tools_menu.addMenu(import_export_menu)
 
