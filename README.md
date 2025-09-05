@@ -9,6 +9,10 @@ A simple and lightweight tray application developed in Python. It allows users t
 - [py-tray-command-launcher](#py-tray-command-launcher)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
+  - [Installation and Packaging](#installation-and-packaging)
+    - [Pre-built Packages](#pre-built-packages)
+    - [Quick Package Build](#quick-package-build)
+    - [Development Installation](#development-installation)
   - [Installation](#installation)
     - [1. Install Required System Packages](#1-install-required-system-packages)
     - [2. Clone the Repository](#2-clone-the-repository)
@@ -20,7 +24,7 @@ A simple and lightweight tray application developed in Python. It allows users t
   - [Contributing](#contributing)
   - [Issues](#issues)
   - [License](#license)
-  - [Features](#features-1)
+  - [Detailed Features](#detailed-features)
   - [Future Enhancements](#future-enhancements)
 
 ---
@@ -78,6 +82,7 @@ scripts\build-windows.bat     # Windows (run on Windows)
 See [BUILD.md](BUILD.md) for detailed build instructions and troubleshooting.
 
 ### Development Installation
+
 - **Output Display:** Show command output in a dedicated window when needed.
 - **Input Prompts:** Prompt for user input with customizable messages using the `{promptInput}` placeholder.
 - **Command Search:** Quickly find and execute any command using the search dialog.
@@ -248,7 +253,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ---
 
-## Features
+## Detailed Features
 
 The py-tray-command-launcher currently provides the following capabilities:
 
@@ -272,6 +277,7 @@ The py-tray-command-launcher currently provides the following capabilities:
 - Clean, organized UI with icons and dialogs.
 - Encrypt/decrypt files/folder
 - Single instance enforcement
+- Packaging for easy installation (e.g., DEB, RPM, EXE)
 
 ---
 
@@ -283,6 +289,5 @@ The py-tray-command-launcher currently provides the following capabilities:
 - Themes and appearance customization
 - Scripting support for advanced command sequences
 - AI Search Integration for command suggestions
-- Packaging for easy installation (e.g., DEB, RPM, EXE)
 
 Stay tuned for updates, and feel free to suggest additional features!

@@ -15,7 +15,7 @@ a = Analysis(
     ],
     hiddenimports=[
         'PyQt6.QtCore',
-        'PyQt6.QtWidgets', 
+        'PyQt6.QtWidgets',
         'PyQt6.QtGui',
         'cryptography',
     ],
