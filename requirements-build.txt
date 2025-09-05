@@ -1,0 +1,4 @@
+# Build dependencies for creating packages
+PyInstaller==6.10.0
+setuptools
+wheel

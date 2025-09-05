@@ -50,12 +50,13 @@ class ConfigManager:
             return
 
         # Set up paths
-        self.base_dir = Path(__file__).parent.parent.parent
+        from utils.utils import get_base_dir
+        self.base_dir = Path(get_base_dir())
         self.config_dir = self.base_dir / "config"
         self.backup_dir = self.config_dir / "backups"
 
         # Ensure backup directory exists
-        self.backup_dir.mkdir(exist_ok=True)
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
 
         # Default config paths
         self.commands_file = self.config_dir / "commands.json"

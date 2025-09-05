@@ -28,12 +28,6 @@ from modules.import_export import ImportExport
 from modules.favorites import Favorites
 from modules.file_encryptor import FileEncryptor
 
-# Define the base directory and icon file path
-BASE_DIR = config_manager.get_base_dir()
-print(f"Base Directory: {BASE_DIR}")
-ICON_FILE = os.path.join(BASE_DIR, "resources/icons/icon.png")
-print(f"Icon file: {ICON_FILE}")
-
 
 class TrayApp:
     """Main tray application class that manages the system tray icon and menu."""
@@ -94,7 +88,7 @@ class TrayApp:
             Absolute path to the icon file
         """
         if not icon_path:
-            return ICON_FILE
+            return self.icon_file
 
         # Handle base64 data URL (data:image/png;base64,...)
         if icon_path.startswith("data:image"):
@@ -107,7 +101,7 @@ class TrayApp:
                     r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", icon_path
                 )
                 if not match:
-                    return ICON_FILE
+                    return self.icon_file
                 ext = match.group("ext")
                 b64_data = match.group("data")
 
@@ -129,7 +123,7 @@ class TrayApp:
                 return cached_file
             except Exception as e:
                 print(f"Failed to decode base64 icon: {str(e)}")
-                return ICON_FILE
+                return self.icon_file
 
         # Check if it's a URL (starts with http or https)
         if icon_path.startswith(("http://", "https://")):
@@ -137,7 +131,7 @@ class TrayApp:
             if downloaded_path and os.path.exists(downloaded_path):
                 return downloaded_path
             # If download failed, fall back to default icon
-            return ICON_FILE
+            return self.icon_file
 
         # Expand user path (handles ~)
         expanded_path = os.path.expanduser(icon_path)
@@ -147,18 +141,25 @@ class TrayApp:
             return expanded_path
 
         # If it's relative, make it relative to the project base directory
-        return os.path.join(BASE_DIR, "resources", expanded_path)
+        return os.path.join(self.base_dir, "resources", expanded_path)
 
     def __init__(self, app, instance_checker):
         """Initialize the TrayApp with the given QApplication instance."""
         self.app = app
         self.instance_checker = instance_checker
+        
+        # Initialize paths
+        self.base_dir = config_manager.get_base_dir()
+        self.icon_file = os.path.join(self.base_dir, "resources/icons/icon.png")
+        print(f"Base Directory: {self.base_dir}")
+        print(f"Icon file: {self.icon_file}")
+        
         self.app.aboutToQuit.connect(self.cleanup)
         # Keep the app running even if all windows are closed
         self.app.setQuitOnLastWindowClosed(False)
 
         # Initialize tray icon and menu
-        self.tray_icon = QSystemTrayIcon(QIcon(ICON_FILE))
+        self.tray_icon = QSystemTrayIcon(QIcon(self.icon_file))
         self.tray_icon.setVisible(True)
         self.menu = QMenu()
         self.output_windows = []
@@ -207,9 +208,9 @@ class TrayApp:
             # Resolve the icon path correctly
             icon_path = self._resolve_icon_path(items.get("icon"))
 
-            # Check if the icon file exists, else default to ICON_FILE
-            if icon_path != ICON_FILE and not os.path.isfile(icon_path):
-                icon_path = ICON_FILE
+            # Check if the icon file exists, else default to self.icon_file
+            if icon_path != self.icon_file and not os.path.isfile(icon_path):
+                icon_path = self.icon_file
 
             # Create a submenu for each group
             submenu = QMenu(group, self.menu)
@@ -222,13 +223,13 @@ class TrayApp:
 
         # Add favorites menu
         self.favorites_menu = QMenu("Favorites", self.menu)
-        self.favorites_menu.setIcon(QIcon(ICON_FILE))
+        self.favorites_menu.setIcon(QIcon(self.icon_file))
         self.favorites.populate_favorites_menu(self.favorites_menu)
         self.menu.addMenu(self.favorites_menu)
 
         # Add history menu
         self.history_menu = QMenu("Recent Commands", self.menu)
-        self.history_menu.setIcon(QIcon(ICON_FILE))
+        self.history_menu.setIcon(QIcon(self.icon_file))
         self.menu.addMenu(self.history_menu)
         self.reload_history_commands()
         self.reload_favorites_commands()
@@ -237,7 +238,7 @@ class TrayApp:
 
         # Commands group
         commands_menu = QMenu("Commands", self.menu)
-        commands_menu.setIcon(QIcon(ICON_FILE))
+        commands_menu.setIcon(QIcon(self.icon_file))
         commands_menu.addAction("Search Commands", self.search.show_dialog)
         commands_menu.addAction("Create New Command", self.creator.show_dialog)
         commands_menu.addAction("Edit commands.json", self.open_commands_json)
@@ -248,11 +249,11 @@ class TrayApp:
 
         # Tools group
         tools_menu = QMenu("Tools", self.menu)
-        tools_menu.setIcon(QIcon(ICON_FILE))
+        tools_menu.setIcon(QIcon(self.icon_file))
 
         # Import/Export submenu
         import_export_menu = QMenu("Import/Export", tools_menu)
-        import_export_menu.setIcon(QIcon(ICON_FILE))
+        import_export_menu.setIcon(QIcon(self.icon_file))
         import_export_menu.addAction(
             "Import Command Group", self.importExport.import_command_group
         )
@@ -263,14 +264,14 @@ class TrayApp:
 
         # Backup/Restore submenu
         backup_restore_menu = QMenu("Backup/Restore", tools_menu)
-        backup_restore_menu.setIcon(QIcon(ICON_FILE))
+        backup_restore_menu.setIcon(QIcon(self.icon_file))
         backup_restore_menu.addAction("Backup Commands", self.backup.backup_commands)
         backup_restore_menu.addAction("Restore Commands", self.backup.restore_commands)
         tools_menu.addMenu(backup_restore_menu)
 
         # Encryption submenu
         encryption_menu = QMenu("Encrypt/Decrypt", tools_menu)
-        encryption_menu.setIcon(QIcon(ICON_FILE))
+        encryption_menu.setIcon(QIcon(self.icon_file))
         encryption_menu.addAction(
             "Encrypt File/Folder", self.file_encryptor.encrypt_file_or_folder
         )

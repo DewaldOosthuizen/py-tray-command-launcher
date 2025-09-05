@@ -8,8 +8,6 @@ import os
 from typing import Dict, Any
 from PyQt6.QtWidgets import QMessageBox
 
-from core.config_manager import config_manager, ConfigurationError
-
 
 def load_commands() -> Dict[str, Any]:
     """
@@ -25,6 +23,7 @@ def load_commands() -> Dict[str, Any]:
         ValueError: If loading the configuration fails
     """
     try:
+        from core.config_manager import config_manager, ConfigurationError
         return config_manager.get_commands()
     except ConfigurationError as e:
         message = str(e)
@@ -43,6 +42,7 @@ def save_commands(commands: Dict[str, Any]) -> None:
         ValueError: If saving the configuration fails
     """
     try:
+        from core.config_manager import config_manager, ConfigurationError
         config_manager.save_commands(commands)
     except ConfigurationError as e:
         message = str(e)
@@ -86,8 +86,18 @@ def show_warning_message(title: str, message: str) -> None:
 def get_base_dir() -> str:
     """
     Get the base directory of the application.
+    
+    This function correctly handles both development and PyInstaller packaged environments.
 
     Returns:
         Path to the base directory
     """
-    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import sys
+    import os
+    
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # Running in a PyInstaller bundle
+        return sys._MEIPASS
+    else:
+        # Running in development mode
+        return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
