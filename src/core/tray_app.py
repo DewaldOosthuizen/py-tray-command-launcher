@@ -27,6 +27,7 @@ from modules.backup_restore import BackupRestore
 from modules.import_export import ImportExport
 from modules.favorites import Favorites
 from modules.file_encryptor import FileEncryptor
+from modules.schedule_creator import ScheduleCreator
 
 
 class TrayApp:
@@ -180,6 +181,7 @@ class TrayApp:
         self.importExport = ImportExport(self)
         self.favorites = Favorites(self)
         self.file_encryptor = FileEncryptor(self)
+        self.schedule_creator = ScheduleCreator(self)
 
         # Load menu and set up tray icon
         self.load_tray_menu()
@@ -279,6 +281,9 @@ class TrayApp:
             "Decrypt File/Folder", self.file_encryptor.decrypt_file_or_folder
         )
         tools_menu.addMenu(encryption_menu)
+
+        # Add Create Schedule option
+        tools_menu.addAction("Create Schedule", self.schedule_creator.show_dialog)
 
         self.menu.addMenu(tools_menu)
         self.menu.addAction("Restart App", self.restart_app)
