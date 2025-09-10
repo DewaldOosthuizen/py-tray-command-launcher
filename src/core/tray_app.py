@@ -28,6 +28,7 @@ from modules.import_export import ImportExport
 from modules.favorites import Favorites
 from modules.file_encryptor import FileEncryptor
 from modules.schedule_creator import ScheduleCreator
+from modules.schedule_viewer import ScheduleViewer
 
 
 class TrayApp:
@@ -182,6 +183,7 @@ class TrayApp:
         self.favorites = Favorites(self)
         self.file_encryptor = FileEncryptor(self)
         self.schedule_creator = ScheduleCreator(self)
+        self.schedule_viewer = ScheduleViewer(self)
 
         # Load menu and set up tray icon
         self.load_tray_menu()
@@ -284,6 +286,9 @@ class TrayApp:
 
         # Add Create Schedule option
         tools_menu.addAction("Create Schedule", self.schedule_creator.show_dialog)
+        
+        # Add View Schedules option
+        tools_menu.addAction("View Schedules", self.schedule_viewer.show_dialog)
 
         self.menu.addMenu(tools_menu)
         self.menu.addAction("Restart App", self.restart_app)
