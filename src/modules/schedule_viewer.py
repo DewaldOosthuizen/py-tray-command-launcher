@@ -67,8 +67,8 @@ class ScheduleViewer:
             # Create table to display schedules
             table = QTableWidget()
             table.setRowCount(len(schedules))
-            table.setColumnCount(5)
-            table.setHorizontalHeaderLabels(["Task Name", "Command", "Schedule", "Status", "Actions"])
+            table.setColumnCount(6)
+            table.setHorizontalHeaderLabels(["Task Name", "Command", "Schedule", "Source", "Status", "Actions"])
             
             # Configure table
             header = table.horizontalHeader()
@@ -77,6 +77,7 @@ class ScheduleViewer:
             header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
             header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
             header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
             # Populate table
             for row, schedule in enumerate(schedules):
@@ -93,8 +94,12 @@ class ScheduleViewer:
                 schedule_text = schedule.get("schedule", "")
                 table.setItem(row, 2, QTableWidgetItem(schedule_text))
                 
+                # Source (User or Root crontab)
+                source = schedule.get("source", "Root")
+                table.setItem(row, 3, QTableWidgetItem(source))
+                
                 # Status
-                table.setItem(row, 3, QTableWidgetItem(schedule.get("status", "Active")))
+                table.setItem(row, 4, QTableWidgetItem(schedule.get("status", "Active")))
                 
                 # Actions
                 actions_widget = QWidget()
@@ -108,7 +113,7 @@ class ScheduleViewer:
                 )
                 actions_layout.addWidget(delete_btn)
                 
-                table.setCellWidget(row, 4, actions_widget)
+                table.setCellWidget(row, 5, actions_widget)
 
             layout.addWidget(table)
 
@@ -198,61 +203,78 @@ class ScheduleViewer:
     def _get_linux_cron_jobs(self):
         """Get Linux cron jobs created by py-tray-command-launcher."""
         schedules = []
-        try:
-            # Get current root crontab
-            result = subprocess.run(
-                ["sudo", "crontab", "-l"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            
-            lines = result.stdout.split('\n')
-            current_schedule = None
-            
-            for line in lines:
-                line = line.strip()
-                if line.startswith("# py-tray-command-launcher:"):
-                    # This is a comment line with task name
-                    task_name = line.replace("# py-tray-command-launcher:", "").strip()
-                    current_schedule = {"name": task_name, "type": "cron_job"}
-                elif current_schedule and line and not line.startswith("#"):
-                    # This should be the cron entry for the previous comment
-                    parts = line.split()
-                    if len(parts) >= 6:
-                        minute = parts[0]
-                        hour = parts[1]
-                        day_month = parts[2]
-                        month = parts[3]
-                        day_week = parts[4]
-                        command = " ".join(parts[5:])
-                        
-                        # Format schedule display
-                        schedule_text = f"{hour}:{minute:0>2s}"
-                        if day_week != "*":
-                            days = self._convert_cron_days_to_text(day_week)
-                            schedule_text += f" on {days}"
-                        else:
-                            schedule_text += " daily"
+        
+        # Check both user and root crontabs
+        crontab_sources = [
+            ("User", ["crontab", "-l"]),
+            ("Root", ["sudo", "crontab", "-l"])
+        ]
+        
+        for source_name, command in crontab_sources:
+            try:
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                
+                lines = result.stdout.split('\n')
+                current_schedule = None
+                
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith("# py-tray-command-launcher:"):
+                        # This is a comment line with task name
+                        task_name = line.replace("# py-tray-command-launcher:", "").strip()
+                        current_schedule = {
+                            "name": task_name, 
+                            "type": "cron_job",
+                            "source": source_name  # Track whether it's user or root crontab
+                        }
+                    elif current_schedule and line and not line.startswith("#"):
+                        # This should be the cron entry for the previous comment
+                        parts = line.split()
+                        if len(parts) >= 6:
+                            minute = parts[0]
+                            hour = parts[1]
+                            day_month = parts[2]
+                            month = parts[3]
+                            day_week = parts[4]
+                            command = " ".join(parts[5:])
                             
-                        current_schedule.update({
-                            "command": command,
-                            "schedule": schedule_text,
-                            "status": "Active",
-                            "cron_line": line
-                        })
+                            # Format schedule display
+                            schedule_text = f"{hour}:{minute:0>2s}"
+                            if day_week != "*":
+                                days = self._convert_cron_days_to_text(day_week)
+                                schedule_text += f" on {days}"
+                            elif day_month != "*":
+                                schedule_text += f" on day {day_month} of month"
+                            elif month != "*":
+                                schedule_text += f" in month {month}"
+                            else:
+                                schedule_text += " daily"
+                                
+                            current_schedule.update({
+                                "command": command,
+                                "schedule": schedule_text,
+                                "status": "Active",
+                                "cron_line": line
+                            })
+                            
+                            schedules.append(current_schedule)
+                        current_schedule = None
+                    else:
+                        current_schedule = None
                         
-                        schedules.append(current_schedule)
-                    current_schedule = None
-                else:
-                    current_schedule = None
-                    
-        except subprocess.CalledProcessError:
-            # No crontab found or error occurred - this is normal if no cron jobs exist
-            pass
-        except Exception as e:
-            # For other errors, we might want to show a warning but not fail completely
-            print(f"Warning: Error reading crontab: {str(e)}")
+            except subprocess.CalledProcessError:
+                # No crontab found or error occurred - this is normal if no cron jobs exist
+                # Don't print anything as this is expected for empty crontabs
+                continue
+            except Exception as e:
+                # For other errors, we might want to show a warning but not fail completely
+                print(f"Warning: Error reading {source_name.lower()} crontab: {str(e)}")
+                continue
             
         return schedules
 
@@ -320,10 +342,20 @@ class ScheduleViewer:
 
     def _delete_linux_cron_job(self, schedule):
         """Delete a Linux cron job."""
+        source = schedule.get("source", "Root")  # Default to Root for backward compatibility
+        
+        # Choose the appropriate crontab command based on source
+        if source == "User":
+            get_command = ["crontab", "-l"]
+            set_command = ["crontab"]
+        else:  # Root
+            get_command = ["sudo", "crontab", "-l"]
+            set_command = ["sudo", "crontab"]
+            
         try:
-            # Get current root crontab
+            # Get current crontab
             result = subprocess.run(
-                ["sudo", "crontab", "-l"],
+                get_command,
                 capture_output=True,
                 text=True,
                 check=True
@@ -358,7 +390,7 @@ class ScheduleViewer:
         
         try:
             subprocess.run(
-                ["sudo", "crontab", temp_file],
+                set_command + [temp_file],
                 capture_output=True,
                 text=True,
                 check=True
