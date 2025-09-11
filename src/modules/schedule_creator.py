@@ -36,7 +36,7 @@ class ScheduleCreator:
         command_layout = QHBoxLayout()
         command_layout.addWidget(QLabel("Command:"))
         command_combo = QComboBox()
-        
+
         # Populate with all available commands
         try:
             all_commands = self.app.get_all_commands()
@@ -64,16 +64,16 @@ class ScheduleCreator:
         # Days selection
         days_layout = QVBoxLayout()
         days_layout.addWidget(QLabel("Days:"))
-        
+
         days_grid = QGridLayout()
         days_checkboxes = {}
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        
+
         for i, day in enumerate(days):
             checkbox = QCheckBox(day)
             days_checkboxes[day] = checkbox
             days_grid.addWidget(checkbox, i // 4, i % 4)
-        
+
         days_layout.addLayout(days_grid)
         layout.addLayout(days_layout)
 
@@ -81,15 +81,15 @@ class ScheduleCreator:
         select_layout = QHBoxLayout()
         select_all_btn = QPushButton("Select All")
         select_none_btn = QPushButton("Select None")
-        
+
         def select_all():
             for checkbox in days_checkboxes.values():
                 checkbox.setChecked(True)
-        
+
         def select_none():
             for checkbox in days_checkboxes.values():
                 checkbox.setChecked(False)
-        
+
         select_all_btn.clicked.connect(select_all)
         select_none_btn.clicked.connect(select_none)
         select_layout.addWidget(select_all_btn)
@@ -100,39 +100,39 @@ class ScheduleCreator:
         button_layout = QHBoxLayout()
         create_btn = QPushButton("Create Schedule")
         cancel_btn = QPushButton("Cancel")
-        
+
         def on_create():
             # Get selected command
             selected_command_text = command_combo.currentText()
             if not selected_command_text or selected_command_text not in self.command_data:
                 QMessageBox.warning(dialog, "Error", "Please select a command.")
                 return
-            
+
             selected_command = self.command_data[selected_command_text]
-            
+
             # Get selected time
             time = time_edit.time()
             hour = time.hour()
             minute = time.minute()
-            
+
             # Get selected days
             selected_days = []
             for day, checkbox in days_checkboxes.items():
                 if checkbox.isChecked():
                     selected_days.append(day)
-            
+
             if not selected_days:
                 QMessageBox.warning(dialog, "Error", "Please select at least one day.")
                 return
-            
+
             # Create the schedule
             success = self.create_schedule(selected_command, hour, minute, selected_days)
             if success:
                 dialog.accept()
-            
+
         def on_cancel():
             dialog.reject()
-        
+
         create_btn.clicked.connect(on_create)
         cancel_btn.clicked.connect(on_cancel)
         button_layout.addWidget(create_btn)
@@ -157,7 +157,7 @@ class ScheduleCreator:
         """Create a Windows scheduled task."""
         task_name = f"PyTrayLauncher_{command_info['label'].replace(' ', '_')}"
         command = command_info['command']
-        
+
         # Convert days to Windows format
         windows_days = {
             "Monday": "MON",
@@ -168,10 +168,10 @@ class ScheduleCreator:
             "Saturday": "SAT",
             "Sunday": "SUN"
         }
-        
+
         days_string = ",".join([windows_days[day] for day in selected_days])
         time_string = f"{hour:02d}:{minute:02d}"
-        
+
         # Create the schtasks command
         schtasks_cmd = [
             "schtasks",
@@ -183,7 +183,7 @@ class ScheduleCreator:
             "/st", time_string,
             "/f"  # Force overwrite if exists
         ]
-        
+
         try:
             result = subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
             QMessageBox.information(
@@ -206,7 +206,7 @@ class ScheduleCreator:
     def _create_linux_cron(self, command_info, hour, minute, selected_days):
         """Create a Linux cron job as root."""
         command = command_info['command']
-        
+
         # Convert days to cron format (0=Sunday, 1=Monday, etc.)
         cron_days = {
             "Sunday": "0",
@@ -217,12 +217,12 @@ class ScheduleCreator:
             "Friday": "5",
             "Saturday": "6"
         }
-        
+
         days_string = ",".join([cron_days[day] for day in selected_days])
-        
+
         # Create cron entry
         cron_entry = f"{minute} {hour} * * {days_string} {command}"
-        
+
         # Create a temporary file with the new cron entry
         try:
             # Get current root crontab
@@ -237,27 +237,27 @@ class ScheduleCreator:
             except subprocess.CalledProcessError:
                 # No existing crontab
                 current_crontab = ""
-            
+
             # Add our entry with a comment
             comment = f"# py-tray-command-launcher: {command_info['label']}"
             new_crontab = current_crontab.rstrip() + "\n" + comment + "\n" + cron_entry + "\n"
-            
+
             # Write to temporary file
             with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.cron') as f:
                 f.write(new_crontab)
                 temp_file = f.name
-            
+
             # Install the new crontab
             result = subprocess.run(
-                ["sudo", "crontab", temp_file],
+                ["pkexec", "crontab", temp_file],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
-            
+
             # Clean up temp file
             os.unlink(temp_file)
-            
+
             QMessageBox.information(
                 None,
                 "Success",
@@ -268,7 +268,7 @@ class ScheduleCreator:
                 f"Cron entry: {cron_entry}"
             )
             return True
-            
+
         except subprocess.CalledProcessError as e:
             QMessageBox.critical(
                 None,
