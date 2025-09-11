@@ -50,18 +50,18 @@ class ScheduleViewer:
             # No schedules found
             no_schedules_widget = QWidget()
             no_schedules_layout = QVBoxLayout(no_schedules_widget)
-            
+
             no_schedules_label = QLabel("No scheduled tasks found.")
             no_schedules_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             no_schedules_layout.addWidget(no_schedules_label)
-            
+
             help_label = QLabel(
                 "To create a new scheduled task, use the 'Create Schedule' option in the Tools menu."
             )
             help_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             help_label.setStyleSheet("color: gray; font-style: italic;")
             no_schedules_layout.addWidget(help_label)
-            
+
             layout.addWidget(no_schedules_widget)
         else:
             # Create table to display schedules
@@ -69,7 +69,7 @@ class ScheduleViewer:
             table.setRowCount(len(schedules))
             table.setColumnCount(6)
             table.setHorizontalHeaderLabels(["Task Name", "Command", "Schedule", "Source", "Status", "Actions"])
-            
+
             # Configure table
             header = table.horizontalHeader()
             header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -83,49 +83,49 @@ class ScheduleViewer:
             for row, schedule in enumerate(schedules):
                 # Task name
                 table.setItem(row, 0, QTableWidgetItem(schedule.get("name", "Unknown")))
-                
+
                 # Command (truncated if too long)
                 command = schedule.get("command", "")
                 if len(command) > 50:
                     command = command[:47] + "..."
                 table.setItem(row, 1, QTableWidgetItem(command))
-                
+
                 # Schedule
                 schedule_text = schedule.get("schedule", "")
                 table.setItem(row, 2, QTableWidgetItem(schedule_text))
-                
+
                 # Source (User or Root crontab)
                 source = schedule.get("source", "Root")
                 table.setItem(row, 3, QTableWidgetItem(source))
-                
+
                 # Status
                 table.setItem(row, 4, QTableWidgetItem(schedule.get("status", "Active")))
-                
+
                 # Actions
                 actions_widget = QWidget()
                 actions_layout = QHBoxLayout(actions_widget)
                 actions_layout.setContentsMargins(5, 5, 5, 5)
-                
+
                 # Delete button
                 delete_btn = QPushButton("Delete")
                 delete_btn.clicked.connect(
                     lambda checked=False, sched=schedule: self.delete_schedule(sched, dialog)
                 )
                 actions_layout.addWidget(delete_btn)
-                
+
                 table.setCellWidget(row, 5, actions_widget)
 
             layout.addWidget(table)
 
         # Buttons
         button_layout = QHBoxLayout()
-        
+
         refresh_btn = QPushButton("Refresh")
         refresh_btn.clicked.connect(lambda: self.refresh_dialog(dialog))
-        
+
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(dialog.accept)
-        
+
         button_layout.addWidget(refresh_btn)
         button_layout.addStretch()
         button_layout.addWidget(close_btn)
@@ -156,7 +156,7 @@ class ScheduleViewer:
                 text=True,
                 check=True
             )
-            
+
             lines = result.stdout.split('\n')
             if len(lines) > 1:  # Skip header
                 for line in lines[1:]:
@@ -166,7 +166,7 @@ class ScheduleViewer:
                             task_name = parts[0].strip('"')
                             status = parts[2].strip('"')
                             schedule = parts[7].strip('"')
-                            
+
                             # Get task details
                             try:
                                 detail_result = subprocess.run(
@@ -175,14 +175,14 @@ class ScheduleViewer:
                                     text=True,
                                     check=True
                                 )
-                                
+
                                 # Parse command from detailed output
                                 command = ""
                                 for detail_line in detail_result.stdout.split('\n'):
                                     if "Task To Run:" in detail_line:
                                         command = detail_line.split("Task To Run:", 1)[1].strip()
                                         break
-                                
+
                                 schedules.append({
                                     "name": task_name,
                                     "command": command,
@@ -193,23 +193,23 @@ class ScheduleViewer:
                             except subprocess.CalledProcessError:
                                 # Skip tasks we can't get details for
                                 continue
-                                
+
         except subprocess.CalledProcessError as e:
             # No tasks found or error occurred
             pass
-            
+
         return schedules
 
     def _get_linux_cron_jobs(self):
         """Get Linux cron jobs created by py-tray-command-launcher."""
         schedules = []
-        
+
         # Check both user and root crontabs
         crontab_sources = [
             ("User", ["crontab", "-l"]),
-            ("Root", ["sudo", "crontab", "-l"])
+            ("Root", ["pkexec", "crontab", "-l"]),
         ]
-        
+
         for source_name, command in crontab_sources:
             try:
                 result = subprocess.run(
@@ -218,10 +218,10 @@ class ScheduleViewer:
                     text=True,
                     check=True
                 )
-                
+
                 lines = result.stdout.split('\n')
                 current_schedule = None
-                
+
                 for line in lines:
                     line = line.strip()
                     if line.startswith("# py-tray-command-launcher:"):
@@ -242,7 +242,7 @@ class ScheduleViewer:
                             month = parts[3]
                             day_week = parts[4]
                             command = " ".join(parts[5:])
-                            
+
                             # Format schedule display
                             schedule_text = f"{hour}:{minute:0>2s}"
                             if day_week != "*":
@@ -254,19 +254,19 @@ class ScheduleViewer:
                                 schedule_text += f" in month {month}"
                             else:
                                 schedule_text += " daily"
-                                
+
                             current_schedule.update({
                                 "command": command,
                                 "schedule": schedule_text,
                                 "status": "Active",
                                 "cron_line": line
                             })
-                            
+
                             schedules.append(current_schedule)
                         current_schedule = None
                     else:
                         current_schedule = None
-                        
+
             except subprocess.CalledProcessError:
                 # No crontab found or error occurred - this is normal if no cron jobs exist
                 # Don't print anything as this is expected for empty crontabs
@@ -275,7 +275,7 @@ class ScheduleViewer:
                 # For other errors, we might want to show a warning but not fail completely
                 print(f"Warning: Error reading {source_name.lower()} crontab: {str(e)}")
                 continue
-            
+
         return schedules
 
     def _convert_cron_days_to_text(self, day_week):
@@ -284,7 +284,7 @@ class ScheduleViewer:
             "0": "Sunday", "1": "Monday", "2": "Tuesday", "3": "Wednesday",
             "4": "Thursday", "5": "Friday", "6": "Saturday", "7": "Sunday"
         }
-        
+
         if "," in day_week:
             days = day_week.split(",")
             day_names = [day_map.get(day.strip(), day.strip()) for day in days]
@@ -295,7 +295,7 @@ class ScheduleViewer:
     def delete_schedule(self, schedule, parent_dialog):
         """Delete a scheduled task."""
         task_name = schedule.get("name", "Unknown")
-        
+
         # Confirm deletion
         reply = QMessageBox.question(
             parent_dialog,
@@ -306,23 +306,23 @@ class ScheduleViewer:
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
-        
+
         if reply == QMessageBox.StandardButton.Yes:
             try:
                 if schedule.get("type") == "windows_task":
                     self._delete_windows_task(schedule)
                 else:
                     self._delete_linux_cron_job(schedule)
-                    
+
                 QMessageBox.information(
                     parent_dialog,
                     "Success",
                     f"Scheduled task '{task_name}' deleted successfully."
                 )
-                
+
                 # Refresh the dialog
                 self.refresh_dialog(parent_dialog)
-                
+
             except Exception as e:
                 QMessageBox.critical(
                     parent_dialog,
@@ -343,15 +343,15 @@ class ScheduleViewer:
     def _delete_linux_cron_job(self, schedule):
         """Delete a Linux cron job."""
         source = schedule.get("source", "Root")  # Default to Root for backward compatibility
-        
+
         # Choose the appropriate crontab command based on source
         if source == "User":
             get_command = ["crontab", "-l"]
             set_command = ["crontab"]
         else:  # Root
-            get_command = ["sudo", "crontab", "-l"]
-            set_command = ["sudo", "crontab"]
-            
+            get_command = ["pkexec", "crontab", "-l"]
+            set_command = ["pkexec", "crontab"]
+
         try:
             # Get current crontab
             result = subprocess.run(
@@ -363,12 +363,12 @@ class ScheduleViewer:
             current_crontab = result.stdout
         except subprocess.CalledProcessError:
             current_crontab = ""
-        
+
         # Remove the schedule from crontab
         lines = current_crontab.split('\n')
         new_lines = []
         skip_next = False
-        
+
         for line in lines:
             if skip_next and line.strip() == schedule.get("cron_line", ""):
                 # Skip this line (the actual cron entry)
@@ -380,14 +380,14 @@ class ScheduleViewer:
                 continue
             else:
                 new_lines.append(line)
-        
+
         # Write the new crontab
         new_crontab = '\n'.join(new_lines)
-        
+
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.cron') as f:
             f.write(new_crontab)
             temp_file = f.name
-        
+
         try:
             subprocess.run(
                 set_command + [temp_file],

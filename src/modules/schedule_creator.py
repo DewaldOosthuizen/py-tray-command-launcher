@@ -240,20 +240,20 @@ class ScheduleCreator:
                 # Try root crontab as fallback
                 try:
                     result = subprocess.run(
-                        ["sudo", "crontab", "-l"],
+                        ["pkexec", "crontab", "-l"],
                         capture_output=True,
                         text=True,
-                        check=True
+                        check=True,
                     )
                     current_crontab = result.stdout
-                    crontab_command = ["sudo", "crontab"]
+                    crontab_command = ["pkexec", "crontab"]
                     crontab_type = "root"
                 except subprocess.CalledProcessError:
                     # No existing crontab at all
                     current_crontab = ""
                     crontab_command = ["crontab"]  # Default to user crontab
                     crontab_type = "user"
-            
+
             # Add our entry with a comment
             comment = f"# py-tray-command-launcher: {command_info['label']}"
             new_crontab = current_crontab.rstrip() + "\n" + comment + "\n" + cron_entry + "\n"
@@ -265,7 +265,7 @@ class ScheduleCreator:
 
             # Install the new crontab
             result = subprocess.run(
-                ["sudo", "crontab", temp_file],
+                ["pkexec", "crontab", temp_file],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -291,7 +291,7 @@ class ScheduleCreator:
                 error_msg += "Note: This operation requires sudo privileges."
             else:
                 error_msg += "Note: Make sure cron service is installed and running."
-            
+
             QMessageBox.critical(
                 None,
                 "Error",
