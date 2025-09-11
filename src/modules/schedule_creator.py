@@ -204,7 +204,7 @@ class ScheduleCreator:
             return False
 
     def _create_linux_cron(self, command_info, hour, minute, selected_days):
-        """Create a Linux cron job as root."""
+        """Create a Linux cron job in the user's crontab."""
         command = command_info['command']
 
         # Convert days to cron format (0=Sunday, 1=Monday, etc.)
@@ -225,19 +225,35 @@ class ScheduleCreator:
 
         # Create a temporary file with the new cron entry
         try:
-            # Get current root crontab
+            # Get current user crontab first, then try root if needed
             try:
                 result = subprocess.run(
-                    ["sudo", "crontab", "-l"],
+                    ["crontab", "-l"],
                     capture_output=True,
                     text=True,
                     check=True
                 )
                 current_crontab = result.stdout
+                crontab_command = ["crontab"]
+                crontab_type = "user"
             except subprocess.CalledProcessError:
-                # No existing crontab
-                current_crontab = ""
-
+                # Try root crontab as fallback
+                try:
+                    result = subprocess.run(
+                        ["sudo", "crontab", "-l"],
+                        capture_output=True,
+                        text=True,
+                        check=True
+                    )
+                    current_crontab = result.stdout
+                    crontab_command = ["sudo", "crontab"]
+                    crontab_type = "root"
+                except subprocess.CalledProcessError:
+                    # No existing crontab at all
+                    current_crontab = ""
+                    crontab_command = ["crontab"]  # Default to user crontab
+                    crontab_type = "user"
+            
             # Add our entry with a comment
             comment = f"# py-tray-command-launcher: {command_info['label']}"
             new_crontab = current_crontab.rstrip() + "\n" + comment + "\n" + cron_entry + "\n"
@@ -249,7 +265,7 @@ class ScheduleCreator:
 
             # Install the new crontab
             result = subprocess.run(
-                ["pkexec", "crontab", temp_file],
+                ["sudo", "crontab", temp_file],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -261,7 +277,7 @@ class ScheduleCreator:
             QMessageBox.information(
                 None,
                 "Success",
-                f"Cron job created successfully!\n\n"
+                f"Cron job created successfully in {crontab_type} crontab!\n\n"
                 f"Command: {command}\n"
                 f"Time: {hour:02d}:{minute:02d}\n"
                 f"Days: {', '.join(selected_days)}\n\n"
@@ -270,11 +286,16 @@ class ScheduleCreator:
             return True
 
         except subprocess.CalledProcessError as e:
+            error_msg = f"Failed to create cron job:\n{e.stderr}\n\n"
+            if crontab_type == "root":
+                error_msg += "Note: This operation requires sudo privileges."
+            else:
+                error_msg += "Note: Make sure cron service is installed and running."
+            
             QMessageBox.critical(
                 None,
                 "Error",
-                f"Failed to create cron job:\n{e.stderr}\n\n"
-                f"Note: This operation requires sudo privileges."
+                error_msg
             )
             return False
         except Exception as e:
