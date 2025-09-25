@@ -21,6 +21,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 
 
+SALT_FILE_SUFFIX = ".salt"
+ENC_FILE_SUFFIX = ".enc"
+
 class EncryptionWorker(QThread):
     """Worker thread for encryption/decryption operations."""
     
@@ -57,7 +60,7 @@ class EncryptionWorker(QThread):
             encrypted_data = fernet.encrypt(file_data)
             
             # Write encrypted data to .enc file
-            encrypted_file_path = file_path + '.enc'
+            encrypted_file_path = file_path + ENC_FILE_SUFFIX
             with open(encrypted_file_path, 'wb') as file:
                 file.write(encrypted_data)
             
@@ -78,7 +81,7 @@ class EncryptionWorker(QThread):
             decrypted_data = fernet.decrypt(encrypted_data)
             
             # Write decrypted data to original file (remove .enc extension)
-            original_file_path = file_path[:-4]  # Remove .enc extension
+            original_file_path = file_path[:-len(ENC_FILE_SUFFIX)]  # Remove .enc extension
             with open(original_file_path, 'wb') as file:
                 file.write(decrypted_data)
             
@@ -93,16 +96,15 @@ class EncryptionWorker(QThread):
         """Get all files to process."""
         files = []
         if os.path.isfile(path):
-            if operation == 'encrypt' or (operation == 'decrypt' and path.endswith('.enc')):
+            if operation == 'encrypt' or (operation == 'decrypt' and path.endswith(ENC_FILE_SUFFIX)):
                 files.append(path)
         else:
             # It's a directory
             for root, dirs, filenames in os.walk(path):
                 for filename in filenames:
                     file_path = os.path.join(root, filename)
-                    if operation == 'encrypt' and not filename.endswith('.enc'):
-                        files.append(file_path)
-                    elif operation == 'decrypt' and filename.endswith('.enc'):
+                    if (operation == 'encrypt' and not filename.endswith(ENC_FILE_SUFFIX)) or \
+                       (operation == 'decrypt' and filename.endswith(ENC_FILE_SUFFIX)):
                         files.append(file_path)
         return files
     
@@ -133,7 +135,7 @@ class EncryptionWorker(QThread):
                     salt_file = os.path.join(self.file_path, '.encryption_salt')
                 else:
                     # For single files, store salt next to the original file location
-                    salt_file = self.file_path + '.salt'
+                    salt_file = self.file_path + SALT_FILE_SUFFIX
                 with open(salt_file, 'wb') as f:
                     f.write(salt)
             else:  # decrypt
@@ -143,11 +145,11 @@ class EncryptionWorker(QThread):
                 else:
                     # For single files, the salt file should be next to the original file
                     # If we're decrypting /path/file.txt.enc, salt should be at /path/file.txt.salt
-                    if self.file_path.endswith('.enc'):
-                        original_file_path = self.file_path[:-4]  # Remove .enc
-                        salt_file = original_file_path + '.salt'
+                    if self.file_path.endswith(ENC_FILE_SUFFIX):
+                        original_file_path = self.file_path[:-len(ENC_FILE_SUFFIX)]  # Remove .enc
+                        salt_file = original_file_path + SALT_FILE_SUFFIX
                     else:
-                        salt_file = self.file_path + '.salt'
+                        salt_file = self.file_path + SALT_FILE_SUFFIX
                 
                 if os.path.exists(salt_file):
                     with open(salt_file, 'rb') as f:
@@ -369,7 +371,7 @@ class FileEncryptor:
                 None,
                 "Select encrypted file to decrypt",
                 "",
-                "Encrypted Files (*.enc);;All Files (*)"
+                f"Encrypted Files (*{ENC_FILE_SUFFIX});;All Files (*)"
             )
         
         if not file_path:

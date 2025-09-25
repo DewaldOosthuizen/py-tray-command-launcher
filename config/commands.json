@@ -190,34 +190,5 @@
             "showOutput": false,
             "confirm": false
         }
-    },
-    "Rank Interactive": {
-        "icon": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT4s9h8zITMdOT1ukos5vomF574gCaCOBHqBA&s",
-        "RIDE Connect": {
-            "command": "terminator --command 'bash -c \"~/Workspace/RankGroup/VPN/rank_ride_vpn.sh; exec bash\"'",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Shiftech Connect": {
-            "command": "terminator --command 'bash -c \"~/Workspace/RankGroup/VPN/rank_shifttech_vpn.sh; exec bash\"'",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Stop All Interfaces": {
-            "command": "terminator --command 'bash -c \"~/Workspace/RankGroup/VPN/stop_interfaces.sh; exec bash\"'",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Stop Interfaces": {
-            "command": "terminator --command 'bash -c \"~/Workspace/RankGroup/VPN/stop_interfaces.sh; exec bash\"'",
-            "showOutput": false,
-            "confirm": false
-        },
-        "Tailscale Refresh": {
-            "icon": "data:image/png;base64,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",
-            "command": "terminator --command 'bash -c \"~/Workspace/RankGroup/VPN/restart_tailscale.sh; exec bash\"'",
-            "showOutput": false,
-            "confirm": false
-        }
     }
 }
