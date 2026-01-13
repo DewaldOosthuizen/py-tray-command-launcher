@@ -20,7 +20,7 @@ fi
 
 # Build the executable first
 echo "Building Linux executable..."
-./scripts/build-linux.sh
+./build-linux.sh
 
 # Create AppDir structure
 echo "Creating AppDir structure..."
@@ -33,11 +33,11 @@ mkdir -p AppDir/usr/share/pixmaps
 cp dist/py-tray-command-launcher AppDir/usr/bin/
 
 # Copy desktop file
-cp packaging/py-tray-command-launcher.desktop AppDir/
+cp ../packaging/py-tray-command-launcher.desktop AppDir/
 
 # Copy icon
-cp resources/icons/icon.png AppDir/py-tray-command-launcher.png
-cp resources/icons/icon.png AppDir/usr/share/pixmaps/py-tray-command-launcher.png
+cp ../resources/icons/icon.png AppDir/py-tray-command-launcher.png
+cp ../resources/icons/icon.png AppDir/usr/share/pixmaps/py-tray-command-launcher.png
 
 # Create AppRun script
 cat > AppDir/AppRun << 'EOF'

@@ -102,17 +102,17 @@ See [BUILD.md](BUILD.md) for detailed build instructions and troubleshooting.
 
 ## Installation
 
-### 1. Install Required System Packages
-
-```sh
-sudo bash install_packages.sh
-```
-
-### 2. Clone the Repository
+### 1. Clone the Repository
 
 ```sh
 git clone <repository_url>
 cd py-tray-command-launcher
+```
+
+### 2. Install Required System Packages
+
+```sh
+sudo bash ./scripts/install_packages.sh
 ```
 
 ### 3. Create and Activate a Virtual Environment
