@@ -34,6 +34,44 @@ from modules.schedule_viewer import ScheduleViewer
 class TrayApp:
     """Main tray application class that manages the system tray icon and menu."""
 
+    def _resolve_tray_icon(self) -> str:
+        """Resolve the tray icon path robustly across source, PyInstaller, and AppImage.
+
+        Preference order:
+        - PyInstaller bundle (sys._MEIPASS)/resources/icons/icon.png
+        - Executable dir/resources/icons/icon.png (AppImage or system install)
+        - Base dir/resources/icons/icon.png (source run)
+        - AppImage top-level icon: ../../py-tray-command-launcher.png (from exe dir)
+        - AppImage pixmap: ../share/pixmaps/py-tray-command-launcher.png (from exe dir)
+        Returns the first existing path; otherwise returns an empty string.
+        """
+        candidates = []
+        try:
+            exe_dir = os.path.dirname(sys.executable)
+        except Exception:
+            exe_dir = ''
+
+        # PyInstaller bundle
+        meipass = getattr(sys, '_MEIPASS', None)
+        if meipass:
+            candidates.append(os.path.join(meipass, 'resources', 'icons', 'icon.png'))
+
+        # Executable-relative (AppImage/system install)
+        if exe_dir:
+            candidates.append(os.path.join(exe_dir, 'resources', 'icons', 'icon.png'))
+            candidates.append(os.path.join(exe_dir, 'resources', 'icon.png'))
+            # AppImage common placements
+            candidates.append(os.path.normpath(os.path.join(exe_dir, '..', '..', 'py-tray-command-launcher.png')))
+            candidates.append(os.path.normpath(os.path.join(exe_dir, '..', 'share', 'pixmaps', 'py-tray-command-launcher.png')))
+
+        # Source run (project base)
+        candidates.append(os.path.join(self.base_dir, 'resources', 'icons', 'icon.png'))
+
+        for p in candidates:
+            if p and os.path.exists(p):
+                return p
+        return ''
+
     def _download_icon(self, url):
         """
         Download an icon from a URL and cache it locally.
@@ -97,31 +135,18 @@ class TrayApp:
             try:
                 import base64
                 import re
-
-                # Extract extension and base64 data
-                match = re.match(
-                    r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", icon_path
-                )
+                match = re.match(r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", icon_path)
                 if not match:
                     return self.icon_file
                 ext = match.group("ext")
                 b64_data = match.group("data")
-
-                # Cache directory for base64 icons
-                cache_dir = os.path.join(
-                    tempfile.gettempdir(), "py-tray-launcher-icons"
-                )
+                cache_dir = os.path.join(tempfile.gettempdir(), "py-tray-launcher-icons")
                 os.makedirs(cache_dir, exist_ok=True)
-
-                # Hash the base64 string for filename uniqueness
                 url_hash = hashlib.md5(icon_path.encode()).hexdigest()
                 cached_file = os.path.join(cache_dir, f"{url_hash}.{ext}")
-
-                # Write the file if not already cached
                 if not os.path.exists(cached_file):
                     with open(cached_file, "wb") as f:
                         f.write(base64.b64decode(b64_data))
-
                 return cached_file
             except Exception as e:
                 print(f"Failed to decode base64 icon: {str(e)}")
@@ -132,18 +157,36 @@ class TrayApp:
             downloaded_path = self._download_icon(icon_path)
             if downloaded_path and os.path.exists(downloaded_path):
                 return downloaded_path
-            # If download failed, fall back to default icon
             return self.icon_file
 
         # Expand user path (handles ~)
         expanded_path = os.path.expanduser(icon_path)
 
-        # If it's already absolute, use as-is
-        if os.path.isabs(expanded_path):
+        # If it's already absolute and exists, use as-is
+        if os.path.isabs(expanded_path) and os.path.exists(expanded_path):
             return expanded_path
 
-        # If it's relative, make it relative to the project base directory
-        return os.path.join(self.base_dir, "resources", expanded_path)
+        # Try to resolve relative to PyInstaller bundle (sys._MEIPASS)
+        import sys
+        candidate_paths = []
+        meipass = getattr(sys, '_MEIPASS', None)
+        if meipass:
+            candidate_paths.append(os.path.join(meipass, "resources", "icons", expanded_path))
+            candidate_paths.append(os.path.join(meipass, "resources", expanded_path))
+        # Try to resolve relative to executable (AppImage or system install)
+        exe_dir = os.path.dirname(sys.executable)
+        candidate_paths.append(os.path.join(exe_dir, "resources", "icons", expanded_path))
+        candidate_paths.append(os.path.join(exe_dir, "resources", expanded_path))
+        # Try to resolve relative to base_dir (source run)
+        candidate_paths.append(os.path.join(self.base_dir, "resources", "icons", expanded_path))
+        candidate_paths.append(os.path.join(self.base_dir, "resources", expanded_path))
+
+        for path in candidate_paths:
+            if os.path.exists(path):
+                return path
+
+        # Fallback to default icon
+        return self.icon_file
 
     def __init__(self, app, instance_checker):
         """Initialize the TrayApp with the given QApplication instance."""
@@ -152,7 +195,11 @@ class TrayApp:
         
         # Initialize paths
         self.base_dir = config_manager.get_base_dir()
-        self.icon_file = os.path.join(self.base_dir, "resources/icons/icon.png")
+        # Resolve a robust tray icon path that works in all packaging modes
+        tray_icon_path = self._resolve_tray_icon()
+        if not tray_icon_path:
+            tray_icon_path = os.path.join(self.base_dir, "resources", "icons", "icon.png")
+        self.icon_file = tray_icon_path
         print(f"Base Directory: {self.base_dir}")
         print(f"Icon file: {self.icon_file}")
         
@@ -161,7 +208,10 @@ class TrayApp:
         self.app.setQuitOnLastWindowClosed(False)
 
         # Initialize tray icon and menu
-        self.tray_icon = QSystemTrayIcon(QIcon(self.icon_file))
+        tray_qicon = QIcon(self.icon_file)
+        self.tray_icon = QSystemTrayIcon(tray_qicon)
+        # Some environments require explicitly setting the icon after creation
+        self.tray_icon.setIcon(tray_qicon)
         self.tray_icon.setVisible(True)
         self.menu = QMenu()
         self.output_windows = []
@@ -323,7 +373,7 @@ class TrayApp:
             # Handle command case (direct commands or references)
             elif isinstance(item, dict) and ("command" in item or "ref" in item):
                 # Add command item to menu
-                action = self._add_command_to_menu(
+                self._add_command_to_menu(
                     menu, label, item, parent_icon_path, group_name
                 )
 
@@ -600,8 +650,6 @@ class TrayApp:
     def restart_app(self):
         """Restart the application."""
         self.cleanup()
-        # Detach single instance lock before restarting
-        self.instance_checker.cleanup()
         python = sys.executable
         os.execl(python, python, *sys.argv)
 
@@ -615,6 +663,8 @@ class TrayApp:
         print("Cleaning up before exit...")
         for window in self.output_windows:
             window.close()
+        # Always clear single instance lock and PID file
+        self.instance_checker.cleanup()
 
     def run(self):
         """Run the application event loop."""

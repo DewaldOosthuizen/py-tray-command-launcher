@@ -26,24 +26,53 @@ except ImportError as e:
     # Exit the program with error status.
     sys.exit(1)
 
+
 import sys
+import atexit
+import signal
 
 if __name__ == "__main__":
+    import os
+    import getpass
+    username = getpass.getuser()
+    key = f"py-tray-command-launcher-single-instance-{username}"
+    pidfile = os.path.expanduser(f"/tmp/py-tray-command-launcher-{username}.pid")
     app = QApplication(sys.argv)
 
-    # Check if another instance is already running
-    instance_checker = SingleInstanceChecker()
+    # Support --force-unlock argument
+    force_unlock = "--force-unlock" in sys.argv
+    instance_checker = SingleInstanceChecker(key=key, pidfile=pidfile)
 
-    if instance_checker.is_another_instance_running():
-        # Show message and exit if another instance is running
-        instance_checker.show_already_running_message()
+    def cleanup():
+        instance_checker.cleanup()
+
+    # Register cleanup for normal exit
+    atexit.register(cleanup)
+
+    # Register cleanup for signals (SIGINT, SIGTERM)
+    def handle_signal(signum, frame):
+        cleanup()
         sys.exit(0)
 
-    # Acquire the lock to prevent other instances
-    if not instance_checker.acquire_lock():
-        # Failed to acquire lock, another instance started concurrently
-        instance_checker.show_already_running_message()
-        sys.exit(0)
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
+    if force_unlock:
+        instance_checker.force_unlock()
+
+    # Retry logic for force unlock from GUI
+    while True:
+        if instance_checker.is_another_instance_running():
+            retry = not instance_checker.show_already_running_message()
+            if retry:
+                continue
+            sys.exit(0)
+        if not instance_checker.acquire_lock():
+            retry = not instance_checker.show_already_running_message()
+            if retry:
+                continue
+            sys.exit(0)
+        break
 
     # Proceed with normal startup
     tray_app = TrayApp(app, instance_checker)

@@ -10,6 +10,7 @@ from PyQt6.QtCore import QSharedMemory
 from PyQt6.QtWidgets import QMessageBox
 
 
+
 class SingleInstanceChecker:
     """
     Utility class to check and prevent multiple instances of the application.
@@ -17,16 +18,46 @@ class SingleInstanceChecker:
     Uses QSharedMemory to create a unique shared memory segment that serves
     as a lock to detect if another instance is already running.
     """
-    
-    def __init__(self, key="py-tray-command-launcher-single-instance-final"):
+
+    def __init__(self, key="py-tray-command-launcher-single-instance-final", pidfile=None):
         """
         Initialize the single instance checker.
-        
         Args:
             key (str): Unique identifier for the shared memory segment
+            pidfile (str, optional): Path to a file to store the PID of the running instance
         """
         self.key = key
         self.shared_memory = QSharedMemory(key)
+        self.pidfile = pidfile
+
+    def is_pid_running(self, pid):
+        """
+        Check if a process with the given PID is running.
+        """
+        try:
+            pid = int(pid)
+            if pid <= 0:
+                return False
+        except Exception:
+            return False
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return False
+        else:
+            return True
+
+    def force_unlock(self):
+        """
+        Remove the PID file and detach shared memory (force unlock).
+        """
+        if self.shared_memory.isAttached():
+            self.shared_memory.detach()
+        if self.pidfile:
+            try:
+                os.remove(self.pidfile)
+            except Exception:
+                pass
     
     def is_another_instance_running(self):
         """
@@ -58,8 +89,13 @@ class SingleInstanceChecker:
         # Try to create new shared memory segment
         if self.shared_memory.create(1):
             # Successfully created - we are the first instance
+            if self.pidfile:
+                try:
+                    with open(self.pidfile, 'w') as f:
+                        f.write(str(os.getpid()))
+                except Exception:
+                    pass
             return True
-        
         # Failed to create - another instance is running
         return False
     
@@ -74,9 +110,26 @@ class SingleInstanceChecker:
         qt_platform = os.environ.get('QT_QPA_PLATFORM', '').lower()
         is_headless = qt_platform == 'offscreen' or not os.environ.get('DISPLAY')
         
+        pid_info = ""
+        stale_lock = False
+        existing_pid = None
+        if self.pidfile:
+            try:
+                with open(self.pidfile, 'r') as f:
+                    existing_pid = f.read().strip()
+                if existing_pid:
+                    if self.is_pid_running(existing_pid):
+                        pid_info = f" (PID: {existing_pid})"
+                    else:
+                        pid_info = f" (stale lock, PID: {existing_pid})"
+                        stale_lock = True
+            except Exception:
+                pass
+        message = f"Another instance of py-tray-command-launcher is already running{pid_info}."
         if is_headless:
-            # In headless mode, just print the message
-            print("Another instance of py-tray-command-launcher is already running.")
+            print(message)
+            if stale_lock:
+                print("Stale lock detected. Run with --force-unlock to clear the lock.")
             print("Only one instance can run at a time. Exiting...")
             return True
         
@@ -84,18 +137,31 @@ class SingleInstanceChecker:
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Icon.Information)
             msg_box.setWindowTitle("Application Already Running")
-            msg_box.setText("Another instance of py-tray-command-launcher is already running.")
-            msg_box.setInformativeText("Only one instance of the application can run at a time.")
-            msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-            msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
-            
-            # Show the dialog and return True when OK is clicked
-            result = msg_box.exec()
-            return result == QMessageBox.StandardButton.Ok
-        except Exception as e:
-            # In case of any GUI issues, print message and return True
-            print(f"Another instance of py-tray-command-launcher is already running.")
-            print(f"Only one instance can run at a time. Exiting...")
+            msg_box.setText(message)
+            if stale_lock:
+                msg_box.setInformativeText("A stale lock was detected. Click 'Force Unlock' to clear the lock and start a new instance, or 'OK' to exit.")
+                msg_box.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Retry)
+                msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
+                # Set button text for Retry (Force Unlock)
+                retry_button = msg_box.button(QMessageBox.StandardButton.Retry)
+                if retry_button:
+                    retry_button.setText("Force Unlock")
+                result = msg_box.exec()
+                if result == QMessageBox.StandardButton.Retry:
+                    self.force_unlock()
+                    return False  # Indicate to caller to retry instance check
+                return True
+            else:
+                msg_box.setInformativeText("Only one instance of the application can run at a time.")
+                msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+                msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
+                result = msg_box.exec()
+                return result == QMessageBox.StandardButton.Ok
+        except Exception:
+            print(message)
+            if stale_lock:
+                print("Stale lock detected. Run with --force-unlock to clear the lock.")
+            print("Only one instance can run at a time. Exiting...")
             return True
     
     def cleanup(self):
@@ -107,3 +173,8 @@ class SingleInstanceChecker:
         """
         if self.shared_memory.isAttached():
             self.shared_memory.detach()
+        if self.pidfile:
+            try:
+                os.remove(self.pidfile)
+            except Exception:
+                pass

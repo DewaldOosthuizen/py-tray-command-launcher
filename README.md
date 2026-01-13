@@ -14,8 +14,8 @@ A simple and lightweight tray application developed in Python. It allows users t
     - [Quick Package Build](#quick-package-build)
     - [Development Installation](#development-installation)
   - [Installation](#installation)
-    - [1. Install Required System Packages](#1-install-required-system-packages)
-    - [2. Clone the Repository](#2-clone-the-repository)
+    - [1. Clone the Repository](#1-clone-the-repository)
+    - [2. Install Required System Packages](#2-install-required-system-packages)
     - [3. Create and Activate a Virtual Environment](#3-create-and-activate-a-virtual-environment)
     - [4. Install Python Dependencies](#4-install-python-dependencies)
   - [Configuration](#configuration)
@@ -74,7 +74,7 @@ For easy installation, you can build ready-to-use packages:
 
 # Build specific formats
 ./scripts/build-linux.sh      # Linux executable
-./scripts/build-deb.sh        # Debian package  
+./scripts/build-deb.sh        # Debian package
 ./scripts/build-appimage.sh   # AppImage
 scripts\build-windows.bat     # Windows (run on Windows)
 ```
