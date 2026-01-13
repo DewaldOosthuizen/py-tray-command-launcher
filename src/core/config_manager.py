@@ -7,6 +7,7 @@ It follows the singleton pattern to ensure only one instance manages the config.
 """
 
 import os
+import sys
 import json
 import shutil
 import datetime
@@ -52,7 +53,15 @@ class ConfigManager:
         # Set up paths
         from utils.utils import get_base_dir
         self.base_dir = Path(get_base_dir())
-        self.config_dir = self.base_dir / "config"
+
+        # Read-only bundled defaults inside the app image/bundle
+        self.defaults_dir = self.base_dir / "config"
+
+        # OS-appropriate user-writable config directory
+        self.config_dir = self._get_user_config_dir()
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Backups under user config dir
         self.backup_dir = self.config_dir / "backups"
 
         # Ensure backup directory exists
@@ -72,7 +81,7 @@ class ConfigManager:
 
         # Mark as initialized
         self._initialized = True
-        logger.info("ConfigManager initialized")
+        logger.info(f"ConfigManager initialized (config dir: {self.config_dir})")
         
         # Migrate existing favorites if needed
         self.migrate_favorites_from_commands()
@@ -642,52 +651,68 @@ class ConfigManager:
         Args:
             config_file: Path to the configuration file to create
         """
-        default_commands = {
-            "System": {
-                "icon": "icons/system.jpeg" if not self._is_windows else "",
-                "Open Terminal": {
-                    "command": "terminator" if not self._is_windows else "cmd.exe",
-                    "showOutput": False,
-                    "confirm": False,
-                },
-                "System Info": {
-                    "command": "uname -a" if not self._is_windows else "systeminfo",
-                    "showOutput": True,
-                    "confirm": False,
-                },
-            },
-            "Utilities": {
-                "icon": "icons/utilities.jpeg" if not self._is_windows else "",
-                "Text Editor": {
-                    "command": "geany" if not self._is_windows else "notepad.exe",
-                    "showOutput": False,
-                    "confirm": False,
-                },
-            },
-        }
-
         try:
-            # Create the parent directory if it doesn't exist
-            config_file.parent.mkdir(exist_ok=True)
+            # Prefer copying bundled defaults from the app's config folder
+            default_source = self.defaults_dir / config_file.name
+            if default_source.exists():
+                config_file.parent.mkdir(exist_ok=True)
+                shutil.copy2(default_source, config_file)
+                logger.info(f"Copied defaults {default_source} -> {config_file}")
+                return
 
-            # Write the default configuration
+            # Fallback to minimal inline defaults
+            default_commands = {
+                "System": {
+                    "icon": "icons/system.jpeg" if not self._is_windows else "",
+                    "Open Terminal": {
+                        "command": "terminator" if not self._is_windows else "cmd.exe",
+                        "showOutput": False,
+                        "confirm": False,
+                    },
+                    "System Info": {
+                        "command": "uname -a" if not self._is_windows else "systeminfo",
+                        "showOutput": True,
+                        "confirm": False,
+                    },
+                },
+                "Utilities": {
+                    "icon": "icons/utilities.jpeg" if not self._is_windows else "",
+                    "Text Editor": {
+                        "command": "geany" if not self._is_windows else "notepad.exe",
+                        "showOutput": False,
+                        "confirm": False,
+                    },
+                },
+            }
+
+            config_file.parent.mkdir(exist_ok=True)
             with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(default_commands, f, indent=4)
-
             logger.info(f"Created default commands file at {config_file}")
         except Exception as e:
             logger.error(f"Failed to create default commands file: {str(e)}")
 
     def get_base_dir(self) -> str:
         """
-        Get the base directory of the application.
+        Get the base directory of the application (dev or packaged).
 
         Returns:
-            Path to the base directory
+            Path to the base directory (handles PyInstaller sys._MEIPASS)
         """
-        return os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
+        from utils.utils import get_base_dir
+        return get_base_dir()
+
+    def _get_user_config_dir(self) -> Path:
+        """Return OS-appropriate user config directory for this app."""
+        app_name = "py-tray-command-launcher"
+        if os.name == "nt":
+            base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+            return base / app_name
+        if sys.platform == "darwin":
+            return Path.home() / "Library" / "Application Support" / app_name
+        # Linux and others (XDG)
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+        return base / app_name
 
 
 # Singleton instance
