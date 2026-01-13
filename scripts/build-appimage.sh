@@ -3,6 +3,11 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+cd "$PROJECT_ROOT"
+
 echo "Building AppImage for py-tray-command-launcher..."
 
 # Download AppImage tools if not present
@@ -15,12 +20,12 @@ if [ ! -f "tools/appimagetool" ]; then
     wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
     chmod +x appimagetool
     
-    cd ..
+    cd "$PROJECT_ROOT"
 fi
 
 # Build the executable first
 echo "Building Linux executable..."
-./build-linux.sh
+./scripts/build-linux.sh
 
 # Create AppDir structure
 echo "Creating AppDir structure..."
@@ -33,11 +38,11 @@ mkdir -p AppDir/usr/share/pixmaps
 cp dist/py-tray-command-launcher AppDir/usr/bin/
 
 # Copy desktop file
-cp ../packaging/py-tray-command-launcher.desktop AppDir/
+cp packaging/py-tray-command-launcher.desktop AppDir/
 
 # Copy icon
-cp ../resources/icons/icon.png AppDir/py-tray-command-launcher.png
-cp ../resources/icons/icon.png AppDir/usr/share/pixmaps/py-tray-command-launcher.png
+cp resources/icons/icon.png AppDir/py-tray-command-launcher.png
+cp resources/icons/icon.png AppDir/usr/share/pixmaps/py-tray-command-launcher.png
 
 # Create AppRun script
 cat > AppDir/AppRun << 'EOF'
