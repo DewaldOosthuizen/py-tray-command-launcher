@@ -47,32 +47,44 @@ scripts\build-windows.bat
 
 ## Build Scripts Overview
 
+All build scripts are located in the `scripts/` directory and must be run from the **project root directory**.
+
 ### `scripts/build-linux.sh`
 Creates a standalone Linux executable using PyInstaller.
+- **Run from project root**: `./scripts/build-linux.sh`
 - Output: `dist/py-tray-command-launcher` (63MB)
+- Build artifacts: `build/`, `dist/` (in project root)
 - Self-contained with all dependencies
 - No installation required
 
 ### `scripts/build-deb.sh`
 Creates a Debian package for easy installation on Debian-based systems.
+- **Run from project root**: `./scripts/build-deb.sh`
 - Output: `dist/py-tray-command-launcher_*.deb`
+- Build artifacts: `build/`, `dist/`, `debian/` (in project root)
 - Includes desktop integration
 - Installs to `/usr/bin/`
 
 ### `scripts/build-appimage.sh`
 Creates an AppImage for universal Linux compatibility.
+- **Run from project root**: `./scripts/build-appimage.sh`
 - Output: `dist/py-tray-command-launcher-x86_64.AppImage` (63MB)
+- Build artifacts: `build/`, `dist/`, `AppDir/`, `tools/` (in project root)
 - Portable application format
 - Works on most Linux distributions
 
 ### `scripts/build-windows.bat`
 Creates a Windows executable (requires Windows environment).
+- **Run from project root**: `scripts\build-windows.bat`
 - Output: `dist/py-tray-command-launcher.exe`
+- Build artifacts: `build/`, `dist/` (in project root)
 - Self-contained Windows application
 - No installation required
 
 ### `scripts/build-all.sh`
 Coordinating script that builds all supported formats.
+- **Run from project root**: `./scripts/build-all.sh`
+- All build artifacts are placed in the project root directory under `dist/`
 
 ## Build Options
 
@@ -114,15 +126,23 @@ Debian package configuration is in `packaging/debian/`:
 
 ## Output Files
 
-After building, packages are placed in the `dist/` directory:
+All build artifacts are placed in the project root directory. After building, packages are in the `dist/` directory:
 
 ```
-dist/
-├── py-tray-command-launcher                 # Linux executable
-├── py-tray-command-launcher-x86_64.AppImage # AppImage
-├── py-tray-command-launcher_*.deb          # Debian package
-└── py-tray-command-launcher.exe            # Windows executable (if built)
+project_root/
+├── dist/                                        # Build output directory
+│   ├── py-tray-command-launcher                 # Linux executable
+│   ├── py-tray-command-launcher-x86_64.AppImage # AppImage
+│   ├── py-tray-command-launcher_*.deb          # Debian package
+│   └── py-tray-command-launcher.exe            # Windows executable (if built)
+├── build/                                       # PyInstaller build artifacts
+├── venv/                                        # Python virtual environment
+├── AppDir/                                      # AppImage staging directory
+├── tools/                                       # AppImage build tools
+└── debian/                                      # Debian packaging temporary files
 ```
+
+**Important**: No build artifacts are created inside the `scripts/` directory. All build output is located in the project root.
 
 ## Cross-Platform Notes
 
