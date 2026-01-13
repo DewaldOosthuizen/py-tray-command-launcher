@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 import os
 import json
 from PyQt6.QtWidgets import QMenu, QMessageBox, QInputDialog

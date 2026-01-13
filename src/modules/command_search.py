@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 import os
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLineEdit, QListWidget, QPushButton
 from PyQt6.QtCore import Qt
