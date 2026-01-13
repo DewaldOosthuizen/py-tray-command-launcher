@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 # Attempt to import required modules for the application.
 try:
     # Import QApplication for GUI, TrayApp for tray logic, and SingleInstanceChecker for instance control.

@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 Single instance detection utility for py-tray-command-launcher.
 
@@ -8,7 +10,6 @@ runs at a time using Qt's QSharedMemory mechanism.
 import os
 from PyQt6.QtCore import QSharedMemory
 from PyQt6.QtWidgets import QMessageBox
-
 
 
 class SingleInstanceChecker:
