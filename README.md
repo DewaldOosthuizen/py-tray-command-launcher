@@ -210,7 +210,7 @@ Create a `commands.json` file in the `config` directory to define your commands.
 
 ## Screenshots
 
-![Screenshot from 2025-02-12 19-58-12](https://github.com/user-attachments/assets/834e778d-5905-4523-a77b-c533ffb152e9)
+<img width="629" height="359" alt="Screenshot from 2026-01-13 20-21-56" src="https://github.com/user-attachments/assets/9ef2015e-7685-4826-919a-6bbe591b6472" />
 
 ---
 
