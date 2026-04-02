@@ -1,5 +1,6 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import os
 from PyQt6.QtWidgets import (
     QFileDialog,
@@ -7,6 +8,8 @@ from PyQt6.QtWidgets import (
     QInputDialog,
 )
 from core.config_manager import config_manager
+
+logger = logging.getLogger(__name__)
 
 
 class ImportExport:
@@ -84,10 +87,10 @@ class ImportExport:
 
             # Import the group
             command_paths = config_manager.get_command_paths()
-            print(
-                "Import using commands file: "
-                f"{command_paths['active_commands_file']} "
-                f"(config dir: {command_paths['config_dir']})"
+            logger.debug(
+                "Import using commands file: %s (config dir: %s)",
+                command_paths['active_commands_file'],
+                command_paths['config_dir'],
             )
             success = config_manager.import_command_group(file_path, overwrite)
 

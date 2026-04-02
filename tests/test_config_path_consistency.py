@@ -1,3 +1,4 @@
+import importlib
 import json
 import os
 import sys
@@ -32,9 +33,24 @@ class ConfigPathConsistencyTests(unittest.TestCase):
             },
             clear=False,
         ):
-            with patch("utils.utils.get_base_dir", return_value=str(base_dir)):
+            with patch(
+                "utils.utils.get_base_dir",
+                return_value=str(base_dir),
+            ) as mock_get_base_dir:
+                # Reset the singleton then reload the module so that the
+                # module-level `config_manager = ConfigManager()` at the
+                # bottom of config_manager.py runs inside these patches,
+                # preventing the real user config dir from being touched.
                 config_module.ConfigManager._instance = None
-                return config_module.ConfigManager()
+                importlib.reload(config_module)
+                manager = config_module.ConfigManager()
+                # Verify that the reloaded ConfigManager used the patched base_dir.
+                self.assertTrue(
+                    mock_get_base_dir.called,
+                    "ConfigManager should call utils.utils.get_base_dir "
+                    "when created after module reload with patched base_dir.",
+                )
+                return manager
 
     def test_uses_canonical_xdg_config_dir(self):
         manager = self._new_manager(self.tmp_path / "base")
