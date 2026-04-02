@@ -90,6 +90,7 @@ ipython_config.py
 
 # pyenv
 .python-version
+.pytest_cache
 
 # celery beat schedule file
 celerybeat-schedule
@@ -143,6 +144,9 @@ dmypy.json
 .history
 .ionide
 .venv/icons
+.codegraph
+.lh
+openspec
 
 # Application specific files
 config/history.json

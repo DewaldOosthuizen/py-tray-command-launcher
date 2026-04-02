@@ -11,11 +11,14 @@ It follows the singleton pattern to ensure only one instance manages the config.
 import os
 import sys
 import json
+import copy
 import shutil
 import datetime
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Union, Tuple
+from typing import Dict, Any, Optional, List, Tuple
+
+APP_NAME = "py-tray-command-launcher"
 
 # Setup logging
 logging.basicConfig(
@@ -83,10 +86,62 @@ class ConfigManager:
 
         # Mark as initialized
         self._initialized = True
-        logger.info(f"ConfigManager initialized (config dir: {self.config_dir})")
+        logger.info(
+            "ConfigManager initialized (config dir: %s, commands file: %s)",
+            self.config_dir,
+            self.get_active_commands_file(),
+        )
+
+        # Migrate legacy command storage locations into canonical config location
+        self._migrate_legacy_command_files()
         
         # Migrate existing favorites if needed
         self.migrate_favorites_from_commands()
+
+    def get_config_dir(self) -> Path:
+        """Return the canonical user config directory."""
+        return self.config_dir
+
+    def get_active_commands_file(self) -> Path:
+        """Return the resolved commands file used by this runtime."""
+        return self._get_commands_file_for_read()
+
+    def get_command_paths(self) -> Dict[str, str]:
+        """Expose command path diagnostics for startup/import/reload logging."""
+        return {
+            "config_dir": str(self.config_dir),
+            "commands_file": str(self.commands_file),
+            "win_commands_file": str(self.win_commands_file),
+            "active_commands_file": str(self.get_active_commands_file()),
+        }
+
+    def _get_commands_file_for_read(self) -> Path:
+        """Resolve which commands file should be used for reading."""
+        if self._is_windows:
+            # Prefer Windows-specific commands file when present
+            if self.win_commands_file.exists():
+                return self.win_commands_file
+            # Fallback for existing Windows installs that only have commands.json
+            if self.commands_file.exists():
+                logger.info(
+                    "Windows commands file %s not found, falling back to legacy %s",
+                    self.win_commands_file,
+                    self.commands_file,
+                )
+                return self.commands_file
+            # Neither file exists yet: point to the Windows-specific path so a
+            # new default win-commands.json will be created.
+            return self.win_commands_file
+        # Non-Windows platforms always use the primary commands file
+        return self.commands_file
+
+    def _get_commands_file_for_write(self) -> Path:
+        """Resolve which commands file should be used for writing.
+
+        Keep write behavior aligned with read resolution so we never read from one
+        file and write to another in the same runtime.
+        """
+        return self.get_active_commands_file()
 
     def get_commands(self, refresh: bool = False) -> Dict[str, Dict[str, Any]]:
         """
@@ -102,12 +157,9 @@ class ConfigManager:
             ConfigurationError: If loading the configuration fails
         """
         if self._commands_cache is None or refresh:
-            if self._is_windows and self.win_commands_file.exists():
-                config_file = self.win_commands_file
-            else:
-                config_file = self.commands_file
+            config_file = self._get_commands_file_for_read()
             try:
-                logger.debug(f"Loading commands from {config_file}")
+                logger.info("Loading commands from %s", config_file)
 
                 if not config_file.exists():
                     logger.warning(
@@ -152,9 +204,7 @@ class ConfigManager:
             self.backup_commands()
 
             # Determine which file to save to
-            config_file = (
-                self.win_commands_file if self._is_windows else self.commands_file
-            )
+            config_file = self._get_commands_file_for_write()
 
             # Save the configuration
             with open(config_file, "w", encoding="utf-8") as f:
@@ -294,9 +344,7 @@ class ConfigManager:
         """
         try:
             # Determine which file to backup
-            config_file = (
-                self.win_commands_file if self._is_windows else self.commands_file
-            )
+            config_file = self._get_commands_file_for_write()
 
             if not config_file.exists():
                 logger.warning(f"Cannot backup non-existent file: {config_file}")
@@ -365,9 +413,7 @@ class ConfigManager:
             self.backup_commands()
 
             # Determine which file to restore to
-            config_file = (
-                self.win_commands_file if self._is_windows else self.commands_file
-            )
+            config_file = self._get_commands_file_for_write()
 
             # Copy the backup file to the commands file
             shutil.copy2(backup_file, config_file)
@@ -393,6 +439,11 @@ class ConfigManager:
             True if import was successful, False otherwise
         """
         try:
+            logger.info(
+                "Importing command group from %s into %s",
+                import_file,
+                self.get_active_commands_file(),
+            )
             # Read the import file
             with open(import_file, "r", encoding="utf-8") as f:
                 import_data = json.load(f)
@@ -706,15 +757,143 @@ class ConfigManager:
 
     def _get_user_config_dir(self) -> Path:
         """Return OS-appropriate user config directory for this app."""
-        app_name = "py-tray-command-launcher"
         if os.name == "nt":
             base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
-            return base / app_name
+            return base / APP_NAME
         if sys.platform == "darwin":
-            return Path.home() / "Library" / "Application Support" / app_name
+            return Path.home() / "Library" / "Application Support" / APP_NAME
         # Linux and others (XDG)
         base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-        return base / app_name
+        return base / APP_NAME
+
+    def _legacy_config_dirs(self) -> List[Path]:
+        """Return legacy config directories that may still contain user data."""
+        candidates: List[Path] = []
+
+        # Legacy writable location used by older local runs
+        candidates.append(Path.home() / f".{APP_NAME}")
+
+        # Legacy executable-adjacent config folder
+        candidates.append(Path(sys.executable).resolve().parent / "config")
+
+        # Legacy AppImage mount paths
+        appdir = os.environ.get("APPDIR")
+        if appdir:
+            candidates.append(Path(appdir) / "config")
+
+        appimage = os.environ.get("APPIMAGE")
+        if appimage:
+            candidates.append(Path(appimage).resolve().parent / "config")
+
+        unique_dirs: List[Path] = []
+        for path in candidates:
+            if path == self.config_dir:
+                continue
+            if path == self.defaults_dir:
+                continue
+            if path not in unique_dirs:
+                unique_dirs.append(path)
+        return unique_dirs
+
+    def _load_commands_from_file(self, file_path: Path) -> Dict[str, Any]:
+        """Safely load a commands JSON file as a dictionary."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def _merge_commands_preserving_canonical(
+        self, canonical: Dict[str, Any], legacy: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Merge legacy groups into canonical without overwriting canonical values."""
+        merged = copy.deepcopy(canonical)
+        for group_name in sorted(legacy.keys()):
+            legacy_group = legacy[group_name]
+            canonical_group = merged.get(group_name)
+
+            if group_name not in merged:
+                merged[group_name] = copy.deepcopy(legacy_group)
+                continue
+
+            if not isinstance(canonical_group, dict) or not isinstance(legacy_group, dict):
+                # Keep canonical when structure conflicts
+                continue
+
+            for item_name in sorted(legacy_group.keys()):
+                if item_name not in canonical_group:
+                    canonical_group[item_name] = copy.deepcopy(legacy_group[item_name])
+
+        return merged
+
+    def _migrate_legacy_command_files(self) -> None:
+        """Migrate or merge legacy command files into the canonical config location."""
+        command_files = [self.commands_file]
+        if self._is_windows:
+            command_files.append(self.win_commands_file)
+
+        for canonical_file in command_files:
+            legacy_files = self._legacy_files_for(canonical_file)
+
+            if not legacy_files:
+                continue
+
+            logger.info(
+                "Found legacy command files for %s: %s",
+                canonical_file,
+                ", ".join(str(path) for path in legacy_files),
+            )
+
+            canonical_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Load existing canonical data if present, otherwise start from empty.
+            if canonical_file.exists():
+                try:
+                    canonical_data = self._load_commands_from_file(canonical_file)
+                except ConfigurationError as exc:
+                    logger.warning(
+                        "Canonical command file %s is invalid; starting from empty: %s",
+                        canonical_file,
+                        exc,
+                    )
+                    canonical_data = {}
+            else:
+                canonical_data = {}
+
+            merged_data = dict(canonical_data)
+
+            # Merge only validated legacy data; skip invalid legacy files.
+            for legacy_file in legacy_files:
+                try:
+                    legacy_data = self._load_commands_from_file(legacy_file)
+                except ConfigurationError as exc:
+                    logger.warning(
+                        "Skipping invalid legacy command file %s: %s",
+                        legacy_file,
+                        exc,
+                    )
+                    continue
+
+                merged_data = self._merge_commands_preserving_canonical(
+                    merged_data,
+                    legacy_data,
+                )
+
+            # If there is no canonical file yet, or the merged data differs, write it out.
+            if (not canonical_file.exists()) or (merged_data != canonical_data):
+                with open(canonical_file, "w", encoding="utf-8") as f:
+                    json.dump(merged_data, f, indent=4)
+                logger.info("Merged legacy commands into canonical file %s", canonical_file)
+
+    def _legacy_files_for(self, canonical_file: Path) -> List[Path]:
+        """Collect existing legacy files for a canonical filename."""
+        result: List[Path] = []
+        for legacy_dir in self._legacy_config_dirs():
+            legacy_file = legacy_dir / canonical_file.name
+            if legacy_file.exists() and legacy_file != canonical_file:
+                result.append(legacy_file)
+        return result
 
 
 # Singleton instance

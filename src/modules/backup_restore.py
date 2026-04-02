@@ -1,18 +1,8 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
 import os
-import json
-import shutil
-import datetime
 from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QLabel,
-    QListWidget,
-    QHBoxLayout,
-    QPushButton,
     QMessageBox,
-    QFileDialog,
     QInputDialog,
 )
 from core.config_manager import config_manager
@@ -77,7 +67,7 @@ class BackupRestore:
                         "Restore Successful",
                         "Commands have been restored from backup.",
                     )
-                    self.tray_app.reload_commands()
+                    self.tray_app.reload_commands(rebuild_menu=True)
                 else:
                     QMessageBox.warning(
                         None,

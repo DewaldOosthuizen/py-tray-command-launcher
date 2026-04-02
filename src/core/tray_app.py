@@ -297,8 +297,10 @@ class TrayApp:
         commands_menu.setIcon(QIcon(self.icon_file))
         commands_menu.addAction("Search Commands", self.search.show_dialog)
         commands_menu.addAction("Create New Command", self.creator.show_dialog)
-        commands_menu.addAction("Edit commands.json", self.open_commands_json)
-        commands_menu.addAction("Reload Commands", self.reload_commands)
+        commands_menu.addAction("Edit commands file", self.open_commands_json)
+        commands_menu.addAction(
+            "Reload Commands", lambda: self.reload_commands(rebuild_menu=True)
+        )
         commands_menu.addAction("Reload History Commands", self.reload_history_commands)
         commands_menu.addAction("Add to Favorites", self.favorites.add_to_favorites)
         self.menu.addMenu(commands_menu)
@@ -619,10 +621,28 @@ class TrayApp:
             return []
 
     def open_commands_json(self):
-        """Open the commands.json file with the default text editor."""
-        commands_file = config_manager.commands_file
+        """Open the active commands file with the default text editor.
+
+        The active file is platform-dependent (e.g. commands.json on Linux/macOS,
+        win-commands.json on Windows). Falls back to commands.json when the
+        platform-specific file does not yet exist (legacy installs).
+        """
         try:
-            # Open the commands.json file with the default text editor
+            # Use the same resolution logic as reads to determine the active file
+            command_paths = config_manager.get_command_paths()
+            commands_file = command_paths["active_commands_file"]
+
+            # On Windows, the active file may be win-commands.json, which might not
+            # exist yet for legacy installs still using commands.json. Fall back to
+            # the legacy commands.json if needed.
+            if not os.path.exists(commands_file):
+                legacy_commands_file = os.path.join(
+                    command_paths["config_dir"], "commands.json"
+                )
+                if os.path.exists(legacy_commands_file):
+                    commands_file = legacy_commands_file
+
+            # Open the resolved commands file with the default text editor
             if sys.platform == "win32":
                 os.startfile(commands_file)
             elif sys.platform == "darwin":
@@ -632,10 +652,21 @@ class TrayApp:
         except Exception as e:
             show_error_and_raise(f"Failed to open commands file: {e}")
 
-    def reload_commands(self):
+    def reload_commands(self, rebuild_menu: bool = False):
         """Reload the commands from the configuration file."""
         try:
+            command_paths = config_manager.get_command_paths()
+            print(
+                "Reloading commands from "
+                f"{command_paths['active_commands_file']} "
+                f"(config dir: {command_paths['config_dir']})"
+            )
             self.command_menu = config_manager.get_commands(refresh=True)
+
+            if rebuild_menu:
+                self.menu.clear()
+                self.load_tray_menu()
+                self.tray_icon.setContextMenu(self.menu)
         except ConfigurationError as e:
             show_error_and_raise(f"Failed to reload commands: {str(e)}")
             self.command_menu = {}

@@ -1,21 +1,15 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import os
-import json
 from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QListWidget,
-    QPushButton,
     QFileDialog,
     QMessageBox,
     QInputDialog,
 )
 from core.config_manager import config_manager
 
-from utils.utils import load_commands
+logger = logging.getLogger(__name__)
 
 
 class ImportExport:
@@ -92,6 +86,12 @@ class ImportExport:
             )
 
             # Import the group
+            command_paths = config_manager.get_command_paths()
+            logger.debug(
+                "Import using commands file: %s (config dir: %s)",
+                command_paths['active_commands_file'],
+                command_paths['config_dir'],
+            )
             success = config_manager.import_command_group(file_path, overwrite)
 
             if success:
@@ -100,7 +100,7 @@ class ImportExport:
                     "Import Successful",
                     "Command group has been imported successfully.",
                 )
-                self.tray_app.reload_commands()
+                self.tray_app.reload_commands(rebuild_menu=True)
             else:
                 QMessageBox.warning(
                     None,
