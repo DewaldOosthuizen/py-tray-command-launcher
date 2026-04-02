@@ -143,6 +143,9 @@ dmypy.json
 .history
 .ionide
 .venv/icons
+.codegraph
+.lh
+openspec
 
 # Application specific files
 config/history.json

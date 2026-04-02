@@ -298,7 +298,9 @@ class TrayApp:
         commands_menu.addAction("Search Commands", self.search.show_dialog)
         commands_menu.addAction("Create New Command", self.creator.show_dialog)
         commands_menu.addAction("Edit commands.json", self.open_commands_json)
-        commands_menu.addAction("Reload Commands", self.reload_commands)
+        commands_menu.addAction(
+            "Reload Commands", lambda: self.reload_commands(rebuild_menu=True)
+        )
         commands_menu.addAction("Reload History Commands", self.reload_history_commands)
         commands_menu.addAction("Add to Favorites", self.favorites.add_to_favorites)
         self.menu.addMenu(commands_menu)
@@ -620,7 +622,7 @@ class TrayApp:
 
     def open_commands_json(self):
         """Open the commands.json file with the default text editor."""
-        commands_file = config_manager.commands_file
+        commands_file = config_manager.get_active_commands_file()
         try:
             # Open the commands.json file with the default text editor
             if sys.platform == "win32":
@@ -632,10 +634,21 @@ class TrayApp:
         except Exception as e:
             show_error_and_raise(f"Failed to open commands file: {e}")
 
-    def reload_commands(self):
+    def reload_commands(self, rebuild_menu: bool = False):
         """Reload the commands from the configuration file."""
         try:
+            command_paths = config_manager.get_command_paths()
+            print(
+                "Reloading commands from "
+                f"{command_paths['active_commands_file']} "
+                f"(config dir: {command_paths['config_dir']})"
+            )
             self.command_menu = config_manager.get_commands(refresh=True)
+
+            if rebuild_menu:
+                self.menu.clear()
+                self.load_tray_menu()
+                self.tray_icon.setContextMenu(self.menu)
         except ConfigurationError as e:
             show_error_and_raise(f"Failed to reload commands: {str(e)}")
             self.command_menu = {}
