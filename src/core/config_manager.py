@@ -116,9 +116,23 @@ class ConfigManager:
 
     def _get_commands_file_for_read(self) -> Path:
         """Resolve which commands file should be used for reading."""
-        if self._is_windows and self.win_commands_file.exists():
+        if self._is_windows:
+            # Prefer Windows-specific commands file when present
+            if self.win_commands_file.exists():
+                return self.win_commands_file
+            # Fallback for existing Windows installs that only have commands.json
+            if self.commands_file.exists():
+                logger.info(
+                    "Windows commands file %s not found, falling back to legacy %s",
+                    self.win_commands_file,
+                    self.commands_file,
+                )
+                return self.commands_file
+            # Neither file exists yet: point to the Windows-specific path so a
+            # new default win-commands.json will be created.
             return self.win_commands_file
-        return self.get_active_commands_file()
+        # Non-Windows platforms always use the primary commands file
+        return self.commands_file
 
     def _get_commands_file_for_write(self) -> Path:
         """Resolve which commands file should be used for writing."""
