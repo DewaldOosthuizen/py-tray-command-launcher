@@ -11,6 +11,7 @@ It follows the singleton pattern to ensure only one instance manages the config.
 import os
 import sys
 import json
+import copy
 import shutil
 import datetime
 import logging
@@ -803,13 +804,13 @@ class ConfigManager:
         self, canonical: Dict[str, Any], legacy: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Merge legacy groups into canonical without overwriting canonical values."""
-        merged = dict(canonical)
+        merged = copy.deepcopy(canonical)
         for group_name in sorted(legacy.keys()):
             legacy_group = legacy[group_name]
             canonical_group = merged.get(group_name)
 
             if group_name not in merged:
-                merged[group_name] = legacy_group
+                merged[group_name] = copy.deepcopy(legacy_group)
                 continue
 
             if not isinstance(canonical_group, dict) or not isinstance(legacy_group, dict):
@@ -818,7 +819,7 @@ class ConfigManager:
 
             for item_name in sorted(legacy_group.keys()):
                 if item_name not in canonical_group:
-                    canonical_group[item_name] = legacy_group[item_name]
+                    canonical_group[item_name] = copy.deepcopy(legacy_group[item_name])
 
         return merged
 
@@ -846,7 +847,7 @@ class ConfigManager:
                 logger.info("Migrated legacy commands %s -> %s", legacy_files[0], canonical_file)
 
             canonical_data = self._load_commands_from_file(canonical_file)
-            merged_data = dict(canonical_data)
+            merged_data = copy.deepcopy(canonical_data)
 
             for legacy_file in legacy_files:
                 legacy_data = self._load_commands_from_file(legacy_file)
