@@ -842,20 +842,42 @@ class ConfigManager:
             )
 
             canonical_file.parent.mkdir(parents=True, exist_ok=True)
-            if not canonical_file.exists():
-                shutil.copy2(legacy_files[0], canonical_file)
-                logger.info("Migrated legacy commands %s -> %s", legacy_files[0], canonical_file)
 
-            canonical_data = self._load_commands_from_file(canonical_file)
-            merged_data = copy.deepcopy(canonical_data)
+            # Load existing canonical data if present, otherwise start from empty.
+            if canonical_file.exists():
+                try:
+                    canonical_data = self._load_commands_from_file(canonical_file)
+                except ConfigurationError as exc:
+                    logger.warning(
+                        "Canonical command file %s is invalid; starting from empty: %s",
+                        canonical_file,
+                        exc,
+                    )
+                    canonical_data = {}
+            else:
+                canonical_data = {}
 
+            merged_data = dict(canonical_data)
+
+            # Merge only validated legacy data; skip invalid legacy files.
             for legacy_file in legacy_files:
-                legacy_data = self._load_commands_from_file(legacy_file)
+                try:
+                    legacy_data = self._load_commands_from_file(legacy_file)
+                except ConfigurationError as exc:
+                    logger.warning(
+                        "Skipping invalid legacy command file %s: %s",
+                        legacy_file,
+                        exc,
+                    )
+                    continue
+
                 merged_data = self._merge_commands_preserving_canonical(
-                    merged_data, legacy_data
+                    merged_data,
+                    legacy_data,
                 )
 
-            if merged_data != canonical_data:
+            # If there is no canonical file yet, or the merged data differs, write it out.
+            if (not canonical_file.exists()) or (merged_data != canonical_data):
                 with open(canonical_file, "w", encoding="utf-8") as f:
                     json.dump(merged_data, f, indent=4)
                 logger.info("Merged legacy commands into canonical file %s", canonical_file)
