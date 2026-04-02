@@ -297,7 +297,7 @@ class TrayApp:
         commands_menu.setIcon(QIcon(self.icon_file))
         commands_menu.addAction("Search Commands", self.search.show_dialog)
         commands_menu.addAction("Create New Command", self.creator.show_dialog)
-        commands_menu.addAction("Edit commands.json", self.open_commands_json)
+        commands_menu.addAction("Edit commands file", self.open_commands_json)
         commands_menu.addAction(
             "Reload Commands", lambda: self.reload_commands(rebuild_menu=True)
         )
@@ -621,7 +621,12 @@ class TrayApp:
             return []
 
     def open_commands_json(self):
-        """Open the commands.json file with the default text editor."""
+        """Open the active commands file with the default text editor.
+
+        The active file is platform-dependent (e.g. commands.json on Linux/macOS,
+        win-commands.json on Windows). Falls back to commands.json when the
+        platform-specific file does not yet exist (legacy installs).
+        """
         try:
             # Use the same resolution logic as reads to determine the active file
             command_paths = config_manager.get_command_paths()
