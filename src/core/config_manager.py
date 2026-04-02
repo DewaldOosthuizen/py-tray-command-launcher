@@ -103,8 +103,8 @@ class ConfigManager:
         return self.config_dir
 
     def get_active_commands_file(self) -> Path:
-        """Return the active commands file used by this runtime."""
-        return self.win_commands_file if self._is_windows else self.commands_file
+        """Return the resolved commands file used by this runtime."""
+        return self._get_commands_file_for_read()
 
     def get_command_paths(self) -> Dict[str, str]:
         """Expose command path diagnostics for startup/import/reload logging."""
@@ -136,7 +136,11 @@ class ConfigManager:
         return self.commands_file
 
     def _get_commands_file_for_write(self) -> Path:
-        """Resolve which commands file should be used for writing."""
+        """Resolve which commands file should be used for writing.
+
+        Keep write behavior aligned with read resolution so we never read from one
+        file and write to another in the same runtime.
+        """
         return self.get_active_commands_file()
 
     def get_commands(self, refresh: bool = False) -> Dict[str, Dict[str, Any]]:
