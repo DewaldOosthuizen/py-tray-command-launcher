@@ -622,9 +622,22 @@ class TrayApp:
 
     def open_commands_json(self):
         """Open the commands.json file with the default text editor."""
-        commands_file = config_manager.get_active_commands_file()
         try:
-            # Open the commands.json file with the default text editor
+            # Use the same resolution logic as reads to determine the active file
+            command_paths = config_manager.get_command_paths()
+            commands_file = command_paths["active_commands_file"]
+
+            # On Windows, the active file may be win-commands.json, which might not
+            # exist yet for legacy installs still using commands.json. Fall back to
+            # the legacy commands.json if needed.
+            if not os.path.exists(commands_file):
+                legacy_commands_file = os.path.join(
+                    command_paths["config_dir"], "commands.json"
+                )
+                if os.path.exists(legacy_commands_file):
+                    commands_file = legacy_commands_file
+
+            # Open the resolved commands file with the default text editor
             if sys.platform == "win32":
                 os.startfile(commands_file)
             elif sys.platform == "darwin":
