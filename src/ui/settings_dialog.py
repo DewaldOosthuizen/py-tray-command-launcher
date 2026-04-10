@@ -38,9 +38,10 @@ logger = logging.getLogger(__name__)
 class SettingsDialog(QDialog):
     """Settings dialog covering theme, hotkey, logging, history, and output font."""
 
-    def __init__(self, theme_manager, parent=None):
+    def __init__(self, theme_manager, parent=None, hotkey_callback=None):
         super().__init__(parent)
         self._theme_manager = theme_manager
+        self._hotkey_callback = hotkey_callback
         self.setWindowTitle("Settings")
         self.setMinimumWidth(420)
 
@@ -177,6 +178,9 @@ class SettingsDialog(QDialog):
             logger.info("Settings saved")
             # Theme already applied via preview; ensure final value is set
             self._theme_manager.apply_theme(settings["theme"])
+            # Re-register the hotkey immediately so the change takes effect without restart
+            if self._hotkey_callback:
+                self._hotkey_callback(settings["hotkey"])
             self.accept()
         except Exception as exc:
             QMessageBox.critical(self, "Error", f"Failed to save settings:\n{exc}")

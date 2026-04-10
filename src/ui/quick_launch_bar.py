@@ -60,6 +60,8 @@ class QuickLaunchBar(QWidget):
 
         settings = self.services.config_manager.get_settings()
         qlb_cfg = settings.get("quick_launch_bar", {})
+        if not isinstance(qlb_cfg, dict):
+            qlb_cfg = {}
         if qlb_cfg.get("visible", False):
             self.show()
 
@@ -110,7 +112,11 @@ class QuickLaunchBar(QWidget):
 
         if not pinned:
             from PyQt6.QtWidgets import QLabel
-            placeholder = QLabel("No pinned commands — add via Settings", self)
+            placeholder = QLabel(
+                "No pinned commands — add entries to "
+                "quick_launch_bar.pinned in settings.json",
+                self,
+            )
             placeholder.setObjectName("QLBPlaceholder")
             self._layout.addWidget(placeholder)
 
@@ -135,23 +141,42 @@ class QuickLaunchBar(QWidget):
         else:
             self.hide()
         settings = self.services.config_manager.get_settings()
-        qlb_cfg = settings.setdefault("quick_launch_bar", {})
+        qlb_cfg = settings.get("quick_launch_bar", {})
+        if not isinstance(qlb_cfg, dict):
+            qlb_cfg = {}
         qlb_cfg["visible"] = visible
+        settings["quick_launch_bar"] = qlb_cfg
         self.services.config_manager.save_settings(settings)
 
     # ------------------------------------------------------------------
     # Position persistence
     # ------------------------------------------------------------------
 
+    def _normalize_position(self, position):
+        """Return a safe [x, y] position list, falling back to [100, 100]."""
+        default_position = [100, 100]
+        if not isinstance(position, (list, tuple)) or len(position) != 2:
+            return default_position
+        try:
+            return [int(position[0]), int(position[1])]
+        except (TypeError, ValueError):
+            return default_position
+
     def _restore_position(self):
         settings = self.services.config_manager.get_settings()
-        pos = settings.get("quick_launch_bar", {}).get("position", [100, 100])
+        qlb_cfg = settings.get("quick_launch_bar", {})
+        if not isinstance(qlb_cfg, dict):
+            qlb_cfg = {}
+        pos = self._normalize_position(qlb_cfg.get("position", [100, 100]))
         self.move(pos[0], pos[1])
 
     def _save_position(self):
         settings = self.services.config_manager.get_settings()
-        qlb_cfg = settings.setdefault("quick_launch_bar", {})
+        qlb_cfg = settings.get("quick_launch_bar", {})
+        if not isinstance(qlb_cfg, dict):
+            qlb_cfg = {}
         qlb_cfg["position"] = [self.x(), self.y()]
+        settings["quick_launch_bar"] = qlb_cfg
         self.services.config_manager.save_settings(settings)
 
     # ------------------------------------------------------------------

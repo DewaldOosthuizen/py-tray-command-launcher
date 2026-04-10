@@ -133,7 +133,7 @@ Use `{promptInput}` anywhere in the `command` string to insert user-supplied tex
 
 ## settings.json
 
- Controls application-level settings. This file is optional: if it is missing, the application uses built-in defaults and `get_settings()` returns `{}`. The file is not automatically created on first launch
+ Controls application-level settings. This file is optional: if it is missing, the application uses built-in defaults, and `get_settings()` returns the built-in default settings (with defaults merged in), not an empty dict. The file is not automatically created on first launch.
 
 ### Supported fields
 

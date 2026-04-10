@@ -12,7 +12,7 @@ Features:
 
 import logging
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -197,8 +197,13 @@ class CommandManagerDialog(QDialog):
         btn_row.addWidget(cancel_btn)
         layout.addLayout(btn_row)
 
-        # Disable Save while processes are running
+        # Disable Save while processes are running; poll every second so the
+        # button re-enables automatically once all processes finish.
         self._update_save_btn()
+        self._save_btn_timer = QTimer(self)
+        self._save_btn_timer.setInterval(1000)
+        self._save_btn_timer.timeout.connect(self._update_save_btn)
+        self._save_btn_timer.start()
 
         self._load_tree()
 
@@ -327,9 +332,22 @@ class CommandManagerDialog(QDialog):
             if group_name in commands and label in commands[group_name]:
                 del commands[group_name][label]
         elif meta.get("type") == "group":
-            top_group = meta["name"].split(".")[0]
-            if top_group in commands:
-                del commands[top_group]
+            group_path = meta["name"]
+            parts = group_path.split(".")
+            if len(parts) == 1:
+                # Top-level group
+                if parts[0] in commands:
+                    del commands[parts[0]]
+            else:
+                # Nested subgroup: delete only the selected sub-key in its parent
+                parent = commands
+                for part in parts[:-1]:
+                    parent = parent.get(part)
+                    if not isinstance(parent, dict):
+                        parent = None
+                        break
+                if isinstance(parent, dict) and parts[-1] in parent:
+                    del parent[parts[-1]]
 
         config_manager.save_commands(commands)
         self._load_tree()
@@ -395,6 +413,11 @@ class CommandManagerDialog(QDialog):
             return
         self._services.reload_commands(rebuild_menu=True)
         self.accept()
+
+    def closeEvent(self, event):
+        """Stop the save-button polling timer when the dialog is closed."""
+        self._save_btn_timer.stop()
+        super().closeEvent(event)
 
     def _update_save_btn(self):
         self._save_btn.setEnabled(not bool(self._running))

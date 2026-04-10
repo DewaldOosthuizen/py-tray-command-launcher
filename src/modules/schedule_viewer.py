@@ -359,7 +359,10 @@ class ScheduleViewer:
         comment_marker = f"# py-tray-command-launcher: {schedule.get('name')}"
         cron_line = schedule.get("cron_line", "")
 
-        # Remove the matching comment + cron line pair
+        # Remove the matching comment + cron line pair.
+        # After finding the marker comment, always remove the very next
+        # non-empty, non-comment line so orphaned cron entries cannot
+        # accumulate when the stored cron_line doesn't match exactly.
         lines = current_crontab.split("\n")
         new_lines = []
         skip_next = False
@@ -367,10 +370,13 @@ class ScheduleViewer:
             if line.strip() == comment_marker:
                 skip_next = True
                 continue
-            if skip_next and line.strip() == cron_line:
-                skip_next = False
-                continue
-            skip_next = False
+            if skip_next:
+                # Skip the next non-empty, non-comment line (the cron entry)
+                if line.strip() and not line.strip().startswith("#"):
+                    skip_next = False
+                    continue
+                # Pass blank lines and other comments through unchanged;
+                # they are not the cron entry we want to remove.
             new_lines.append(line)
 
         new_crontab = "\n".join(new_lines)

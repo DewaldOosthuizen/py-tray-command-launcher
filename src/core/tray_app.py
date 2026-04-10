@@ -638,7 +638,12 @@ class TrayApp:
             self._running_processes.pop(proc_id, None)
             self._update_tray_badge()
 
+        def _on_error(_error):
+            self._running_processes.pop(proc_id, None)
+            self._update_tray_badge()
+
         process.finished.connect(_on_finished)
+        process.errorOccurred.connect(_on_error)
         process.start()
 
     def _update_tray_badge(self):
@@ -796,8 +801,17 @@ class TrayApp:
 
     def _open_settings(self):
         """Open the Settings dialog."""
-        dlg = SettingsDialog(self.theme_manager, parent=None)
+        dlg = SettingsDialog(self.theme_manager, parent=None, hotkey_callback=self._reregister_hotkey)
         dlg.exec()
+
+    def _reregister_hotkey(self, hotkey: str) -> None:
+        """Unregister the current hotkey and register the new one."""
+        try:
+            self.palette.unregister_hotkey()
+            self.palette.register_hotkey(hotkey)
+            logger.info("Hotkey re-registered: %s", hotkey)
+        except Exception as exc:
+            logger.warning("Failed to re-register hotkey '%s': %s", hotkey, exc)
 
     def restart_app(self):
         """Restart the application."""

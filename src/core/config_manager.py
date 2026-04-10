@@ -122,8 +122,23 @@ class ConfigManager:
         "quick_launch_bar": {"visible": False, "position": [100, 100], "pinned": []},
     }
 
+    @staticmethod
+    def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """Recursively merge *override* into a copy of *base*.
+
+        Nested dicts are merged rather than replaced, so partial user-supplied
+        sub-dicts keep the default values for any keys they omit.
+        """
+        result = dict(base)
+        for key, value in override.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = ConfigManager._deep_merge(result[key], value)
+            else:
+                result[key] = value
+        return result
+
     def get_settings(self, refresh: bool = False) -> Dict[str, Any]:
-        """Get application settings from settings.json, merged with defaults."""
+        """Get application settings from settings.json, deep-merged with defaults."""
         if self._settings_cache is None or refresh:
             try:
                 if self.settings_file.exists():
@@ -135,13 +150,12 @@ class ConfigManager:
                 if not isinstance(settings, dict):
                     settings = {}
 
-                # Apply defaults for any missing top-level keys
-                merged = dict(self._SETTINGS_DEFAULTS)
-                merged.update(settings)
-                self._settings_cache = merged
+                # Deep-merge so partial nested dicts (e.g. quick_launch_bar, output_font,
+                # logging) retain their default sub-keys when the user only overrides some.
+                self._settings_cache = self._deep_merge(self._SETTINGS_DEFAULTS, settings)
             except Exception as e:
                 logger.warning("Failed to load settings, using defaults: %s", str(e))
-                self._settings_cache = dict(self._SETTINGS_DEFAULTS)
+                self._settings_cache = copy.deepcopy(self._SETTINGS_DEFAULTS)
 
         return self._settings_cache
 
@@ -155,7 +169,8 @@ class ConfigManager:
             with open(self.settings_file, "w", encoding="utf-8") as f:
                 json.dump(settings, f, indent=4)
 
-            self._settings_cache = settings
+            # Store the defaults-merged view so callers always see a fully-populated dict.
+            self._settings_cache = self._deep_merge(self._SETTINGS_DEFAULTS, settings)
             logger.info("Settings saved successfully to %s", self.settings_file)
         except Exception as e:
             error_msg = f"Failed to save settings: {str(e)}"
