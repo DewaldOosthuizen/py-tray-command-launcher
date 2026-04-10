@@ -4,4 +4,4 @@ setuptools
 wheel
 # Runtime deps also needed at build time for proper bundling
 rapidfuzz
-keyboard
+pynput

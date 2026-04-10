@@ -22,7 +22,7 @@ Example entry in settings.json:
 
 import logging
 
-from PyQt6.QtCore import QPoint, Qt
+from PyQt6.QtCore import QObject, QPoint, Qt, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QHBoxLayout,
@@ -32,6 +32,29 @@ from PyQt6.QtWidgets import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+_PYNPUT_WRAP = {
+    'ctrl', 'shift', 'alt', 'altgr', 'cmd', 'win', 'super', 'meta',
+    'space', 'enter', 'return', 'tab', 'esc', 'escape',
+    'backspace', 'delete', 'insert', 'home', 'end',
+    'page_up', 'page_down', 'up', 'down', 'left', 'right',
+    'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
+}
+
+
+def _to_pynput_str(hotkey: str) -> str:
+    """Convert 'ctrl+shift+b' to '<ctrl>+<shift>+b' for pynput."""
+    parts = []
+    for k in hotkey.lower().split('+'):
+        k = k.strip()
+        parts.append(f'<{k}>' if (k in _PYNPUT_WRAP or len(k) > 1) else k)
+    return '+'.join(parts)
+
+
+class _HotkeyTrigger(QObject):
+    """Thread-safe bridge: emit triggered from any thread into the Qt main loop."""
+    triggered = pyqtSignal()
 
 
 class QuickLaunchBar(QWidget):
@@ -47,6 +70,9 @@ class QuickLaunchBar(QWidget):
         self.services = services
         self._icon_path = icon_path
         self._drag_pos: QPoint | None = None
+        self._hotkey_handle = None
+        self._trigger = _HotkeyTrigger()
+        self._trigger.triggered.connect(self.toggle, Qt.ConnectionType.QueuedConnection)
 
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
         self.setObjectName("QuickLaunchBar")
@@ -202,3 +228,45 @@ class QuickLaunchBar(QWidget):
             self._drag_pos = None
             self._save_position()
         super().mouseReleaseEvent(event)
+
+    # ------------------------------------------------------------------
+    # Global hotkey
+    # ------------------------------------------------------------------
+
+    def register_hotkey(self, hotkey: str) -> bool:
+        """Register a global hotkey that toggles the bar visibility.
+
+        Uses pynput's GlobalHotKeys (no root required on X11/Linux).
+        Returns ``True`` on success; degrades gracefully on Wayland or
+        when pynput is unavailable.
+        """
+        self.unregister_hotkey()
+        if not hotkey:
+            return False
+        try:
+            from pynput import keyboard as _kb
+            pynput_key = _to_pynput_str(hotkey)
+            self._hotkey_handle = _kb.GlobalHotKeys(
+                {pynput_key: self._trigger.triggered.emit}
+            )
+            self._hotkey_handle.start()
+            logger.info("Quick-Launch Bar hotkey registered: %s (%s)", hotkey, pynput_key)
+            return True
+        except ImportError:
+            logger.warning("pynput not available — bar hotkey disabled")
+            return False
+        except Exception as exc:
+            logger.warning("Failed to register bar hotkey '%s': %s", hotkey, exc)
+            return False
+
+    def unregister_hotkey(self) -> None:
+        """Unregister the current bar hotkey, if any."""
+        if self._hotkey_handle is None:
+            return
+        try:
+            self._hotkey_handle.stop()
+            logger.debug("Quick-Launch Bar hotkey unregistered")
+        except Exception as exc:
+            logger.debug("Error unregistering bar hotkey: %s", exc)
+        finally:
+            self._hotkey_handle = None

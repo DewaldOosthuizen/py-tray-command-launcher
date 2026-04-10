@@ -24,4 +24,3 @@ class AppServices:
     reload_history_commands: Callable
     reload_favorites_commands: Callable
     resolve_icon_path: Callable
-    resolve_command_reference: Callable

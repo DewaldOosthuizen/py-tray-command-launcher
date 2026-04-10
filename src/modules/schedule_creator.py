@@ -1,5 +1,6 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import os
 import sys
 import subprocess
@@ -18,6 +19,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QTime
 from core.config_manager import config_manager, ConfigurationError
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduleCreator:
@@ -173,7 +176,6 @@ class ScheduleCreator:
             return False
 
     def _create_windows_task(self, command_info, hour, minute, selected_days):
-        """Create a Windows scheduled task."""
         task_name = f"PyTrayLauncher_{command_info['label'].replace(' ', '_')}"
         command = command_info['command']
 
@@ -205,6 +207,10 @@ class ScheduleCreator:
 
         try:
             result = subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
+            logger.info(
+                "Windows scheduled task '%s' created for command: %s at %s on %s",
+                task_name, command, time_string, days_string,
+            )
             QMessageBox.information(
                 None,
                 "Success",
@@ -215,6 +221,9 @@ class ScheduleCreator:
             )
             return True
         except subprocess.CalledProcessError as e:
+            logger.error(
+                "Failed to create Windows scheduled task '%s': %s", task_name, e.stderr
+            )
             QMessageBox.critical(
                 None,
                 "Error",
@@ -243,6 +252,7 @@ class ScheduleCreator:
 
         try:
             # Read current user crontab; an exit code of 1 means "no crontab for user" which is OK
+            logger.debug("Reading current user crontab")
             result = subprocess.run(
                 ["crontab", "-l"],
                 capture_output=True,
@@ -252,6 +262,7 @@ class ScheduleCreator:
             if result.returncode > 1:
                 raise RuntimeError(result.stderr.strip() or "crontab -l failed")
             current_crontab = result.stdout if result.returncode == 0 else ""
+            logger.debug("Current crontab read (%d lines)", current_crontab.count("\n"))
 
             comment = f"# py-tray-command-launcher: {command_info['label']}"
             new_crontab = current_crontab.rstrip("\n") + "\n" + comment + "\n" + cron_entry + "\n"
@@ -268,6 +279,10 @@ class ScheduleCreator:
                 )
                 if install.returncode != 0:
                     raise RuntimeError(install.stderr.strip() or "crontab install failed")
+                logger.info(
+                    "Cron job installed for '%s': %s",
+                    command_info['label'], cron_entry,
+                )
             finally:
                 os.unlink(temp_file)
 
@@ -282,6 +297,10 @@ class ScheduleCreator:
             return True
 
         except Exception as e:
+            logger.error(
+                "Failed to create cron job for '%s': %s",
+                command_info.get('label', '?'), str(e),
+            )
             QMessageBox.critical(
                 None,
                 "Error",

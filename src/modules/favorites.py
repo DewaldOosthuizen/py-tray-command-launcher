@@ -1,5 +1,6 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import os
 import json
 from PyQt6.QtWidgets import QMenu, QMessageBox, QInputDialog
@@ -7,6 +8,8 @@ from PyQt6.QtGui import QIcon, QCursor, QAction
 from PyQt6.QtCore import Qt
 
 from core.config_manager import config_manager
+
+logger = logging.getLogger(__name__)
 
 
 class Favorites:
@@ -19,7 +22,7 @@ class Favorites:
     def add_to_favorites(self):
         """Add a command to favorites by reference."""
         # Get all available commands
-        all_commands = self.tray_app.get_all_commands()
+        all_commands = self.services.get_all_commands()
 
         if not all_commands:
             QMessageBox.warning(
@@ -67,6 +70,7 @@ class Favorites:
                 success = config_manager.add_to_favorites(command_path, label)
 
                 if success:
+                    logger.info("Added '%s' to favorites (ref: %s)", label, command_path)
                     QMessageBox.information(
                         None,
                         "Added to Favorites",
@@ -92,6 +96,7 @@ class Favorites:
         success = config_manager.add_to_favorites(command_path, label)
 
         if success:
+            logger.info("Added '%s' to favorites directly (ref: %s)", label, command_path)
             QMessageBox.information(
                 None, "Added to Favorites", f"'{label}' has been added to Favorites."
             )
@@ -102,6 +107,7 @@ class Favorites:
     def remove_from_favorites(self, label):
         """Remove a command from favorites."""
         if config_manager.remove_from_favorites(label):
+            logger.info("Removed '%s' from favorites", label)
             QMessageBox.information(
                 None,
                 "Removed from Favorites",
