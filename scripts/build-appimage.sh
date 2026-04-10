@@ -47,6 +47,10 @@ cp packaging/py-tray-command-launcher.desktop AppDir/
 cp resources/icons/icon.png AppDir/py-tray-command-launcher.png
 cp resources/icons/icon.png AppDir/usr/share/pixmaps/py-tray-command-launcher.png
 
+# Copy QSS theme files so ThemeManager can locate them at runtime
+mkdir -p AppDir/usr/bin/resources/themes
+cp -r resources/themes/. AppDir/usr/bin/resources/themes/
+
 # Create AppRun script
 cat > AppDir/AppRun << 'EOF'
 #!/bin/bash

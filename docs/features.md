@@ -142,7 +142,7 @@ Only one instance of the application can run at a time.
 
 - On launch, the app checks for an existing instance using a shared memory key.
 - If another instance is detected and its PID is still alive, a dialog informs the user and the new instance exits.
-- If a stale lock is detected (the recorded PID is no longer running), the lock is cleared and the new instance starts normally.
+- If a stale lock is detected (the recorded PID is no longer running), the user may be prompted to confirm **Force Unlock** before the lock is cleared and the new instance can start. You can also use `--force-unlock` to clear the stale lock.
 
 ---
 

@@ -23,9 +23,9 @@ from core.config_manager import config_manager, ConfigurationError
 class ScheduleCreator:
     """Handles the creation of scheduled tasks/cron jobs for commands."""
 
-    def __init__(self, app):
-        """Initialize with reference to the main app."""
-        self.app = app
+    def __init__(self, services):
+        """Initialize with an AppServices instance."""
+        self.services = services
 
     def show_dialog(self):
         """Show a dialog to create a scheduled task."""
@@ -41,7 +41,7 @@ class ScheduleCreator:
 
         # Populate with all available commands
         try:
-            all_commands = self.app.get_all_commands()
+            all_commands = self.services.get_all_commands()
             self.command_data = {}
             for cmd_info in all_commands:
                 display_text = f"{cmd_info['group']} → {cmd_info['label']}"
@@ -97,6 +97,23 @@ class ScheduleCreator:
         select_layout.addWidget(select_all_btn)
         select_layout.addWidget(select_none_btn)
         layout.addLayout(select_layout)
+
+        # Human-readable preview label
+        preview_label = QLabel("")
+        preview_label.setObjectName("SchedulePreview")
+        layout.addWidget(preview_label)
+
+        def _update_preview():
+            t = time_edit.time()
+            days = [d for d, cb in days_checkboxes.items() if cb.isChecked()]
+            if days:
+                preview_label.setText(ScheduleCreator._human_cron(t.minute(), t.hour(), days))
+            else:
+                preview_label.setText("Select at least one day")
+
+        time_edit.timeChanged.connect(lambda _: _update_preview())
+        for cb in days_checkboxes.values():
+            cb.stateChanged.connect(lambda _: _update_preview())
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -206,7 +223,7 @@ class ScheduleCreator:
             return False
 
     def _create_linux_cron(self, command_info, hour, minute, selected_days):
-        """Create a Linux cron job in the user's crontab."""
+        """Create a Linux cron job in the current user's crontab (never uses pkexec/sudo)."""
         command = command_info['command']
 
         # Convert days to cron format (0=Sunday, 1=Monday, etc.)
@@ -217,94 +234,78 @@ class ScheduleCreator:
             "Wednesday": "3",
             "Thursday": "4",
             "Friday": "5",
-            "Saturday": "6"
+            "Saturday": "6",
         }
 
         days_string = ",".join([cron_days[day] for day in selected_days])
-
-        # Create cron entry
         cron_entry = f"{minute} {hour} * * {days_string} {command}"
+        human_desc = self._human_cron(minute, hour, selected_days)
 
-        # Create a temporary file with the new cron entry
         try:
-            # Get current user crontab first, then try root if needed
-            try:
-                result = subprocess.run(
-                    ["crontab", "-l"],
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
-                current_crontab = result.stdout
-                crontab_command = ["crontab"]
-                crontab_type = "user"
-            except subprocess.CalledProcessError:
-                # Try root crontab as fallback
-                try:
-                    result = subprocess.run(
-                        ["pkexec", "crontab", "-l"],
-                        capture_output=True,
-                        text=True,
-                        check=True,
-                    )
-                    current_crontab = result.stdout
-                    crontab_command = ["pkexec", "crontab"]
-                    crontab_type = "root"
-                except subprocess.CalledProcessError:
-                    # No existing crontab at all
-                    current_crontab = ""
-                    crontab_command = ["crontab"]  # Default to user crontab
-                    crontab_type = "user"
+            # Read current user crontab; an exit code of 1 means "no crontab for user" which is OK
+            result = subprocess.run(
+                ["crontab", "-l"],
+                capture_output=True,
+                text=True,
+            )
+            # exit code 1 with "no crontab" message is acceptable; exit code > 1 is a real error
+            if result.returncode > 1:
+                raise RuntimeError(result.stderr.strip() or "crontab -l failed")
+            current_crontab = result.stdout if result.returncode == 0 else ""
 
-            # Add our entry with a comment
             comment = f"# py-tray-command-launcher: {command_info['label']}"
-            new_crontab = current_crontab.rstrip() + "\n" + comment + "\n" + cron_entry + "\n"
+            new_crontab = current_crontab.rstrip("\n") + "\n" + comment + "\n" + cron_entry + "\n"
 
-            # Write to temporary file
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.cron') as f:
+            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".cron") as f:
                 f.write(new_crontab)
                 temp_file = f.name
 
-            # Install the new crontab
-            result = subprocess.run(
-                ["pkexec", "crontab", temp_file],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-
-            # Clean up temp file
-            os.unlink(temp_file)
+            try:
+                install = subprocess.run(
+                    ["crontab", temp_file],
+                    capture_output=True,
+                    text=True,
+                )
+                if install.returncode != 0:
+                    raise RuntimeError(install.stderr.strip() or "crontab install failed")
+            finally:
+                os.unlink(temp_file)
 
             QMessageBox.information(
                 None,
-                "Success",
-                f"Cron job created successfully in {crontab_type} crontab!\n\n"
-                f"Command: {command}\n"
-                f"Time: {hour:02d}:{minute:02d}\n"
-                f"Days: {', '.join(selected_days)}\n\n"
-                f"Cron entry: {cron_entry}"
+                "Schedule Created",
+                f"Cron job created in your user crontab:\n\n"
+                f"Command : {command}\n"
+                f"Schedule: {human_desc}\n"
+                f"Cron    : {cron_entry}",
             )
             return True
 
-        except subprocess.CalledProcessError as e:
-            error_msg = f"Failed to create cron job:\n{e.stderr}\n\n"
-            if crontab_type == "root":
-                error_msg += "Note: This operation requires sudo privileges."
-            else:
-                error_msg += "Note: Make sure cron service is installed and running."
-
+        except Exception as e:
             QMessageBox.critical(
                 None,
                 "Error",
-                error_msg
+                f"Failed to create cron job:\n{e}\n\n"
+                "Make sure the cron service is installed and running.",
             )
             return False
-        except Exception as e:
-            # Clean up temp file if it exists
-            if 'temp_file' in locals():
-                try:
-                    os.unlink(temp_file)
-                except:
-                    pass
-            raise e
+
+    @staticmethod
+    def _human_cron(minute: int, hour: int, days: list) -> str:
+        """Return a human-readable schedule description."""
+        day_map = {
+            "Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed",
+            "Thursday": "Thu", "Friday": "Fri", "Saturday": "Sat", "Sunday": "Sun",
+        }
+        weekdays = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}
+        weekend = {"Saturday", "Sunday"}
+        day_set = set(days)
+        if day_set == weekdays:
+            day_str = "weekdays"
+        elif day_set == weekend:
+            day_str = "weekends"
+        elif day_set == weekdays | weekend:
+            day_str = "every day"
+        else:
+            day_str = ", ".join(day_map.get(d, d) for d in days)
+        return f"Every {day_str} at {hour:02d}:{minute:02d}"

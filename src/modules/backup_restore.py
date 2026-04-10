@@ -11,9 +11,9 @@ from core.config_manager import config_manager
 class BackupRestore:
     """Handles backup and restore operations for commands."""
 
-    def __init__(self, tray_app):
-        """Initialize with a reference to the TrayApp."""
-        self.tray_app = tray_app
+    def __init__(self, services):
+        """Initialize with an AppServices instance."""
+        self.services = services
 
     def backup_commands(self):
         """Create a backup of the current commands."""
@@ -67,7 +67,7 @@ class BackupRestore:
                         "Restore Successful",
                         "Commands have been restored from backup.",
                     )
-                    self.tray_app.reload_commands(rebuild_menu=True)
+                    self.services.reload_commands(rebuild_menu=True)
                 else:
                     QMessageBox.warning(
                         None,

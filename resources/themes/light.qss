@@ -1,0 +1,373 @@
+/* ==========================================================================
+   py-tray-command-launcher — Light Theme
+   ========================================================================== */
+
+/* --- Global / Application -------------------------------------------- */
+QWidget {
+    background-color: #eff1f5;
+    color: #4c4f69;
+    font-family: "Segoe UI", "SF Pro Display", "Inter", sans-serif;
+    font-size: 13px;
+}
+
+QMainWindow, QDialog {
+    background-color: #eff1f5;
+}
+
+/* --- Menus ------------------------------------------------------------ */
+QMenu {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    padding: 4px 0;
+}
+
+QMenu::item {
+    padding: 6px 24px 6px 12px;
+    border-radius: 4px;
+    margin: 1px 4px;
+}
+
+QMenu::item:selected {
+    background-color: #ccd0da;
+    color: #8839ef;
+}
+
+QMenu::item:disabled {
+    color: #9ca0b0;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #9ca0b0;
+    margin: 4px 8px;
+}
+
+QMenu::indicator {
+    width: 16px;
+    height: 16px;
+}
+
+/* --- Push Buttons ---------------------------------------------------- */
+QPushButton {
+    background-color: #ccd0da;
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    border-radius: 6px;
+    padding: 6px 16px;
+    min-height: 28px;
+}
+
+QPushButton:hover {
+    background-color: #bcc0cc;
+    border-color: #8839ef;
+    color: #8839ef;
+}
+
+QPushButton:pressed {
+    background-color: #acb0be;
+}
+
+QPushButton:default {
+    border-color: #8839ef;
+    color: #8839ef;
+}
+
+QPushButton:disabled {
+    background-color: #eff1f5;
+    color: #9ca0b0;
+    border-color: #ccd0da;
+}
+
+/* --- Tool Buttons ---------------------------------------------------- */
+QToolButton {
+    background-color: #ccd0da;
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    border-radius: 5px;
+    padding: 4px 8px;
+}
+
+QToolButton:hover {
+    background-color: #bcc0cc;
+    color: #8839ef;
+}
+
+QToolButton:pressed {
+    background-color: #acb0be;
+}
+
+QToolButton:checked {
+    background-color: #bcc0cc;
+    border-color: #8839ef;
+    color: #8839ef;
+}
+
+/* --- Line Edits ------------------------------------------------------ */
+QLineEdit {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    border-radius: 6px;
+    padding: 5px 8px;
+    selection-background-color: #ccd0da;
+    selection-color: #4c4f69;
+}
+
+QLineEdit:focus {
+    border-color: #8839ef;
+}
+
+QLineEdit:disabled {
+    background-color: #eff1f5;
+    color: #9ca0b0;
+    border-color: #ccd0da;
+}
+
+/* --- Text Edit ------------------------------------------------------- */
+QTextEdit, QPlainTextEdit {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    border-radius: 6px;
+    padding: 6px;
+    selection-background-color: #ccd0da;
+    selection-color: #4c4f69;
+}
+
+QTextEdit:focus, QPlainTextEdit:focus {
+    border-color: #8839ef;
+}
+
+/* --- Combo Box ------------------------------------------------------- */
+QComboBox {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    border-radius: 6px;
+    padding: 5px 8px;
+    min-height: 28px;
+}
+
+QComboBox:hover {
+    border-color: #8839ef;
+}
+
+QComboBox:focus {
+    border-color: #8839ef;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    selection-background-color: #ccd0da;
+    selection-color: #8839ef;
+    outline: none;
+}
+
+/* --- List / Tree / Table Widgets ------------------------------------ */
+QListWidget, QTreeWidget, QTableWidget {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    border-radius: 6px;
+    alternate-background-color: #eff1f5;
+    gridline-color: #ccd0da;
+    outline: none;
+}
+
+QListWidget::item, QTreeWidget::item, QTableWidget::item {
+    padding: 4px 8px;
+    border-radius: 3px;
+}
+
+QListWidget::item:selected, QTreeWidget::item:selected, QTableWidget::item:selected {
+    background-color: #ccd0da;
+    color: #8839ef;
+}
+
+QListWidget::item:hover, QTreeWidget::item:hover, QTableWidget::item:hover {
+    background-color: #d4d8e2;
+}
+
+QHeaderView::section {
+    background-color: #e6e9ef;
+    color: #6c6f85;
+    border: none;
+    border-bottom: 1px solid #9ca0b0;
+    padding: 6px 8px;
+    font-weight: bold;
+}
+
+/* --- Scroll Bar ------------------------------------------------------ */
+QScrollBar:vertical {
+    background-color: #eff1f5;
+    width: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #9ca0b0;
+    border-radius: 5px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #6c6f85;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background-color: #eff1f5;
+    height: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #9ca0b0;
+    border-radius: 5px;
+    min-width: 30px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #6c6f85;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+
+/* --- Tab Widget ------------------------------------------------------ */
+QTabWidget::pane {
+    border: 1px solid #9ca0b0;
+    border-radius: 0 6px 6px 6px;
+    background-color: #e6e9ef;
+}
+
+QTabBar::tab {
+    background-color: #eff1f5;
+    color: #6c6f85;
+    border: 1px solid #9ca0b0;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    padding: 6px 14px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: #e6e9ef;
+    color: #8839ef;
+    border-color: #8839ef;
+}
+
+QTabBar::tab:hover {
+    background-color: #ccd0da;
+    color: #4c4f69;
+}
+
+/* --- Labels ---------------------------------------------------------- */
+QLabel {
+    color: #4c4f69;
+    background-color: transparent;
+}
+
+QLabel:disabled {
+    color: #9ca0b0;
+}
+
+/* --- Check Boxes ----------------------------------------------------- */
+QCheckBox {
+    color: #4c4f69;
+    spacing: 8px;
+}
+
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #9ca0b0;
+    border-radius: 4px;
+    background-color: #e6e9ef;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #8839ef;
+    border-color: #8839ef;
+}
+
+QCheckBox::indicator:hover {
+    border-color: #8839ef;
+}
+
+/* --- Group Box ------------------------------------------------------- */
+QGroupBox {
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    border-radius: 6px;
+    margin-top: 16px;
+    padding-top: 8px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 6px;
+    color: #8839ef;
+}
+
+/* --- Progress Bar ---------------------------------------------------- */
+QProgressBar {
+    background-color: #e6e9ef;
+    border: 1px solid #9ca0b0;
+    border-radius: 6px;
+    text-align: center;
+    color: #4c4f69;
+    height: 14px;
+}
+
+QProgressBar::chunk {
+    background-color: #8839ef;
+    border-radius: 5px;
+}
+
+/* --- Splitter -------------------------------------------------------- */
+QSplitter::handle {
+    background-color: #9ca0b0;
+}
+
+/* --- Toolbar --------------------------------------------------------- */
+QToolBar {
+    background-color: #e6e9ef;
+    border: none;
+    border-bottom: 1px solid #9ca0b0;
+    spacing: 4px;
+    padding: 4px;
+}
+
+/* --- Status Bar ------------------------------------------------------ */
+QStatusBar {
+    background-color: #e6e9ef;
+    color: #6c6f85;
+    border-top: 1px solid #9ca0b0;
+}
+
+/* --- Spin Box -------------------------------------------------------- */
+QSpinBox, QDoubleSpinBox, QTimeEdit {
+    background-color: #e6e9ef;
+    color: #4c4f69;
+    border: 1px solid #9ca0b0;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+QSpinBox:focus, QDoubleSpinBox:focus, QTimeEdit:focus {
+    border-color: #8839ef;
+}

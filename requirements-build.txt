@@ -2,3 +2,6 @@
 PyInstaller==6.10.0
 setuptools
 wheel
+# Runtime deps also needed at build time for proper bundling
+rapidfuzz
+keyboard

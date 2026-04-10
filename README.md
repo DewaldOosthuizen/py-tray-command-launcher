@@ -28,15 +28,20 @@ A Python system tray application for launching custom commands and scripts from 
 
 - **Hierarchical Command Menu** — Organise commands into categories, each with a custom icon
 - **Command Execution** — Run shell commands with optional output display, confirmation dialogs, and user-input prompts (`{promptInput}`)
-- **Command Search** — Find and execute any command by name across all categories
+- **Fuzzy Command Search** — Find and execute any command by name using `rapidfuzz` scoring; falls back gracefully to substring search
+- **Command Palette** — Spotlight-style popup overlay (default hotkey: `Ctrl+Shift+Space`) for instant command access with live fuzzy filtering
+- **Quick-Launch Bar** — Floating, draggable toolbar populated from a user-defined pinned list; drag to reposition; toggle from the tray menu
+- **Settings UI** — GUI settings dialog for theme, hotkey, history limit, output font, quick-launch bar, and log level — no JSON editing required
+- **Theming** — Dark (Catppuccin Mocha) and Light (Catppuccin Latte) QSS themes; live preview in the Settings dialog; theme applies immediately without restart
+- **Rich Output Window** — Tabbed output window with ANSI colour support, auto-scroll toggle, copy, clear, and configurable font
+- **Run Status Badge** — Tray icon shows a red badge with the count of running processes; dynamically updated
+- **Command Manager** — Full CRUD GUI for commands and groups; reorder, edit, delete — changes take effect immediately without restart
 - **Favorites** — Pin frequently used commands for one-click access
 - **Recent Commands** — Re-run previously executed commands from the history submenu
-- **Command Creator** — Add new commands through a GUI dialog (no JSON editing required)
 - **Backup and Restore** — Timestamped backups of your command set; restore or import/export configurations
 - **File Encryption** — Password-based encryption and decryption of files and folders (PBKDF2 + Fernet/AES)
-- **Command Scheduling** — Schedule commands to run at specific times via the system cron daemon
+- **Command Scheduling** — Schedule commands via user crontab (`crontab -l` / `crontab`); Edit and Delete existing schedules from the viewer
 - **Single-Instance Enforcement** — Only one running instance allowed; stale locks are cleared automatically
-- **JSON Editor** — Open `commands.json` directly from the tray for manual edits
 - **Multi-platform** — Linux (binary, .deb, AppImage) and Windows (.exe)
 
 ---
