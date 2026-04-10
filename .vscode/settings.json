@@ -1,0 +1,14 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "set": true,
+        "mkdir": true,
+        "cp": true,
+        "/^bash scripts/build-appimage\\.sh 2>&1 \\| tail -50$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    },
+    "github.copilot.chat.codeGeneration.instructions": [
+        "When analyzing code structure, callers, callees, dependencies, or complexity, prefer codegraph_* tools over file search. CodeGraph has a pre-built semantic graph that returns structured results instantly."
+    ]
+}

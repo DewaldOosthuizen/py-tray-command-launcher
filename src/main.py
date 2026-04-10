@@ -1,17 +1,28 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
+import atexit
+import getpass
+import logging
+import os
+import signal
+import sys
+
+from core.logging_config import configure_logging
+
+configure_logging()
+logger = logging.getLogger(__name__)
+
 # Attempt to import required modules for the application.
 try:
     # Import QApplication for GUI, TrayApp for tray logic, and SingleInstanceChecker for instance control.
     from PyQt6.QtWidgets import QApplication
     from core.tray_app import TrayApp
+    from core.config_manager import config_manager
     from utils.single_instance import SingleInstanceChecker
 except ImportError as e:
-    # If an import fails, print a helpful error message to stderr.
-    import sys
-    print(
-        f"Missing dependency: {e}. Please run 'pip install -r requirements.txt' and try again.",
-        file=sys.stderr
+    logger.error(
+        "Missing dependency: %s. Please run 'pip install -r requirements.txt' and try again.",
+        e,
     )
     # Try to show a GUI error dialog if possible.
     try:
@@ -28,14 +39,7 @@ except ImportError as e:
     # Exit the program with error status.
     sys.exit(1)
 
-
-import sys
-import atexit
-import signal
-
 if __name__ == "__main__":
-    import os
-    import getpass
     username = getpass.getuser()
     key = f"py-tray-command-launcher-single-instance-{username}"
     pidfile = os.path.expanduser(f"/tmp/py-tray-command-launcher-{username}.pid")
@@ -75,6 +79,9 @@ if __name__ == "__main__":
                 continue
             sys.exit(0)
         break
+
+    configure_logging(config_manager.get_configured_log_level())
+    logger.info("Application startup complete; launching tray application")
 
     # Proceed with normal startup
     tray_app = TrayApp(app, instance_checker)

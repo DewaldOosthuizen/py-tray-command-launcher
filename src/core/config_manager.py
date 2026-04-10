@@ -19,11 +19,6 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
 APP_NAME = "py-tray-command-launcher"
-
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
@@ -77,11 +72,13 @@ class ConfigManager:
         self.win_commands_file = self.config_dir / "win-commands.json"
         self.history_file = self.config_dir / "history.json"
         self.favorites_file = self.config_dir / "favorites.json"
+        self.settings_file = self.config_dir / "settings.json"
 
         # Cache for loaded configurations
         self._commands_cache = None
         self._history_cache = None
         self._favorites_cache = None
+        self._settings_cache = None
         self._is_windows = os.name == "nt"
 
         # Mark as initialized
@@ -113,7 +110,57 @@ class ConfigManager:
             "commands_file": str(self.commands_file),
             "win_commands_file": str(self.win_commands_file),
             "active_commands_file": str(self.get_active_commands_file()),
+            "settings_file": str(self.settings_file),
         }
+
+    def get_settings(self, refresh: bool = False) -> Dict[str, Any]:
+        """Get application settings from settings.json."""
+        if self._settings_cache is None or refresh:
+            try:
+                if self.settings_file.exists():
+                    with open(self.settings_file, "r", encoding="utf-8") as f:
+                        settings = json.load(f)
+                else:
+                    settings = {}
+
+                if not isinstance(settings, dict):
+                    settings = {}
+
+                self._settings_cache = settings
+            except Exception as e:
+                logger.warning("Failed to load settings, using defaults: %s", str(e))
+                self._settings_cache = {}
+
+        return self._settings_cache
+
+    def save_settings(self, settings: Dict[str, Any]) -> None:
+        """Save application settings to settings.json."""
+        try:
+            if not isinstance(settings, dict):
+                raise ConfigurationError("Settings must be a dictionary")
+
+            self.settings_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.settings_file, "w", encoding="utf-8") as f:
+                json.dump(settings, f, indent=4)
+
+            self._settings_cache = settings
+            logger.info("Settings saved successfully to %s", self.settings_file)
+        except Exception as e:
+            error_msg = f"Failed to save settings: {str(e)}"
+            logger.error(error_msg)
+            raise ConfigurationError(error_msg)
+
+    def get_configured_log_level(self) -> Optional[str]:
+        """Return optional configured logging level from settings."""
+        settings = self.get_settings()
+        logging_cfg = settings.get("logging", {})
+        if not isinstance(logging_cfg, dict):
+            return None
+
+        level = logging_cfg.get("level")
+        if isinstance(level, str) and level.strip():
+            return level.strip().upper()
+        return None
 
     def _get_commands_file_for_read(self) -> Path:
         """Resolve which commands file should be used for reading."""

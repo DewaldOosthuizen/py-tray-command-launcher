@@ -7,9 +7,12 @@ This module provides functionality to ensure only one instance of the applicatio
 runs at a time using Qt's QSharedMemory mechanism.
 """
 
+import logging
 import os
 from PyQt6.QtCore import QSharedMemory
 from PyQt6.QtWidgets import QMessageBox
+
+logger = logging.getLogger(__name__)
 
 
 class SingleInstanceChecker:
@@ -128,10 +131,10 @@ class SingleInstanceChecker:
                 pass
         message = f"Another instance of py-tray-command-launcher is already running{pid_info}."
         if is_headless:
-            print(message)
+            logger.warning(message)
             if stale_lock:
-                print("Stale lock detected. Run with --force-unlock to clear the lock.")
-            print("Only one instance can run at a time. Exiting...")
+                logger.warning("Stale lock detected. Run with --force-unlock to clear the lock.")
+            logger.warning("Only one instance can run at a time. Exiting...")
             return True
         
         try:
@@ -159,10 +162,10 @@ class SingleInstanceChecker:
                 result = msg_box.exec()
                 return result == QMessageBox.StandardButton.Ok
         except Exception:
-            print(message)
+            logger.warning(message)
             if stale_lock:
-                print("Stale lock detected. Run with --force-unlock to clear the lock.")
-            print("Only one instance can run at a time. Exiting...")
+                logger.warning("Stale lock detected. Run with --force-unlock to clear the lock.")
+            logger.warning("Only one instance can run at a time. Exiting...")
             return True
     
     def cleanup(self):
