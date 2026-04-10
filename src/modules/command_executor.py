@@ -1,8 +1,11 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import os
 import subprocess
 from PyQt6.QtCore import QProcess
+
+logger = logging.getLogger(__name__)
 
 
 class CommandExecutor:
@@ -13,12 +16,12 @@ class CommandExecutor:
 
     def execute_command(self, command):
         """Execute a shell command."""
-        print(f"Executing shell command: {command}")
+        logger.info("Executing shell command: %s", command)
         subprocess.Popen(command, shell=True)
 
     def execute_command_process(self, app, command):
         """Execute a shell command."""
-        print(f"Executing shell command: {command}")
+        logger.info("Executing shell command process: %s", command)
         process = QProcess(app)
         process.setProgram("bash")
         process.setArguments(["-c", command])

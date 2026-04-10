@@ -29,7 +29,10 @@ echo "Building Linux executable..."
 
 # Create AppDir structure
 echo "Creating AppDir structure..."
-rm -rf AppDir
+if ! rm -rf AppDir 2>/dev/null; then
+    echo "Standard rm failed (root-owned files?), retrying with sudo..."
+    sudo rm -rf AppDir
+fi
 mkdir -p AppDir/usr/bin
 mkdir -p AppDir/usr/share/applications
 mkdir -p AppDir/usr/share/pixmaps

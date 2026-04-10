@@ -1,6 +1,7 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
 from ast import Str
+import logging
 import os
 import subprocess
 import sys
@@ -31,6 +32,8 @@ from modules.favorites import Favorites
 from modules.file_encryptor import FileEncryptor
 from modules.schedule_creator import ScheduleCreator
 from modules.schedule_viewer import ScheduleViewer
+
+logger = logging.getLogger(__name__)
 
 
 class TrayApp:
@@ -114,7 +117,7 @@ class TrayApp:
             return cached_file
 
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, Exception) as e:
-            print(f"Failed to download icon from {url}: {str(e)}")
+            logger.warning("Failed to download icon from %s: %s", url, str(e))
             return None
 
     def _resolve_icon_path(self, icon_path):
@@ -151,7 +154,7 @@ class TrayApp:
                         f.write(base64.b64decode(b64_data))
                 return cached_file
             except Exception as e:
-                print(f"Failed to decode base64 icon: {str(e)}")
+                logger.warning("Failed to decode base64 icon: %s", str(e))
                 return self.icon_file
 
         # Check if it's a URL (starts with http or https)
@@ -202,8 +205,8 @@ class TrayApp:
         if not tray_icon_path:
             tray_icon_path = os.path.join(self.base_dir, "resources", "icons", "icon.png")
         self.icon_file = tray_icon_path
-        print(f"Base Directory: {self.base_dir}")
-        print(f"Icon file: {self.icon_file}")
+        logger.info("Base directory resolved to %s", self.base_dir)
+        logger.info("Tray icon path resolved to %s", self.icon_file)
         
         self.app.aboutToQuit.connect(self.cleanup)
         # Keep the app running even if all windows are closed
@@ -409,14 +412,14 @@ class TrayApp:
                 ref_path = item["ref"]
                 path_parts = ref_path.split(".")
                 if len(path_parts) < 2:
-                    print(f"Invalid reference path: {ref_path}")
+                    logger.warning("Invalid reference path: %s", ref_path)
                     return item
 
                 ref_group = path_parts[0]
                 commands = self.command_menu
 
                 if ref_group not in commands:
-                    print(f"Referenced group not found: {ref_group}")
+                    logger.warning("Referenced group not found: %s", ref_group)
                     return item
 
                 if len(path_parts) == 2:
@@ -428,7 +431,7 @@ class TrayApp:
                     current = commands[ref_group]
                     for part in path_parts[1:-1]:
                         if part not in current:
-                            print(f"Referenced path part not found: {part}")
+                            logger.warning("Referenced path part not found: %s", part)
                             return item
                         current = current[part]
                     ref_command = path_parts[-1]
@@ -438,10 +441,10 @@ class TrayApp:
                 if isinstance(resolved, dict) and "command" in resolved:
                     return resolved
                 else:
-                    print(f"Referenced command is invalid: {ref_path}")
+                    logger.warning("Referenced command is invalid: %s", ref_path)
                     return item
             except Exception as e:
-                print(f"Error resolving reference: {str(e)}")
+                logger.exception("Error resolving reference: %s", str(e))
                 return item
 
         return item
@@ -656,10 +659,10 @@ class TrayApp:
         """Reload the commands from the configuration file."""
         try:
             command_paths = config_manager.get_command_paths()
-            print(
-                "Reloading commands from "
-                f"{command_paths['active_commands_file']} "
-                f"(config dir: {command_paths['config_dir']})"
+            logger.info(
+                "Reloading commands from %s (config dir: %s)",
+                command_paths["active_commands_file"],
+                command_paths["config_dir"],
             )
             self.command_menu = config_manager.get_commands(refresh=True)
 
@@ -693,7 +696,7 @@ class TrayApp:
 
     def cleanup(self):
         """Perform any cleanup before quitting."""
-        print("Cleaning up before exit...")
+        logger.info("Cleaning up before exit")
         for window in self.output_windows:
             window.close()
         # Always clear single instance lock and PID file

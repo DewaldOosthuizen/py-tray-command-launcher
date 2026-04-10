@@ -27,7 +27,10 @@ pip install -r requirements-build.txt
 
 # Clean previous builds
 echo "Cleaning previous builds..."
-rm -rf build dist
+if ! rm -rf build dist 2>/dev/null; then
+    echo "Standard rm failed (root-owned files?), retrying with sudo..."
+    sudo rm -rf build dist
+fi
 
 # Build executable
 echo "Building executable with PyInstaller..."

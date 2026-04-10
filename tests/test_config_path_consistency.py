@@ -186,6 +186,13 @@ class ConfigPathConsistencyTests(unittest.TestCase):
             on_disk = json.load(f)
         self.assertIn("Imported", on_disk)
 
+    def test_reads_configured_log_level_from_settings(self):
+        manager = self._new_manager(self.tmp_path / "base")
+
+        manager.save_settings({"logging": {"level": "warning"}})
+
+        self.assertEqual(manager.get_configured_log_level(), "WARNING")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,10 +1,13 @@
 
 
+import logging
 import os
 import json
 import datetime
 from PyQt6.QtGui import QIcon, QAction
 from core.config_manager import config_manager
+
+logger = logging.getLogger(__name__)
 
 
 class CommandHistory:
@@ -32,7 +35,7 @@ class CommandHistory:
             with open(history_file, "w", encoding="utf-8") as f:
                 json.dump(self.history, f, indent=4)
         except Exception as e:
-            print(f"Failed to save command history: {e}")
+            logger.error("Failed to save command history: %s", str(e))
 
     def add_to_history(self, title, command, confirm, show_output, prompt):
         """Add a command to the history."""

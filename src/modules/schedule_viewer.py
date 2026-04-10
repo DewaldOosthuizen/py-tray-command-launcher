@@ -1,5 +1,6 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import os
 import sys
 import subprocess
@@ -21,6 +22,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduleViewer:
@@ -275,7 +279,11 @@ class ScheduleViewer:
                 continue
             except Exception as e:
                 # For other errors, we might want to show a warning but not fail completely
-                print(f"Warning: Error reading {source_name.lower()} crontab: {str(e)}")
+                logger.warning(
+                    "Error reading %s crontab: %s",
+                    source_name.lower(),
+                    str(e),
+                )
                 continue
 
         return schedules
