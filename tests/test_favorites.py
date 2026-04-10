@@ -112,7 +112,7 @@ class TestFavorites(unittest.TestCase):
             "Terminal": {"command": "gnome-terminal"},
             "Editor": {"command": "gedit"},
         }
-        self.mock_services.resolve_command_reference.side_effect = lambda g, l, item: item
+        self.mock_services.resolve_command_reference.side_effect = lambda group, label, item: item
         self.mock_services.resolve_icon_path.return_value = None
         self.mock_config_manager.get_base_dir.return_value = str(PROJECT_ROOT)
 
