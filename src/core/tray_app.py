@@ -12,6 +12,7 @@ import urllib.request
 import urllib.error
 import hashlib
 import tempfile
+import weakref
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QMessageBox, QInputDialog
 from PyQt6.QtGui import QIcon, QAction, QColor, QFont, QPainter, QPixmap
@@ -20,6 +21,7 @@ from PyQt6.QtGui import QIcon, QAction, QColor, QFont, QPainter, QPixmap
 from core.config_manager import config_manager, ConfigurationError
 from core.services import AppServices
 from core.theme_manager import ThemeManager
+from core.menu_builder import MenuBuilder
 from utils.dialogs import confirm_execute, show_error_and_raise, confirm_exit
 from ui.output_window import RichOutputWindow
 from ui.settings_dialog import SettingsDialog
@@ -45,47 +47,81 @@ logger = logging.getLogger(__name__)
 class TrayApp:
     """Main tray application class that manages the system tray icon and menu."""
 
+    # ------------------------------------------------------------------ #
+    # Icon resolution helpers                                              #
+    # ------------------------------------------------------------------ #
+
+    def _icon_resource_roots(self) -> list:
+        """Return candidate root directories for icon lookups, most-preferred first.
+
+        Covers all packaging modes: PyInstaller bundle, AppImage / system
+        install (executable-relative), and direct source run (base_dir).
+        """
+        roots = []
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            roots.append(meipass)
+        try:
+            exe_dir = os.path.dirname(sys.executable)
+            if exe_dir:
+                roots.append(exe_dir)
+        except Exception:
+            pass
+        if getattr(self, "base_dir", None):
+            roots.append(self.base_dir)
+        return roots
+
     def _resolve_tray_icon(self) -> str:
         """Resolve the tray icon path robustly across source, PyInstaller, and AppImage.
 
-        Preference order:
-        - PyInstaller bundle (sys._MEIPASS)/resources/icons/icon.png
-        - Executable dir/resources/icons/icon.png (AppImage or system install)
-        - Base dir/resources/icons/icon.png (source run)
-        - AppImage top-level icon: ../../py-tray-command-launcher.png (from exe dir)
-        - AppImage pixmap: ../share/pixmaps/py-tray-command-launcher.png (from exe dir)
         Returns the first existing path; otherwise returns an empty string.
         """
         candidates = []
+        for root in self._icon_resource_roots():
+            candidates.append(os.path.join(root, "resources", "icons", "icon.png"))
+            candidates.append(os.path.join(root, "resources", "icon.png"))
+
+        # AppImage-specific placements (relative to exe dir)
         try:
             exe_dir = os.path.dirname(sys.executable)
+            if exe_dir:
+                candidates.append(
+                    os.path.normpath(
+                        os.path.join(exe_dir, "..", "..", "py-tray-command-launcher.png")
+                    )
+                )
+                candidates.append(
+                    os.path.normpath(
+                        os.path.join(
+                            exe_dir, "..", "share", "pixmaps",
+                            "py-tray-command-launcher.png",
+                        )
+                    )
+                )
         except Exception:
-            exe_dir = ''
-
-        # PyInstaller bundle
-        meipass = getattr(sys, '_MEIPASS', None)
-        if meipass:
-            candidates.append(os.path.join(meipass, 'resources', 'icons', 'icon.png'))
-
-        # Executable-relative (AppImage/system install)
-        if exe_dir:
-            candidates.append(os.path.join(exe_dir, 'resources', 'icons', 'icon.png'))
-            candidates.append(os.path.join(exe_dir, 'resources', 'icon.png'))
-            # AppImage common placements
-            candidates.append(os.path.normpath(os.path.join(exe_dir, '..', '..', 'py-tray-command-launcher.png')))
-            candidates.append(os.path.normpath(os.path.join(exe_dir, '..', 'share', 'pixmaps', 'py-tray-command-launcher.png')))
-
-        # Source run (project base)
-        candidates.append(os.path.join(self.base_dir, 'resources', 'icons', 'icon.png'))
+            pass
 
         for p in candidates:
             if p and os.path.exists(p):
                 return p
-        return ''
+        return ""
+
+    # Maximum bytes allowed for a downloaded icon (1 MB).
+    _MAX_ICON_DOWNLOAD_BYTES = 1 * 1024 * 1024
+    # Content-Type values accepted for icon downloads.
+    _ALLOWED_ICON_CONTENT_TYPES = frozenset({
+        "image/png", "image/jpeg", "image/gif",
+        "image/bmp", "image/x-icon", "image/vnd.microsoft.icon",
+        "image/svg+xml",
+    })
 
     def _download_icon(self, url):
-        """
-        Download an icon from a URL and cache it locally.
+        """Download an icon from a URL and cache it locally.
+
+        Security measures:
+        - HTTPS-only SSL context with certificate verification.
+        - Response body capped at 1 MB to prevent memory exhaustion.
+        - Content-Type validated against an allow-list before writing to disk.
 
         Args:
             url: The HTTP/HTTPS URL of the icon
@@ -93,6 +129,7 @@ class TrayApp:
         Returns:
             Local path to the downloaded icon, or None if download failed
         """
+        import ssl
         try:
             # Create a cache directory for downloaded icons
             cache_dir = os.path.join(tempfile.gettempdir(), "py-tray-launcher-icons")
@@ -101,24 +138,45 @@ class TrayApp:
             # Generate a filename based on URL hash to avoid conflicts
             url_hash = hashlib.md5(url.encode()).hexdigest()
 
-            # Try to determine file extension from URL
-            extension = ""
-            url_lower = url.lower()
-            if url_lower.endswith((".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico")):
-                extension = url_lower.split(".")[-1]
-            else:
-                extension = "png"  # Default extension
+            # Determine file extension from URL path
+            url_lower = url.lower().split("?")[0]  # Strip query string before ext check
+            extension = "png"
+            for ext in (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg"):
+                if url_lower.endswith(ext):
+                    extension = ext.lstrip(".")
+                    break
 
             cached_file = os.path.join(cache_dir, f"{url_hash}.{extension}")
 
-            # If file already cached and exists, return it
+            # Return cached copy when available
             if os.path.exists(cached_file):
                 return cached_file
 
-            # Download the icon
-            with urllib.request.urlopen(url, timeout=10) as response:
-                with open(cached_file, "wb") as f:
-                    f.write(response.read())
+            # Download with SSL certificate verification and a timeout
+            ctx = ssl.create_default_context()
+            with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
+                # Validate Content-Type before reading body
+                content_type = (
+                    response.headers.get("Content-Type", "").split(";")[0].strip().lower()
+                )
+                if content_type and content_type not in self._ALLOWED_ICON_CONTENT_TYPES:
+                    logger.warning(
+                        "Rejecting icon download: unexpected Content-Type %r from %s",
+                        content_type, url,
+                    )
+                    return None
+
+                # Read with a hard cap to prevent memory exhaustion
+                data = response.read(self._MAX_ICON_DOWNLOAD_BYTES + 1)
+                if len(data) > self._MAX_ICON_DOWNLOAD_BYTES:
+                    logger.warning(
+                        "Rejecting icon download: response exceeds %d bytes from %s",
+                        self._MAX_ICON_DOWNLOAD_BYTES, url,
+                    )
+                    return None
+
+            with open(cached_file, "wb") as f:
+                f.write(data)
 
             return cached_file
 
@@ -151,6 +209,18 @@ class TrayApp:
                     return self.icon_file
                 ext = match.group("ext")
                 b64_data = match.group("data")
+
+                # Guard against oversized payloads before decoding.
+                # Base64 expands ~4/3; 2 MB decoded ≈ 2.7 MB base64 chars.
+                _MAX_B64_DECODED_BYTES = 2 * 1024 * 1024
+                estimated_decoded = len(b64_data) * 3 // 4
+                if estimated_decoded > _MAX_B64_DECODED_BYTES:
+                    logger.warning(
+                        "Rejecting base64 icon: estimated decoded size %d bytes exceeds limit",
+                        estimated_decoded,
+                    )
+                    return self.icon_file
+
                 cache_dir = os.path.join(tempfile.gettempdir(), "py-tray-launcher-icons")
                 os.makedirs(cache_dir, exist_ok=True)
                 url_hash = hashlib.md5(icon_path.encode()).hexdigest()
@@ -177,20 +247,11 @@ class TrayApp:
         if os.path.isabs(expanded_path) and os.path.exists(expanded_path):
             return expanded_path
 
-        # Try to resolve relative to PyInstaller bundle (sys._MEIPASS)
-        import sys
+        # Try to resolve relative path against each resource root
         candidate_paths = []
-        meipass = getattr(sys, '_MEIPASS', None)
-        if meipass:
-            candidate_paths.append(os.path.join(meipass, "resources", "icons", expanded_path))
-            candidate_paths.append(os.path.join(meipass, "resources", expanded_path))
-        # Try to resolve relative to executable (AppImage or system install)
-        exe_dir = os.path.dirname(sys.executable)
-        candidate_paths.append(os.path.join(exe_dir, "resources", "icons", expanded_path))
-        candidate_paths.append(os.path.join(exe_dir, "resources", expanded_path))
-        # Try to resolve relative to base_dir (source run)
-        candidate_paths.append(os.path.join(self.base_dir, "resources", "icons", expanded_path))
-        candidate_paths.append(os.path.join(self.base_dir, "resources", expanded_path))
+        for root in self._icon_resource_roots():
+            candidate_paths.append(os.path.join(root, "resources", "icons", expanded_path))
+            candidate_paths.append(os.path.join(root, "resources", expanded_path))
 
         for path in candidate_paths:
             if os.path.exists(path):
@@ -252,7 +313,6 @@ class TrayApp:
             reload_history_commands=self.reload_history_commands,
             reload_favorites_commands=self.reload_favorites_commands,
             resolve_icon_path=self._resolve_icon_path,
-            resolve_command_reference=self._resolve_command_reference,
         )
 
         self.history_menu = []
@@ -260,6 +320,8 @@ class TrayApp:
         hotkey = settings.get("hotkey", "ctrl+shift+space")
         self.palette.register_hotkey(hotkey)
         self.quick_launch_bar = QuickLaunchBar(self.services, self.icon_file)
+        bar_hotkey = settings.get("quick_launch_bar", {}).get("hotkey", "ctrl+shift+b")
+        self.quick_launch_bar.register_hotkey(bar_hotkey)
         self.history = CommandHistory(self.services)
         self.creator = CommandCreator(self.services)
         self.executor = CommandExecutor(self.services)
@@ -280,290 +342,7 @@ class TrayApp:
     def load_tray_menu(self):
         """Load commands into the tray menu."""
         self.reload_commands()
-
-        # Check if commands is a dictionary
-        if not isinstance(self.command_menu, dict):
-            show_error_and_raise(
-                "Invalid commands configuration. Root element must be a dictionary."
-            )
-
-        # Iterate over the commands and create menu items
-        for group, items in self.command_menu.items():
-            # Check if each group is a dictionary
-            if not isinstance(items, dict):
-                show_error_and_raise(
-                    f"Invalid command group format: {group}. Each group must be a dictionary."
-                )
-
-            # Resolve the icon path correctly
-            icon_path = self._resolve_icon_path(items.get("icon"))
-
-            # Check if the icon file exists, else default to self.icon_file
-            if icon_path != self.icon_file and not os.path.isfile(icon_path):
-                icon_path = self.icon_file
-
-            # Create a submenu for each group
-            submenu = QMenu(group, self.menu)
-            submenu.setIcon(QIcon(icon_path))
-
-            # Recursively add items to the submenu
-            self.add_menu_items(submenu, items, icon_path)
-
-            self.menu.addMenu(submenu)
-
-        # Add favorites menu
-        self.favorites_menu = QMenu("Favorites", self.menu)
-        self.favorites_menu.setIcon(QIcon(self.icon_file))
-        self.favorites.populate_favorites_menu(self.favorites_menu)
-        self.menu.addMenu(self.favorites_menu)
-
-        # Add history menu
-        self.history_menu = QMenu("Recent Commands", self.menu)
-        self.history_menu.setIcon(QIcon(self.icon_file))
-        self.menu.addMenu(self.history_menu)
-        self.reload_history_commands()
-        self.reload_favorites_commands()
-
-        self.menu.addSeparator()
-
-        # Commands group
-        commands_menu = QMenu("Commands", self.menu)
-        commands_menu.setIcon(QIcon(self.icon_file))
-        commands_menu.addAction("Quick Launch (Palette)", self.palette.show_palette)
-        commands_menu.addAction("Search Commands", self.search.show_dialog)
-        commands_menu.addAction("Manage Commands", self._open_command_manager)
-        commands_menu.addAction("Edit commands file", self.open_commands_json)
-        commands_menu.addAction(
-            "Reload Commands", lambda: self.reload_commands(rebuild_menu=True)
-        )
-        commands_menu.addAction("Reload History Commands", self.reload_history_commands)
-        commands_menu.addAction("Add to Favorites", self.favorites.add_to_favorites)
-        self.menu.addMenu(commands_menu)
-
-        # Tools group
-        tools_menu = QMenu("Tools", self.menu)
-        tools_menu.setIcon(QIcon(self.icon_file))
-
-        # Import/Export submenu
-        import_export_menu = QMenu("Import/Export", tools_menu)
-        import_export_menu.setIcon(QIcon(self.icon_file))
-        import_export_menu.addAction(
-            "Import Command Group", self.importExport.import_command_group
-        )
-        import_export_menu.addAction(
-            "Export Command Group", self.importExport.export_command_group
-        )
-        tools_menu.addMenu(import_export_menu)
-
-        # Backup/Restore submenu
-        backup_restore_menu = QMenu("Backup/Restore", tools_menu)
-        backup_restore_menu.setIcon(QIcon(self.icon_file))
-        backup_restore_menu.addAction("Backup Commands", self.backup.backup_commands)
-        backup_restore_menu.addAction("Restore Commands", self.backup.restore_commands)
-        tools_menu.addMenu(backup_restore_menu)
-
-        # Encryption submenu
-        encryption_menu = QMenu("Encrypt/Decrypt", tools_menu)
-        encryption_menu.setIcon(QIcon(self.icon_file))
-        encryption_menu.addAction(
-            "Encrypt File/Folder", self.file_encryptor.encrypt_file_or_folder
-        )
-        encryption_menu.addAction(
-            "Decrypt File/Folder", self.file_encryptor.decrypt_file_or_folder
-        )
-        tools_menu.addMenu(encryption_menu)
-
-        # Add Create Schedule option
-        tools_menu.addAction("Create Schedule", self.schedule_creator.show_dialog)
-        
-        # Add View Schedules option
-        tools_menu.addAction("View Schedules", self.schedule_viewer.show_dialog)
-
-        self.menu.addMenu(tools_menu)
-        self.menu.addAction("Settings", self._open_settings)
-        self.menu.addAction("Quick Launch Bar", self.quick_launch_bar.toggle)
-
-        # Dynamic "Running: N" indicator (non-interactive, hidden when idle)
-        self.menu.addSeparator()
-        self._running_action = QAction("Running: 0", self.menu)
-        self._running_action.setEnabled(False)
-        self._running_action.setVisible(False)
-        self.menu.addAction(self._running_action)
-
-        self.menu.addAction("Restart App", self.restart_app)
-        self.menu.addAction("Exit", self.confirm_exit)
-
-    def add_menu_items(self, menu, items, parent_icon_path, group_name=""):
-        """Recursively add items to the menu."""
-        for label, item in items.items():
-            # Skip the icon entry
-            if label == "icon":
-                continue
-
-            # Handle submenu case (nested dictionaries without command and not a reference)
-            if isinstance(item, dict) and "command" not in item and "ref" not in item:
-                # Create submenu for nested dictionaries
-                # If the item has an "icon" key, use it; otherwise inherit from parent
-                if "icon" in item:
-                    icon_path = self._resolve_icon_path(item.get("icon"))
-                    # If the resolved icon path doesn't exist or resolution failed, fall back to parent
-                    if not icon_path or not os.path.isfile(icon_path):
-                        icon_path = parent_icon_path
-                else:
-                    # No icon specified, inherit from parent
-                    icon_path = parent_icon_path
-
-                submenu = QMenu(label, menu)
-                submenu.setIcon(QIcon(icon_path))
-                new_group = label if not group_name else f"{group_name} → {label}"
-                self.add_menu_items(submenu, item, icon_path, new_group)
-                menu.addMenu(submenu)
-
-            # Handle command case (direct commands or references)
-            elif isinstance(item, dict) and ("command" in item or "ref" in item):
-                # Add command item to menu
-                self._add_command_to_menu(
-                    menu, label, item, parent_icon_path, group_name
-                )
-
-                # # Add "Add to Favorites" as a submenu action for non-favorites
-                # if group_name != "Favorites" and action is not None:
-                #     add_to_fav_action = QAction("Add to Favorites", menu)
-                #     add_to_fav_action.triggered.connect(
-                #         lambda checked=False, cmd_info={"group": group_name, "label": label}:
-                #         self.favorites.add_to_favorites_directly(cmd_info["group"], cmd_info["label"])
-                #     )
-                #     # Insert the "Add to Favorites" action right after the command action
-                #     menu.addAction(add_to_fav_action)
-
-    def _resolve_command_reference(self, group, label, item):
-        """
-        Resolve a command reference to get the actual command data.
-
-        Args:
-            group: The group name (e.g., 'Favorites')
-            label: The command label
-            item: The command item data
-
-        Returns:
-            The resolved command data dictionary
-        """
-        if isinstance(item, dict) and "ref" in item:
-            try:
-                # This is a reference, resolve it
-                ref_path = item["ref"]
-                path_parts = ref_path.split(".")
-                if len(path_parts) < 2:
-                    logger.warning("Invalid reference path: %s", ref_path)
-                    return item
-
-                ref_group = path_parts[0]
-                commands = self.command_menu
-
-                if ref_group not in commands:
-                    logger.warning("Referenced group not found: %s", ref_group)
-                    return item
-
-                if len(path_parts) == 2:
-                    # Direct command in a group
-                    ref_command = path_parts[1]
-                    resolved = commands[ref_group].get(ref_command, {})
-                else:
-                    # Nested command
-                    current = commands[ref_group]
-                    for part in path_parts[1:-1]:
-                        if part not in current:
-                            logger.warning("Referenced path part not found: %s", part)
-                            return item
-                        current = current[part]
-                    ref_command = path_parts[-1]
-                    resolved = current.get(ref_command, {})
-
-                # Validate the resolved command
-                if isinstance(resolved, dict) and "command" in resolved:
-                    return resolved
-                else:
-                    logger.warning("Referenced command is invalid: %s", ref_path)
-                    return item
-            except Exception as e:
-                logger.exception("Error resolving reference: %s", str(e))
-                return item
-
-        return item
-
-    def _add_command_to_menu(self, menu, label, item, parent_icon_path, group_name=""):
-        """
-        Add a command item to the menu.
-
-        Returns:
-            The created QAction object
-        """
-        # Check if this is a reference and resolve it
-        if isinstance(item, dict) and "ref" in item:
-            resolved_item = self._resolve_command_reference(group_name, label, item)
-            if resolved_item != item:
-                # Use the resolved item but keep track of the reference
-                command = resolved_item.get("command", "")
-                # If the resolved item has an icon, use it; otherwise inherit from parent
-                if "icon" in resolved_item:
-                    icon_path = self._resolve_icon_path(resolved_item.get("icon"))
-                    # If the resolved icon path doesn't exist or resolution failed, fall back to parent
-                    if not icon_path or not os.path.isfile(icon_path):
-                        icon_path = parent_icon_path
-                else:
-                    # No icon specified in resolved item, inherit from parent
-                    icon_path = parent_icon_path
-                show_output = resolved_item.get("showOutput", False)
-                confirm = resolved_item.get("confirm", False)
-                prompt = resolved_item.get("prompt", None)
-
-                # Create action with reference indicator
-                action = QAction(QIcon(icon_path), f"{label}", menu)
-
-                # Connect the action to execute command
-                action.triggered.connect(
-                    lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: self.execute(
-                        lbl, cmd, conf, show, prmpt
-                    )
-                )
-
-                # QAction does not support context menus directly; consider adding a "Remove from Favorites" action elsewhere if needed.
-                menu.addAction(action)
-                return action
-
-        # Regular command processing
-        command = item.get("command")
-
-        # Validate required fields
-        if not command:
-            show_error_and_raise(
-                f"Invalid command format in commands.json: {label}. 'command' is required."
-            )
-
-        # If the item has an "icon" key, use it; otherwise inherit from parent
-        if "icon" in item:
-            icon_path = self._resolve_icon_path(item.get("icon"))
-            # If the resolved icon path doesn't exist or resolution failed, fall back to parent
-            if not icon_path or not os.path.isfile(icon_path):
-                icon_path = parent_icon_path
-        else:
-            # No icon specified, inherit from parent
-            icon_path = parent_icon_path
-
-        show_output = item.get("showOutput", False)
-        confirm = item.get("confirm", False)
-        prompt = item.get("prompt", None)
-        action = QAction(QIcon(icon_path), label, menu)
-
-        # Connect the action to execute command
-        action.triggered.connect(
-            lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: self.execute(
-                lbl, cmd, conf, show, prmpt
-            )
-        )
-
-        menu.addAction(action)
-        return action
+        MenuBuilder(self).build(self.menu, self.command_menu)
 
     # Command execution methods
     def execute(self, title, command, confirm, show_output, prompt):
@@ -609,26 +388,37 @@ class TrayApp:
         tab = output_win.open_process_tab(title)
         self.output_windows.append(output_win)
         output_win.destroyed.connect(
-            lambda _: (
-                self.output_windows.remove(output_win)
-                if output_win in self.output_windows
-                else None
-            )
+            lambda _, w=output_win: self._on_output_window_closed(w)
         )
 
-        # Stream stdout/stderr into the tab as it arrives
-        process.readyReadStandardOutput.connect(
-            lambda: output_win.append_output(
-                tab,
-                process.readAllStandardOutput().data().decode(errors="replace"),
-            )
-        )
-        process.readyReadStandardError.connect(
-            lambda: output_win.append_output(
-                tab,
-                process.readAllStandardError().data().decode(errors="replace"),
-            )
-        )
+        # Use weak references so that a long-running process does not prevent
+        # a closed output window from being garbage collected.
+        output_win_ref = weakref.ref(output_win)
+
+        def _on_stdout():
+            win = output_win_ref()
+            if win is not None:
+                try:
+                    win.append_output(
+                        tab,
+                        process.readAllStandardOutput().data().decode(errors="replace"),
+                    )
+                except RuntimeError:
+                    pass  # C++ object already deleted
+
+        def _on_stderr():
+            win = output_win_ref()
+            if win is not None:
+                try:
+                    win.append_output(
+                        tab,
+                        process.readAllStandardError().data().decode(errors="replace"),
+                    )
+                except RuntimeError:
+                    pass
+
+        process.readyReadStandardOutput.connect(_on_stdout)
+        process.readyReadStandardError.connect(_on_stderr)
 
         # Register process and update badge
         self._running_processes[proc_id] = process
@@ -645,6 +435,13 @@ class TrayApp:
         process.finished.connect(_on_finished)
         process.errorOccurred.connect(_on_error)
         process.start()
+
+    def _on_output_window_closed(self, win):
+        """Remove a closed output window from the tracking list."""
+        try:
+            self.output_windows.remove(win)
+        except ValueError:
+            pass
 
     def _update_tray_badge(self):
         """Repaint the tray icon with a badge showing running process count."""
@@ -801,17 +598,31 @@ class TrayApp:
 
     def _open_settings(self):
         """Open the Settings dialog."""
-        dlg = SettingsDialog(self.theme_manager, parent=None, hotkey_callback=self._reregister_hotkey)
+        dlg = SettingsDialog(
+            self.theme_manager,
+            parent=None,
+            hotkey_callback=self._reregister_hotkey,
+            bar_hotkey_callback=self._reregister_bar_hotkey,
+        )
         dlg.exec()
 
     def _reregister_hotkey(self, hotkey: str) -> None:
-        """Unregister the current hotkey and register the new one."""
+        """Unregister the current palette hotkey and register the new one."""
         try:
             self.palette.unregister_hotkey()
             self.palette.register_hotkey(hotkey)
-            logger.info("Hotkey re-registered: %s", hotkey)
+            logger.info("Palette hotkey re-registered: %s", hotkey)
         except Exception as exc:
-            logger.warning("Failed to re-register hotkey '%s': %s", hotkey, exc)
+            logger.warning("Failed to re-register palette hotkey '%s': %s", hotkey, exc)
+
+    def _reregister_bar_hotkey(self, hotkey: str) -> None:
+        """Unregister the current bar hotkey and register the new one."""
+        try:
+            self.quick_launch_bar.unregister_hotkey()
+            self.quick_launch_bar.register_hotkey(hotkey)
+            logger.info("Bar hotkey re-registered: %s", hotkey)
+        except Exception as exc:
+            logger.warning("Failed to re-register bar hotkey '%s': %s", hotkey, exc)
 
     def restart_app(self):
         """Restart the application."""
@@ -830,6 +641,7 @@ class TrayApp:
         for window in self.output_windows:
             window.close()
         self.palette.unregister_hotkey()
+        self.quick_launch_bar.unregister_hotkey()
         self.quick_launch_bar.close()
         # Always clear single instance lock and PID file
         self.instance_checker.cleanup()

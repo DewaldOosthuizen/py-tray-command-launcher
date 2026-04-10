@@ -1,9 +1,12 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import os
 import hashlib
 from pathlib import Path
 from cryptography.fernet import Fernet
+
+logger = logging.getLogger(__name__)
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
@@ -95,23 +98,49 @@ class EncryptionWorker(QThread):
             return False
     
     def _get_all_files(self, path: str, operation: str):
-        """Get all files to process."""
+        """Get all files to process.
+
+        Resolves symlinks and validates that all discovered paths remain within
+        the intended root directory to prevent path-traversal attacks. Symlinks
+        are not followed during directory walks.
+        """
         files = []
-        if os.path.isfile(path):
-            if operation == 'encrypt' or (operation == 'decrypt' and path.endswith(ENC_FILE_SUFFIX)):
-                files.append(path)
+        resolved_root = Path(path).resolve()
+        if resolved_root.is_file():
+            if operation == 'encrypt' or (
+                operation == 'decrypt' and path.endswith(ENC_FILE_SUFFIX)
+            ):
+                files.append(str(resolved_root))
         else:
-            # It's a directory
-            for root, dirs, filenames in os.walk(path):
+            # It's a directory — walk without following symlinks
+            for root, dirs, filenames in os.walk(
+                str(resolved_root), followlinks=False
+            ):
                 for filename in filenames:
                     file_path = os.path.join(root, filename)
-                    if (operation == 'encrypt' and not filename.endswith(ENC_FILE_SUFFIX)) or \
-                       (operation == 'decrypt' and filename.endswith(ENC_FILE_SUFFIX)):
+                    # Reject any path that escapes the intended root
+                    try:
+                        Path(file_path).resolve().relative_to(resolved_root)
+                    except ValueError:
+                        logger.warning(
+                            "Skipping file outside target directory: %s", file_path
+                        )
+                        continue
+                    if (
+                        operation == 'encrypt'
+                        and not filename.endswith(ENC_FILE_SUFFIX)
+                    ) or (
+                        operation == 'decrypt'
+                        and filename.endswith(ENC_FILE_SUFFIX)
+                    ):
                         files.append(file_path)
         return files
     
     def run(self):
         """Run the encryption/decryption operation."""
+        logger.info(
+            "Starting %s operation on: %s", self.operation, self.file_path
+        )
         try:
             # Generate salt
             salt = os.urandom(16)
@@ -183,13 +212,22 @@ class EncryptionWorker(QThread):
             if successful_operations == total_files:
                 operation_name = "encrypted" if self.operation == 'encrypt' else "decrypted"
                 message = f"Successfully {operation_name} {successful_operations} file(s)."
+                logger.info(
+                    "%s completed: %d/%d files processed",
+                    self.operation, successful_operations, total_files,
+                )
                 self.finished_signal.emit(True, message)
             else:
                 operation_name = "encryption" if self.operation == 'encrypt' else "decryption"
                 message = f"Completed with issues: {successful_operations}/{total_files} files processed successfully."
+                logger.warning(
+                    "%s completed with issues: %d/%d files processed",
+                    self.operation, successful_operations, total_files,
+                )
                 self.finished_signal.emit(False, message)
-                
+
         except Exception as e:
+            logger.error("Encryption worker failed: %s", str(e))
             self.finished_signal.emit(False, f"Operation failed: {str(e)}")
 
 
@@ -205,7 +243,9 @@ class PasswordDialog(QDialog):
         self.setWindowTitle(f"Password for {self.operation.title()}")
         self.setModal(True)
         self.resize(400, 200)
-        
+
+        self._password = ""  # Secure storage; cleared on close/reject
+
         layout = QVBoxLayout()
         
         # Password input
@@ -255,22 +295,44 @@ class PasswordDialog(QDialog):
     def validate_and_accept(self):
         """Validate password input and accept dialog."""
         password = self.password_edit.text()
-        
+
         if not password:
             QMessageBox.warning(self, "Error", "Password cannot be empty.")
             return
-        
+
         if self.operation == "encrypt":
             confirm_password = self.confirm_password_edit.text()
             if password != confirm_password:
                 QMessageBox.warning(self, "Error", "Passwords do not match.")
                 return
-        
+
+        # Store before clearing fields so get_password() works after exec() returns
+        self._password = password
         self.accept()
-    
+
     def get_password(self):
         """Get the entered password."""
-        return self.password_edit.text()
+        return self._password
+
+    def _clear_password_fields(self):
+        """Overwrite QLineEdit fields in memory to reduce plaintext lifetime."""
+        self.password_edit.setText("")
+        if hasattr(self, "confirm_password_edit"):
+            self.confirm_password_edit.setText("")
+
+    def accept(self):
+        self._clear_password_fields()
+        super().accept()
+
+    def reject(self):
+        self._password = ""
+        self._clear_password_fields()
+        super().reject()
+
+    def closeEvent(self, event):
+        self._password = ""
+        self._clear_password_fields()
+        super().closeEvent(event)
 
 
 class ProgressDialog(QDialog):

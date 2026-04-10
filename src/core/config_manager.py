@@ -119,7 +119,7 @@ class ConfigManager:
         "hotkey": "ctrl+shift+space",
         "history_limit": 50,
         "output_font": {"family": "monospace", "size": 10},
-        "quick_launch_bar": {"visible": False, "position": [100, 100], "pinned": []},
+        "quick_launch_bar": {"visible": False, "position": [100, 100], "pinned": [], "hotkey": "ctrl+shift+b"},
     }
 
     @staticmethod
@@ -137,6 +137,37 @@ class ConfigManager:
                 result[key] = value
         return result
 
+    def _write_json_atomic(self, file_path: Path, data: Any) -> None:
+        """Write *data* as JSON to *file_path* atomically.
+
+        Writes to a sibling ``.tmp`` file first, then uses :func:`os.replace`
+        so the destination file is never partially written.  On POSIX systems
+        the temp file is created with mode 0o600 to prevent other users from
+        reading sensitive config data.
+
+        Args:
+            file_path: Destination path.
+            data: JSON-serialisable object to write.
+
+        Raises:
+            OSError: If the write or rename fails.
+        """
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = file_path.with_suffix(file_path.suffix + ".tmp")
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+            if os.name != "nt":
+                os.chmod(tmp_path, 0o600)
+            os.replace(tmp_path, file_path)
+        except Exception:
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+            except OSError:
+                pass
+            raise
+
     def get_settings(self, refresh: bool = False) -> Dict[str, Any]:
         """Get application settings from settings.json, deep-merged with defaults."""
         if self._settings_cache is None or refresh:
@@ -144,15 +175,23 @@ class ConfigManager:
                 if self.settings_file.exists():
                     with open(self.settings_file, "r", encoding="utf-8") as f:
                         settings = json.load(f)
+                    if not isinstance(settings, dict):
+                        logger.warning(
+                            "settings.json root is not a dict (got %s); resetting to defaults",
+                            type(settings).__name__,
+                        )
+                        settings = {}
                 else:
-                    settings = {}
-
-                if not isinstance(settings, dict):
                     settings = {}
 
                 # Deep-merge so partial nested dicts (e.g. quick_launch_bar, output_font,
                 # logging) retain their default sub-keys when the user only overrides some.
                 self._settings_cache = self._deep_merge(self._SETTINGS_DEFAULTS, settings)
+            except json.JSONDecodeError as e:
+                logger.warning(
+                    "settings.json is corrupted (%s); falling back to defaults", str(e)
+                )
+                self._settings_cache = copy.deepcopy(self._SETTINGS_DEFAULTS)
             except Exception as e:
                 logger.warning("Failed to load settings, using defaults: %s", str(e))
                 self._settings_cache = copy.deepcopy(self._SETTINGS_DEFAULTS)
@@ -165,13 +204,13 @@ class ConfigManager:
             if not isinstance(settings, dict):
                 raise ConfigurationError("Settings must be a dictionary")
 
-            self.settings_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.settings_file, "w", encoding="utf-8") as f:
-                json.dump(settings, f, indent=4)
+            self._write_json_atomic(self.settings_file, settings)
 
             # Store the defaults-merged view so callers always see a fully-populated dict.
             self._settings_cache = self._deep_merge(self._SETTINGS_DEFAULTS, settings)
             logger.info("Settings saved successfully to %s", self.settings_file)
+        except ConfigurationError:
+            raise
         except Exception as e:
             error_msg = f"Failed to save settings: {str(e)}"
             logger.error(error_msg)
@@ -280,13 +319,14 @@ class ConfigManager:
             # Determine which file to save to
             config_file = self._get_commands_file_for_write()
 
-            # Save the configuration
-            with open(config_file, "w", encoding="utf-8") as f:
-                json.dump(commands, f, indent=4)
+            # Save the configuration atomically
+            self._write_json_atomic(config_file, commands)
 
             # Update the cache
             self._commands_cache = commands
             logger.info(f"Commands saved successfully to {config_file}")
+        except ConfigurationError:
+            raise
         except Exception as e:
             error_msg = f"Failed to save commands: {str(e)}"
             logger.error(error_msg)
@@ -326,8 +366,7 @@ class ConfigManager:
             history: List containing command history entries
         """
         try:
-            with open(self.history_file, "w", encoding="utf-8") as f:
-                json.dump(history, f, indent=4)
+            self._write_json_atomic(self.history_file, history)
 
             # Update the cache
             self._history_cache = history
@@ -400,8 +439,7 @@ class ConfigManager:
             favorites: Dictionary containing favorites entries
         """
         try:
-            with open(self.favorites_file, "w", encoding="utf-8") as f:
-                json.dump(favorites, f, indent=4)
+            self._write_json_atomic(self.favorites_file, favorites)
 
             # Update the cache
             self._favorites_cache = favorites
@@ -812,9 +850,7 @@ class ConfigManager:
                 },
             }
 
-            config_file.parent.mkdir(exist_ok=True)
-            with open(config_file, "w", encoding="utf-8") as f:
-                json.dump(default_commands, f, indent=4)
+            self._write_json_atomic(config_file, default_commands)
             logger.info(f"Created default commands file at {config_file}")
         except Exception as e:
             logger.error(f"Failed to create default commands file: {str(e)}")

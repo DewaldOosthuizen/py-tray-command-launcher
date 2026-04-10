@@ -38,10 +38,11 @@ logger = logging.getLogger(__name__)
 class SettingsDialog(QDialog):
     """Settings dialog covering theme, hotkey, logging, history, and output font."""
 
-    def __init__(self, theme_manager, parent=None, hotkey_callback=None):
+    def __init__(self, theme_manager, parent=None, hotkey_callback=None, bar_hotkey_callback=None):
         super().__init__(parent)
         self._theme_manager = theme_manager
         self._hotkey_callback = hotkey_callback
+        self._bar_hotkey_callback = bar_hotkey_callback
         self.setWindowTitle("Settings")
         self.setMinimumWidth(420)
 
@@ -72,7 +73,7 @@ class SettingsDialog(QDialog):
 
         self._hotkey_edit = QLineEdit(settings.get("hotkey", "ctrl+shift+space"))
         self._hotkey_edit.setPlaceholderText("e.g. ctrl+shift+space")
-        behaviour_form.addRow("Global hotkey:", self._hotkey_edit)
+        behaviour_form.addRow("Command Palette hotkey:", self._hotkey_edit)
 
         self._history_spin = QSpinBox()
         self._history_spin.setRange(0, 500)
@@ -110,6 +111,10 @@ class SettingsDialog(QDialog):
         self._qlb_visible_check = QCheckBox("Show Quick-Launch Bar")
         self._qlb_visible_check.setChecked(bool(qlb_cfg.get("visible", False)))
         qlb_form.addRow(self._qlb_visible_check)
+
+        self._qlb_hotkey_edit = QLineEdit(qlb_cfg.get("hotkey", "ctrl+shift+b"))
+        self._qlb_hotkey_edit.setPlaceholderText("e.g. ctrl+shift+b")
+        qlb_form.addRow("Bar hotkey:", self._qlb_hotkey_edit)
 
         layout.addWidget(qlb_box)
 
@@ -166,6 +171,7 @@ class SettingsDialog(QDialog):
             if not isinstance(qlb_cfg, dict):
                 qlb_cfg = {}
             qlb_cfg["visible"] = self._qlb_visible_check.isChecked()
+            qlb_cfg["hotkey"] = self._qlb_hotkey_edit.text().strip()
             settings["quick_launch_bar"] = qlb_cfg
 
             log_cfg = settings.get("logging", {})
@@ -178,9 +184,11 @@ class SettingsDialog(QDialog):
             logger.info("Settings saved")
             # Theme already applied via preview; ensure final value is set
             self._theme_manager.apply_theme(settings["theme"])
-            # Re-register the hotkey immediately so the change takes effect without restart
+            # Re-register hotkeys immediately so changes take effect without restart
             if self._hotkey_callback:
                 self._hotkey_callback(settings["hotkey"])
+            if self._bar_hotkey_callback:
+                self._bar_hotkey_callback(qlb_cfg["hotkey"])
             self.accept()
         except Exception as exc:
             QMessageBox.critical(self, "Error", f"Failed to save settings:\n{exc}")

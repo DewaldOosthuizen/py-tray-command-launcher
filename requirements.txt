@@ -1,4 +1,4 @@
-PyQt6
-cryptography
-rapidfuzz
-keyboard
+PyQt6>=6.10.2
+cryptography>=46.0.3
+rapidfuzz>=3.14.5
+pynput>=1.8.1

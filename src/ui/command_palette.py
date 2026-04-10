@@ -19,7 +19,7 @@ Public API
 
 import logging
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QObject, pyqtSignal
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import (
     QApplication,
@@ -34,6 +34,30 @@ from PyQt6.QtWidgets import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+_PYNPUT_WRAP = {
+    'ctrl', 'shift', 'alt', 'altgr', 'cmd', 'win', 'super', 'meta',
+    'space', 'enter', 'return', 'tab', 'esc', 'escape',
+    'backspace', 'delete', 'insert', 'home', 'end',
+    'page_up', 'page_down', 'up', 'down', 'left', 'right',
+    'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
+}
+
+
+def _to_pynput_str(hotkey: str) -> str:
+    """Convert 'ctrl+shift+space' to '<ctrl>+<shift>+<space>' for pynput."""
+    parts = []
+    for k in hotkey.lower().split('+'):
+        k = k.strip()
+        parts.append(f'<{k}>' if (k in _PYNPUT_WRAP or len(k) > 1) else k)
+    return '+'.join(parts)
+
+
+class _HotkeyTrigger(QObject):
+    """Thread-safe bridge: emit triggered from any thread into the Qt main loop."""
+    triggered = pyqtSignal()
+
 
 try:
     from rapidfuzz import fuzz as _fuzz
@@ -206,7 +230,9 @@ class CommandPalette:
     def __init__(self, services):
         self._services = services
         self._window: _PaletteWindow | None = None
-        self._hotkey_handle = None
+        self._hotkey_listener = None
+        self._trigger = _HotkeyTrigger()
+        self._trigger.triggered.connect(self.show_palette, Qt.ConnectionType.QueuedConnection)
 
     # ------------------------------------------------------------------
     # Public API
@@ -221,38 +247,34 @@ class CommandPalette:
     def register_hotkey(self, hotkey: str) -> bool:
         """Register a global hotkey that triggers ``show_palette``.
 
-        Uses the ``keyboard`` library.  Returns ``True`` on success.
-        Gracefully degrades on Wayland or when the library is missing.
+        Uses pynput's GlobalHotKeys (no root required on X11/Linux).
+        Returns ``True`` on success; degrades gracefully on Wayland or
+        when pynput is unavailable.
         """
+        self.unregister_hotkey()
+        if not hotkey:
+            return False
         try:
-            import keyboard as _kb
-
-            def _on_hotkey():
-                # keyboard callbacks run in a background thread; bounce to Qt thread
-                QTimer.singleShot(0, self.show_palette)
-
-            if self._hotkey_handle is not None:
-                try:
-                    _kb.remove_hotkey(self._hotkey_handle)
-                except Exception:
-                    pass
-
-            self._hotkey_handle = _kb.add_hotkey(hotkey, _on_hotkey, suppress=True)
-            logger.info("Global hotkey registered: %s", hotkey)
+            from pynput import keyboard as _kb
+            pynput_key = _to_pynput_str(hotkey)
+            self._hotkey_listener = _kb.GlobalHotKeys(
+                {pynput_key: self._trigger.triggered.emit}
+            )
+            self._hotkey_listener.start()
+            logger.info("Command Palette hotkey registered: %s (%s)", hotkey, pynput_key)
             return True
         except ImportError:
-            logger.warning("keyboard library not available — global hotkey disabled")
+            logger.warning("pynput not available — palette hotkey disabled")
         except Exception as exc:
-            logger.warning("Failed to register global hotkey '%s': %s", hotkey, exc)
+            logger.warning("Failed to register palette hotkey '%s': %s", hotkey, exc)
         return False
 
     def unregister_hotkey(self):
         """Remove the registered global hotkey if any."""
-        if self._hotkey_handle is None:
+        if self._hotkey_listener is None:
             return
         try:
-            import keyboard as _kb
-            _kb.remove_hotkey(self._hotkey_handle)
+            self._hotkey_listener.stop()
         except Exception:
             pass
-        self._hotkey_handle = None
+        self._hotkey_listener = None

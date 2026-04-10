@@ -26,6 +26,7 @@ class CommandHistory:
             "timestamp": datetime.datetime.now().isoformat(),
         }
         config_manager.add_to_history(history_entry)
+        logger.debug("Added '%s' to command history", title)
 
     def populate_menu(self, menu):
         """Populate the history menu with recent commands."""
@@ -62,4 +63,5 @@ class CommandHistory:
     def clear_history(self):
         """Clear the command history."""
         config_manager.clear_history()
+        logger.info("Command history cleared")
         self.services.reload_history_commands()
