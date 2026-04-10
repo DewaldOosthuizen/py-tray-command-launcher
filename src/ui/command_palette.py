@@ -5,8 +5,9 @@ CommandPalette — spotlight-style popup overlay for quick command access.
 
 * Frameless ``Qt.Popup`` window — disappears on focus loss.
 * Reuses the same rapidfuzz scoring used in CommandSearch.
-* Hotkey registration is handled by ``TrayApp`` via ``keyboard`` library so
-  that the callback runs on the Qt main thread through a ``QTimer``.
+* Global hotkey registration uses ``pynput`` via ``_HotkeyTrigger``, which
+  emits a ``pyqtSignal`` from a background listener thread into the Qt main
+  loop so the palette is shown safely on the main thread.
 
 Public API
 ----------

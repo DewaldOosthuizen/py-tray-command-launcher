@@ -116,20 +116,24 @@ class TrayApp:
     })
 
     def _download_icon(self, url):
-        """Download an icon from a URL and cache it locally.
+        """Download an icon from an HTTPS URL and cache it locally.
 
         Security measures:
-        - HTTPS-only SSL context with certificate verification.
+        - HTTPS-only: plain HTTP URLs are rejected up-front.
+        - SSL context with certificate verification.
         - Response body capped at 1 MB to prevent memory exhaustion.
         - Content-Type validated against an allow-list before writing to disk.
 
         Args:
-            url: The HTTP/HTTPS URL of the icon
+            url: The HTTPS URL of the icon (HTTP URLs are rejected)
 
         Returns:
             Local path to the downloaded icon, or None if download failed
         """
         import ssl
+        if not url.lower().startswith("https://"):
+            logger.warning("Rejecting icon download: non-HTTPS URL %s", url)
+            return None
         try:
             # Create a cache directory for downloaded icons
             cache_dir = os.path.join(tempfile.gettempdir(), "py-tray-launcher-icons")
@@ -233,11 +237,14 @@ class TrayApp:
                 logger.warning("Failed to decode base64 icon: %s", str(e))
                 return self.icon_file
 
-        # Check if it's a URL (starts with http or https)
-        if icon_path.startswith(("http://", "https://")):
+        # Check if it's a URL — only HTTPS is permitted; plain HTTP is rejected.
+        if icon_path.startswith("https://"):
             downloaded_path = self._download_icon(icon_path)
             if downloaded_path and os.path.exists(downloaded_path):
                 return downloaded_path
+            return self.icon_file
+        if icon_path.startswith("http://"):
+            logger.warning("Rejecting icon URL with non-HTTPS scheme: %s", icon_path)
             return self.icon_file
 
         # Expand user path (handles ~)
@@ -396,26 +403,28 @@ class TrayApp:
         output_win_ref = weakref.ref(output_win)
 
         def _on_stdout():
+            output = process.readAllStandardOutput().data().decode(errors="replace")
+            if not output:
+                return
+
             win = output_win_ref()
             if win is not None:
                 try:
-                    win.append_output(
-                        tab,
-                        process.readAllStandardOutput().data().decode(errors="replace"),
-                    )
+                    win.append_output(tab, output)
                 except RuntimeError:
                     pass  # C++ object already deleted
 
         def _on_stderr():
+            output = process.readAllStandardError().data().decode(errors="replace")
+            if not output:
+                return
+
             win = output_win_ref()
             if win is not None:
                 try:
-                    win.append_output(
-                        tab,
-                        process.readAllStandardError().data().decode(errors="replace"),
-                    )
+                    win.append_output(tab, output)
                 except RuntimeError:
-                    pass
+                    pass  # C++ object already deleted
 
         process.readyReadStandardOutput.connect(_on_stdout)
         process.readyReadStandardError.connect(_on_stderr)

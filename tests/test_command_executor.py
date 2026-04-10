@@ -1,8 +1,10 @@
 """Tests for command_executor module.
 
-Tests cover subprocess spawning, PID logging, QProcess creation, and silent
-execution modes. Validates that commands are executed correctly with proper
-environment setup, logging, and error handling.
+Tests cover subprocess-based execution, PID logging, QProcess creation, and
+silent execution modes, using the actual public API:
+  - execute_command(command)
+  - execute_command_process(app, command)
+  - execute_command_process_silently(app, command)
 """
 
 import sys
@@ -24,68 +26,90 @@ class TestCommandExecutor(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.mock_tray_app = MagicMock()
-        self.executor = CommandExecutor(self.mock_tray_app)
+        self.mock_services = MagicMock()
+        self.executor = CommandExecutor(self.mock_services)
 
-    def test_spawn_command_logs_pid(self):
-        """Test that spawned commands log their PID."""
-        mock_popen = MagicMock()
-        mock_popen.pid = 12345
+    # ------------------------------------------------------------------
+    # execute_command (subprocess path)
+    # ------------------------------------------------------------------
 
-        with patch('modules.command_executor.subprocess.Popen', return_value=mock_popen) as mock_popen_class:
-            with patch.object(self.executor, 'update_running_count'):
-                result = self.executor.spawn_command("test_command", show_output=False)
+    def test_execute_command_calls_popen(self):
+        """execute_command should invoke subprocess.Popen with the given command."""
+        mock_proc = MagicMock()
+        mock_proc.pid = 12345
 
-                # Verify Popen was called
-                mock_popen_class.assert_called_once()
-                # Verify we retrieve and potentially use the PID
-                self.assertEqual(mock_popen.pid, 12345)
+        with patch('modules.command_executor.subprocess.Popen', return_value=mock_proc) as mock_popen:
+            self.executor.execute_command("ls -la")
 
-    @patch('modules.command_executor.subprocess.Popen')
-    def test_execute_with_show_output_creates_qprocess(self, mock_popen):
-        """Test that show_output=True uses QProcess instead of subprocess.Popen."""
+        mock_popen.assert_called_once_with("ls -la", shell=True)
+
+    def test_execute_command_logs_pid(self):
+        """execute_command should log the process PID at DEBUG level."""
+        mock_proc = MagicMock()
+        mock_proc.pid = 99
+
+        with patch('modules.command_executor.subprocess.Popen', return_value=mock_proc):
+            with patch('modules.command_executor.logger') as mock_logger:
+                self.executor.execute_command("echo hello")
+
+        # At least one debug call must reference the PID
+        debug_messages = " ".join(str(c) for c in mock_logger.debug.call_args_list)
+        self.assertIn("99", debug_messages)
+
+    # ------------------------------------------------------------------
+    # execute_command_process (QProcess path)
+    # ------------------------------------------------------------------
+
+    def test_execute_command_process_returns_qprocess(self):
+        """execute_command_process should configure and return a QProcess."""
         mock_process = MagicMock()
-        with patch('modules.command_executor.QProcess', return_value=mock_process) as mock_qprocess:
-            with patch.object(self.executor, 'update_running_count'):
-                # When show_output is True, QProcess should be preferred
-                self.executor.spawn_command("test", show_output=True)
-                # QProcess might be created (depending on implementation)
-                # This test verifies the branching logic exists
+        mock_app = MagicMock()
 
-    def test_spawn_command_with_silent_execution(self):
-        """Test silent command execution (no output window)."""
-        mock_popen = MagicMock()
-        mock_popen.pid = 54321
+        with patch('modules.command_executor.QProcess', return_value=mock_process) as mock_qprocess_cls:
+            result = self.executor.execute_command_process(mock_app, "top")
 
-        with patch('modules.command_executor.subprocess.Popen', return_value=mock_popen):
-            with patch.object(self.executor, 'update_running_count'):
-                result = self.executor.spawn_command("silent_cmd", show_output=False)
-                # Verify Popen was called (for silent execution)
-                self.assertIsNotNone(result)
+        mock_qprocess_cls.assert_called_once_with(mock_app)
+        mock_process.setProgram.assert_called_once_with("bash")
+        mock_process.setArguments.assert_called_once_with(["-c", "top"])
+        self.assertIs(result, mock_process)
 
-    @patch('modules.command_executor.subprocess.Popen')
-    def test_execute_command_with_confirm_flag(self, mock_popen):
-        """Test that confirm flag prevents execution without confirmation."""
-        mock_popen.return_value = MagicMock(pid=11111)
-        
-        with patch.object(self.executor, 'update_running_count'):
-            # This would normally require user confirmation
-            # Implementation depends on how confirmation is handled
-            pass
+    def test_execute_command_process_does_not_start_process(self):
+        """execute_command_process should return the process without calling start()."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
 
-    def test_spawn_command_increments_running_count(self):
-        """Test that spawning a command increments the running process count."""
-        mock_popen = MagicMock()
-        mock_popen.pid = 99999
+        with patch('modules.command_executor.QProcess', return_value=mock_process):
+            self.executor.execute_command_process(mock_app, "pwd")
 
-        with patch('modules.command_executor.subprocess.Popen', return_value=mock_popen):
-            update_count_mock = MagicMock()
-            self.executor.update_running_count = update_count_mock
-            
-            self.executor.spawn_command("test", show_output=False)
-            
-            # Verify update_running_count was called to track the process
-            self.assertTrue(update_count_mock.called or self.executor.running_processes is not None)
+        mock_process.start.assert_not_called()
+
+    # ------------------------------------------------------------------
+    # execute_command_process_silently
+    # ------------------------------------------------------------------
+
+    def test_execute_command_process_silently_starts_process(self):
+        """execute_command_process_silently should call start() on the QProcess."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch('modules.command_executor.QProcess', return_value=mock_process):
+            self.executor.execute_command_process_silently(mock_app, "df -h")
+
+        mock_process.start.assert_called_once()
+
+    def test_execute_command_process_silently_logs_command(self):
+        """execute_command_process_silently should log the command."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch('modules.command_executor.QProcess', return_value=mock_process):
+            with patch('modules.command_executor.logger') as mock_logger:
+                self.executor.execute_command_process_silently(mock_app, "uptime")
+
+        # Either info or debug logging should mention the command
+        all_calls = mock_logger.info.call_args_list + mock_logger.debug.call_args_list
+        messages = " ".join(str(c) for c in all_calls)
+        self.assertIn("uptime", messages)
 
 
 if __name__ == '__main__':

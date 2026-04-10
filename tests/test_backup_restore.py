@@ -1,16 +1,14 @@
 """Tests for backup_restore module.
 
-Tests cover creating timestamped backups, listing available backups, restoring
-from backups, and handling of restore failures. Validates that backups are
-properly created and can recover command configurations.
+Tests call the real public methods (backup_commands, restore_commands) while
+patching modules.backup_restore.config_manager and Qt dialogs so that no
+filesystem I/O or GUI interactions occur.
 """
 
 import sys
 from pathlib import Path
 import unittest
 from unittest.mock import patch, MagicMock, call
-import datetime
-import os
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -25,88 +23,113 @@ class TestBackupRestore(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.mock_tray_app = MagicMock()
+        self.mock_services = MagicMock()
         self.mock_config_manager = MagicMock()
-        
+
         with patch('modules.backup_restore.config_manager', self.mock_config_manager):
-            self.backup = BackupRestore(self.mock_tray_app)
+            self.backup = BackupRestore(self.mock_services)
 
-    def test_create_timestamped_backup(self):
-        """Test creating a backup with timestamp."""
-        with patch('modules.backup_restore.os.path.exists', return_value=True):
-            with patch('modules.backup_restore.shutil.copy2') as mock_copy:
-                with patch('modules.backup_restore.datetime') as mock_datetime:
-                    mock_datetime.datetime.now.return_value.strftime.return_value = "20260410_120000"
-                    
-                    # Mock the config file path
-                    self.mock_config_manager.config_file = "/config/commands.json"
-                    
-                    # Create backup
-                    self.backup.backup_commands()
-                    
-                    # Verify backup was created (copy2 would be called)
+    # ------------------------------------------------------------------
+    # backup_commands
+    # ------------------------------------------------------------------
 
-    def test_list_available_backups(self):
-        """Test listing available backups."""
-        mock_backups = [
-            "commands_20260410_100000.json",
-            "commands_20260410_101000.json",
-            "commands_20260410_102000.json"
+    def test_backup_commands_calls_config_manager(self):
+        """backup_commands should delegate to config_manager.backup_commands."""
+        self.mock_config_manager.backup_commands.return_value = "/tmp/commands_backup.json"
+
+        with patch('modules.backup_restore.config_manager', self.mock_config_manager):
+            with patch('modules.backup_restore.QMessageBox'):
+                self.backup.backup_commands()
+
+        self.mock_config_manager.backup_commands.assert_called_once()
+
+    def test_backup_commands_success_shows_information(self):
+        """backup_commands should show an information dialog on success."""
+        self.mock_config_manager.backup_commands.return_value = "/tmp/commands_backup.json"
+
+        with patch('modules.backup_restore.config_manager', self.mock_config_manager):
+            with patch('modules.backup_restore.QMessageBox') as mock_msgbox:
+                self.backup.backup_commands()
+
+        mock_msgbox.information.assert_called_once()
+
+    def test_backup_commands_failure_shows_warning(self):
+        """backup_commands should show a warning dialog when backup fails."""
+        self.mock_config_manager.backup_commands.return_value = ""
+
+        with patch('modules.backup_restore.config_manager', self.mock_config_manager):
+            with patch('modules.backup_restore.QMessageBox') as mock_msgbox:
+                self.backup.backup_commands()
+
+        mock_msgbox.warning.assert_called_once()
+
+    # ------------------------------------------------------------------
+    # restore_commands
+    # ------------------------------------------------------------------
+
+    def test_restore_commands_no_backups_shows_information(self):
+        """restore_commands should show an info dialog when no backups exist."""
+        self.mock_config_manager.list_backups.return_value = []
+
+        with patch('modules.backup_restore.config_manager', self.mock_config_manager):
+            with patch('modules.backup_restore.QMessageBox') as mock_msgbox:
+                self.backup.restore_commands()
+
+        mock_msgbox.information.assert_called_once()
+        self.mock_config_manager.restore_from_backup.assert_not_called()
+
+    def test_restore_commands_calls_restore_on_confirmation(self):
+        """restore_commands should call config_manager.restore_from_backup when confirmed."""
+        backup_path = "/tmp/commands_20260410_100000.json"
+        self.mock_config_manager.list_backups.return_value = [
+            (backup_path, "2026-04-10 10:00:00")
         ]
-        
-        with patch('modules.backup_restore.os.listdir', return_value=mock_backups):
-            with patch('modules.backup_restore.os.path.isfile', return_value=True):
-                # List backups
-                backups = [] if not hasattr(self.backup, 'get_available_backups') else \
-                          self.backup.get_available_backups()
-                
-                # Would filter for backup files
-                pass
+        self.mock_config_manager.restore_from_backup.return_value = True
 
-    def test_restore_from_backup(self):
-        """Test restoring configuration from a backup."""
-        backup_file = "/backups/commands_20260410_100000.json"
-        
-        with patch('modules.backup_restore.shutil.copy2') as mock_copy:
-            with patch('modules.backup_restore.os.path.exists', return_value=True):
-                # Restore from backup
-                self.mock_config_manager.config_file = "/config/commands.json"
-                
-                # This would copy the backup back to the active config
-                # Verify backup is copied to active config location
+        with patch('modules.backup_restore.config_manager', self.mock_config_manager):
+            with patch('modules.backup_restore.QMessageBox') as mock_msgbox:
+                with patch('modules.backup_restore.QInputDialog') as mock_dialog:
+                    mock_dialog.getItem.return_value = (
+                        "2026-04-10 10:00:00 - commands_20260410_100000.json", True
+                    )
+                    mock_msgbox.question.return_value = mock_msgbox.StandardButton.Yes
+                    self.backup.restore_commands()
 
-    def test_restore_failure_handles_gracefully(self):
-        """Test that restore failure is handled gracefully."""
-        missing_backup = "/backups/nonexistent_20260410_100000.json"
-        
-        with patch('modules.backup_restore.os.path.exists', return_value=False):
-            # Attempting to restore non-existent backup should not crash
-            try:
-                # Restore would fail gracefully
-                pass
-            except FileNotFoundError:
-                # Should be caught and logged instead
-                self.fail("Restore failure should be handled gracefully")
+        self.mock_config_manager.restore_from_backup.assert_called_once_with(backup_path)
 
-    def test_backup_sorting_by_timestamp(self):
-        """Test that backups are sorted chronologically (most recent first)."""
-        mock_backups = [
-            "commands_20260410_100000.json",
-            "commands_20260410_110000.json",  # Newer
-            "commands_20260410_095000.json",   # Older
+    def test_restore_commands_reloads_on_success(self):
+        """restore_commands should reload commands after a successful restore."""
+        backup_path = "/tmp/commands_20260410_100000.json"
+        self.mock_config_manager.list_backups.return_value = [
+            (backup_path, "2026-04-10 10:00:00")
         ]
-        
-        # Backups should be sortable by their timestamp suffix
-        # Most recent should be first in the list
-        self.assertTrue(len(mock_backups) > 0)
+        self.mock_config_manager.restore_from_backup.return_value = True
 
-    def test_backup_uses_atomic_write(self):
-        """Test that backup operations respect atomic file write patterns."""
-        with patch('modules.backup_restore.shutil.copy2') as mock_copy:
-            with patch('modules.backup_restore.os.path.exists', return_value=True):
-                # Backup should use robust file operations
-                # This ensures config integrity during backup
-                pass
+        with patch('modules.backup_restore.config_manager', self.mock_config_manager):
+            with patch('modules.backup_restore.QMessageBox') as mock_msgbox:
+                with patch('modules.backup_restore.QInputDialog') as mock_dialog:
+                    mock_dialog.getItem.return_value = (
+                        "2026-04-10 10:00:00 - commands_20260410_100000.json", True
+                    )
+                    mock_msgbox.question.return_value = mock_msgbox.StandardButton.Yes
+                    self.backup.restore_commands()
+
+        self.mock_services.reload_commands.assert_called_once_with(rebuild_menu=True)
+
+    def test_restore_commands_cancelled_by_user(self):
+        """restore_commands should not restore when user cancels the dialog."""
+        backup_path = "/tmp/commands_20260410_100000.json"
+        self.mock_config_manager.list_backups.return_value = [
+            (backup_path, "2026-04-10 10:00:00")
+        ]
+
+        with patch('modules.backup_restore.config_manager', self.mock_config_manager):
+            with patch('modules.backup_restore.QMessageBox'):
+                with patch('modules.backup_restore.QInputDialog') as mock_dialog:
+                    mock_dialog.getItem.return_value = ("", False)
+                    self.backup.restore_commands()
+
+        self.mock_config_manager.restore_from_backup.assert_not_called()
 
 
 if __name__ == '__main__':

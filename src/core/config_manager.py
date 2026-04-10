@@ -142,8 +142,9 @@ class ConfigManager:
 
         Writes to a sibling ``.tmp`` file first, then uses :func:`os.replace`
         so the destination file is never partially written.  On POSIX systems
-        the temp file is created with mode 0o600 to prevent other users from
-        reading sensitive config data.
+        the temp file is opened via :func:`os.open` with mode ``0o600`` so
+        the file is restricted from the moment of creation, not only after a
+        subsequent :func:`os.chmod` call.
 
         Args:
             file_path: Destination path.
@@ -155,10 +156,13 @@ class ConfigManager:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = file_path.with_suffix(file_path.suffix + ".tmp")
         try:
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
             if os.name != "nt":
-                os.chmod(tmp_path, 0o600)
+                fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4)
+            else:
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4)
             os.replace(tmp_path, file_path)
         except Exception:
             try:

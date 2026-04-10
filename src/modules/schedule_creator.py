@@ -5,8 +5,6 @@ import os
 import sys
 import subprocess
 import tempfile
-
-logger = logging.getLogger(__name__)
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -21,6 +19,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QTime
 from core.config_manager import config_manager, ConfigurationError
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduleCreator:

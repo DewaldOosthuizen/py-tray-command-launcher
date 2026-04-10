@@ -1,8 +1,9 @@
 """Tests for favorites module.
 
-Tests cover adding/removing favorites, reloading from config, populating menus,
-and handling of missing or invalid favorite entries. Validates that favorites
-are properly persisted and retrieved.
+Tests call the real public methods (add_to_favorites_directly,
+remove_from_favorites, populate_favorites_menu) while patching
+modules.favorites.config_manager and QMessageBox so that no filesystem I/O
+or GUI dialogs appear.
 """
 
 import sys
@@ -23,79 +24,121 @@ class TestFavorites(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.mock_tray_app = MagicMock()
+        self.mock_services = MagicMock()
         self.mock_config_manager = MagicMock()
-        
-        with patch('modules.favorites.config_manager', self.mock_config_manager):
-            self.favorites = Favorites(self.mock_tray_app)
-
-    def test_add_favorite(self):
-        """Test adding a command to favorites."""
         self.mock_config_manager.get_favorites.return_value = {}
-        
-        # Mock the save method
-        with patch.object(self.favorites, '_save_favorites'):
-            self.favorites.add_to_favorites_directly("System", "Terminal")
-            
-            # Verify save was triggered
-            self.assertTrue(self.favorites._save_favorites.called or True)
 
-    def test_remove_favorite(self):
-        """Test removing a favorite."""
-        initial_favorites = {
-            "System.Terminal": {"label": "Terminal", "ref": "System.Terminal"}
-        }
-        self.mock_config_manager.get_favorites.return_value = initial_favorites.copy()
-        
-        with patch.object(self.favorites, '_save_favorites'):
-            # Remove a favorite
-            self.favorites.favorites.pop("System.Terminal", None)
-            
-            # Verify it's removed
-            self.assertNotIn("System.Terminal", self.favorites.favorites)
+        with patch('modules.favorites.config_manager', self.mock_config_manager):
+            self.favorites = Favorites(self.mock_services)
 
-    def test_reload_favorites_from_config(self):
-        """Test reloading favorites from configuration."""
-        expected_favorites = {
-            "System.Terminal": {"label": "Terminal"},
-            "Files.Explorer": {"label": "Explorer"}
-        }
-        self.mock_config_manager.get_favorites.return_value = expected_favorites
-        
-        # Reload favorites
-        self.favorites.favorites = self.mock_config_manager.get_favorites.return_value
-        
-        # Verify favorites were loaded
-        self.assertEqual(len(self.favorites.favorites), 2)
-        self.assertIn("System.Terminal", self.favorites.favorites)
+    # ------------------------------------------------------------------
+    # add_to_favorites_directly
+    # ------------------------------------------------------------------
 
-    def test_populate_favorites_menu(self):
-        """Test populating a QMenu with favorites."""
+    def test_add_favorite_directly_success(self):
+        """add_to_favorites_directly should call config_manager.add_to_favorites."""
+        self.mock_config_manager.add_to_favorites.return_value = True
+
+        with patch('modules.favorites.config_manager', self.mock_config_manager):
+            with patch('modules.favorites.QMessageBox'):
+                self.favorites.add_to_favorites_directly("System", "Terminal")
+
+        self.mock_config_manager.add_to_favorites.assert_called_once_with(
+            "System.Terminal", "Terminal"
+        )
+
+    def test_add_favorite_directly_reloads_on_success(self):
+        """add_to_favorites_directly should trigger reload when addition succeeds."""
+        self.mock_config_manager.add_to_favorites.return_value = True
+
+        with patch('modules.favorites.config_manager', self.mock_config_manager):
+            with patch('modules.favorites.QMessageBox'):
+                self.favorites.add_to_favorites_directly("System", "Terminal")
+
+        self.mock_services.reload_favorites_commands.assert_called_once()
+
+    def test_add_favorite_directly_no_reload_on_failure(self):
+        """add_to_favorites_directly should not reload when config_manager returns False."""
+        self.mock_config_manager.add_to_favorites.return_value = False
+
+        with patch('modules.favorites.config_manager', self.mock_config_manager):
+            with patch('modules.favorites.QMessageBox'):
+                self.favorites.add_to_favorites_directly("System", "Terminal")
+
+        self.mock_services.reload_favorites_commands.assert_not_called()
+
+    # ------------------------------------------------------------------
+    # remove_from_favorites
+    # ------------------------------------------------------------------
+
+    def test_remove_favorite_success(self):
+        """remove_from_favorites should call config_manager.remove_from_favorites."""
+        self.mock_config_manager.remove_from_favorites.return_value = True
+
+        with patch('modules.favorites.config_manager', self.mock_config_manager):
+            with patch('modules.favorites.QMessageBox'):
+                self.favorites.remove_from_favorites("Terminal")
+
+        self.mock_config_manager.remove_from_favorites.assert_called_once_with("Terminal")
+
+    def test_remove_favorite_reloads_on_success(self):
+        """remove_from_favorites should trigger reload when removal succeeds."""
+        self.mock_config_manager.remove_from_favorites.return_value = True
+
+        with patch('modules.favorites.config_manager', self.mock_config_manager):
+            with patch('modules.favorites.QMessageBox'):
+                self.favorites.remove_from_favorites("Terminal")
+
+        self.mock_services.reload_favorites_commands.assert_called_once()
+
+    def test_remove_favorite_no_reload_on_failure(self):
+        """remove_from_favorites should not reload when removal fails."""
+        self.mock_config_manager.remove_from_favorites.return_value = False
+
+        with patch('modules.favorites.config_manager', self.mock_config_manager):
+            with patch('modules.favorites.QMessageBox'):
+                self.favorites.remove_from_favorites("NonExistent")
+
+        self.mock_services.reload_favorites_commands.assert_not_called()
+
+    # ------------------------------------------------------------------
+    # populate_favorites_menu
+    # ------------------------------------------------------------------
+
+    def test_populate_favorites_menu_with_entries(self):
+        """populate_favorites_menu should add actions for each favorite."""
         mock_menu = MagicMock()
-        self.favorites.favorites = {
-            "System.Terminal": {"label": "Terminal", "ref": "System.Terminal"},
-            "Files.Explorer": {"label": "Explorer", "ref": "Files.Explorer"}
+        self.mock_config_manager.get_favorites.return_value = {
+            "Terminal": {"command": "gnome-terminal"},
+            "Editor": {"command": "gedit"},
         }
-        
-        # Mock the necessary methods
-        with patch.object(self.favorites, '_execute_favorite') as mock_execute:
-            # This would populate the menu with favorite actions
-            pass
+        self.mock_services.resolve_command_reference.side_effect = lambda g, l, item: item
+        self.mock_services.resolve_icon_path.return_value = None
+        self.mock_config_manager.get_base_dir.return_value = str(PROJECT_ROOT)
 
-    def test_handle_missing_favorite(self):
-        """Test handling of missing favorite when referenced."""
-        self.favorites.favorites = {
-            "NonExistent.Command": {"label": "Missing", "ref": "NonExistent.Command"}
-        }
-        
-        self.mock_tray_app.command_menu = {"System": {"Terminal": {"command": "gnome-terminal"}}}
-        
-        # Attempting to execute a missing favorite should not crash
-        try:
-            # This would be caught and logged
-            pass
-        except KeyError:
-            self.fail("Missing favorite should be handled gracefully")
+        with patch('modules.favorites.config_manager', self.mock_config_manager):
+            with patch('modules.favorites.QIcon', return_value=MagicMock()):
+                with patch('modules.favorites.QAction', return_value=MagicMock()):
+                    with patch('modules.favorites.os.path.isfile', return_value=False):
+                        self.favorites.populate_favorites_menu(mock_menu)
+
+        # At least one addAction call per favorite entry
+        self.assertGreaterEqual(mock_menu.addAction.call_count, 2)
+
+    def test_populate_favorites_menu_empty(self):
+        """populate_favorites_menu should show placeholder when no favorites exist."""
+        mock_menu = MagicMock()
+        self.mock_config_manager.get_favorites.return_value = {}
+
+        with patch('modules.favorites.config_manager', self.mock_config_manager):
+            with patch('modules.favorites.QAction') as mock_qaction_cls:
+                mock_qaction = MagicMock()
+                mock_qaction_cls.return_value = mock_qaction
+                self.favorites.populate_favorites_menu(mock_menu)
+
+        self.mock_config_manager.get_favorites.assert_called()
+        # "No Favorites" should be the first QAction created
+        mock_qaction_cls.assert_any_call("No Favorites", mock_menu)
 
 
 if __name__ == '__main__':

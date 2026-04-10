@@ -22,7 +22,7 @@ class Favorites:
     def add_to_favorites(self):
         """Add a command to favorites by reference."""
         # Get all available commands
-        all_commands = self.tray_app.get_all_commands()
+        all_commands = self.services.get_all_commands()
 
         if not all_commands:
             QMessageBox.warning(
