@@ -133,25 +133,27 @@ Use `{promptInput}` anywhere in the `command` string to insert user-supplied tex
 
 ## settings.json
 
-Controls application-level settings. Created automatically with defaults on first launch.
+ Controls application-level settings. This file is optional: if it is missing, the application uses built-in defaults and `get_settings()` returns `{}`. The file is not automatically created on first launch
 
 ### Supported fields
 
 | Field | Type | Default | Valid values | Description |
 |---|---|---|---|---|
-| `log_level` | string | `"INFO"` | `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"` | Controls the verbosity of application log output to stdout. |
+| `logging.level` | string | `"INFO"` | `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"` | Controls the verbosity of application log output to stderr. |
 
 ### Example
 
 ```json
 {
-  "log_level": "DEBUG"
+  "logging": {
+    "level": "DEBUG"
+  }
 }
 ```
 
 ### Environment variable override
 
-You can override `log_level` at runtime without editing the file:
+ You can override the configured log level at runtime without editing the file:
 
 ```bash
 PY_TRAY_LOG_LEVEL=DEBUG python3 src/main.py

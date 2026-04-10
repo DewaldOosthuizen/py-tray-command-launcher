@@ -9,10 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class CommandExecutor:
-    def __init__(self, app):
-        """Initialize with reference to the main app."""
-        self.app = app
-        self.BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    def __init__(self, services):
+        """Initialize with an AppServices instance."""
+        self.services = services
 
     def execute_command(self, command):
         """Execute a shell command."""

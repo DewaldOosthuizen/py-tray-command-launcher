@@ -326,9 +326,9 @@ class ProgressDialog(QDialog):
 class FileEncryptor:
     """Main class for file encryption/decryption functionality."""
     
-    def __init__(self, tray_app):
-        """Initialize with reference to the main tray app."""
-        self.tray_app = tray_app
+    def __init__(self, services):
+        """Initialize with an AppServices instance."""
+        self.services = services
     
     def encrypt_file_or_folder(self):
         """Show dialog to encrypt a file or folder."""

@@ -113,8 +113,17 @@ class ConfigManager:
             "settings_file": str(self.settings_file),
         }
 
+    # Backward-compatible defaults applied on top of whatever is in settings.json
+    _SETTINGS_DEFAULTS: Dict[str, Any] = {
+        "theme": "system",
+        "hotkey": "ctrl+shift+space",
+        "history_limit": 50,
+        "output_font": {"family": "monospace", "size": 10},
+        "quick_launch_bar": {"visible": False, "position": [100, 100], "pinned": []},
+    }
+
     def get_settings(self, refresh: bool = False) -> Dict[str, Any]:
-        """Get application settings from settings.json."""
+        """Get application settings from settings.json, merged with defaults."""
         if self._settings_cache is None or refresh:
             try:
                 if self.settings_file.exists():
@@ -126,10 +135,13 @@ class ConfigManager:
                 if not isinstance(settings, dict):
                     settings = {}
 
-                self._settings_cache = settings
+                # Apply defaults for any missing top-level keys
+                merged = dict(self._SETTINGS_DEFAULTS)
+                merged.update(settings)
+                self._settings_cache = merged
             except Exception as e:
                 logger.warning("Failed to load settings, using defaults: %s", str(e))
-                self._settings_cache = {}
+                self._settings_cache = dict(self._SETTINGS_DEFAULTS)
 
         return self._settings_cache
 

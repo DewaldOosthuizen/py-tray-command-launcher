@@ -14,12 +14,18 @@ import hashlib
 import tempfile
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QMessageBox, QInputDialog
-from PyQt6.QtGui import QIcon, QAction
+from PyQt6.QtGui import QIcon, QAction, QColor, QFont, QPainter, QPixmap
 
 # Import ConfigManager instead of utils.utils
 from core.config_manager import config_manager, ConfigurationError
+from core.services import AppServices
+from core.theme_manager import ThemeManager
 from utils.dialogs import confirm_execute, show_error_and_raise, confirm_exit
-from core.output_window import OutputWindow
+from ui.output_window import RichOutputWindow
+from ui.settings_dialog import SettingsDialog
+from ui.command_manager import CommandManagerDialog
+from ui.command_palette import CommandPalette
+from ui.quick_launch_bar import QuickLaunchBar
 
 # Modules for various functionalities
 from modules.command_history import CommandHistory
@@ -207,6 +213,11 @@ class TrayApp:
         self.icon_file = tray_icon_path
         logger.info("Base directory resolved to %s", self.base_dir)
         logger.info("Tray icon path resolved to %s", self.icon_file)
+
+        # Apply theme before any widgets are created (tasks 2.5, 2.6)
+        self.theme_manager = ThemeManager(self.base_dir)
+        settings = config_manager.get_settings()
+        self.theme_manager.apply_theme(settings.get("theme", "system"))
         
         self.app.aboutToQuit.connect(self.cleanup)
         # Keep the app running even if all windows are closed
@@ -220,6 +231,8 @@ class TrayApp:
         self.tray_icon.setVisible(True)
         self.menu = QMenu()
         self.output_windows = []
+        self._running_processes: dict = {}  # uuid → QProcess (tasks 8.1-8.4)
+        self._running_action = None           # dynamic "Running: N" menu item
 
         # Initialize module components
         try:
@@ -228,17 +241,35 @@ class TrayApp:
             show_error_and_raise(f"Failed to load commands: {str(e)}")
             self.command_menu = {}
 
+        # Build the thin service interface passed to all feature modules
+        self.services = AppServices(
+            config_manager=config_manager,
+            execute=self.execute,
+            reload_commands=self.reload_commands,
+            show_output=self.show_command_output,
+            get_all_commands=self.get_all_commands,
+            save_commands=self.save_commands,
+            reload_history_commands=self.reload_history_commands,
+            reload_favorites_commands=self.reload_favorites_commands,
+            resolve_icon_path=self._resolve_icon_path,
+            resolve_command_reference=self._resolve_command_reference,
+        )
+
         self.history_menu = []
-        self.history = CommandHistory(self)
-        self.creator = CommandCreator(self)
-        self.executor = CommandExecutor(self)
-        self.search = CommandSearch(self)
-        self.backup = BackupRestore(self)
-        self.importExport = ImportExport(self)
-        self.favorites = Favorites(self)
-        self.file_encryptor = FileEncryptor(self)
-        self.schedule_creator = ScheduleCreator(self)
-        self.schedule_viewer = ScheduleViewer(self)
+        self.palette = CommandPalette(self.services)
+        hotkey = settings.get("hotkey", "ctrl+shift+space")
+        self.palette.register_hotkey(hotkey)
+        self.quick_launch_bar = QuickLaunchBar(self.services, self.icon_file)
+        self.history = CommandHistory(self.services)
+        self.creator = CommandCreator(self.services)
+        self.executor = CommandExecutor(self.services)
+        self.search = CommandSearch(self.services)
+        self.backup = BackupRestore(self.services)
+        self.importExport = ImportExport(self.services)
+        self.favorites = Favorites(self.services)
+        self.file_encryptor = FileEncryptor(self.services)
+        self.schedule_creator = ScheduleCreator(self.services)
+        self.schedule_viewer = ScheduleViewer(self.services)
 
         # Load menu and set up tray icon
         self.load_tray_menu()
@@ -298,8 +329,9 @@ class TrayApp:
         # Commands group
         commands_menu = QMenu("Commands", self.menu)
         commands_menu.setIcon(QIcon(self.icon_file))
+        commands_menu.addAction("Quick Launch (Palette)", self.palette.show_palette)
         commands_menu.addAction("Search Commands", self.search.show_dialog)
-        commands_menu.addAction("Create New Command", self.creator.show_dialog)
+        commands_menu.addAction("Manage Commands", self._open_command_manager)
         commands_menu.addAction("Edit commands file", self.open_commands_json)
         commands_menu.addAction(
             "Reload Commands", lambda: self.reload_commands(rebuild_menu=True)
@@ -348,6 +380,16 @@ class TrayApp:
         tools_menu.addAction("View Schedules", self.schedule_viewer.show_dialog)
 
         self.menu.addMenu(tools_menu)
+        self.menu.addAction("Settings", self._open_settings)
+        self.menu.addAction("Quick Launch Bar", self.quick_launch_bar.toggle)
+
+        # Dynamic "Running: N" indicator (non-interactive, hidden when idle)
+        self.menu.addSeparator()
+        self._running_action = QAction("Running: 0", self.menu)
+        self._running_action.setEnabled(False)
+        self._running_action.setVisible(False)
+        self.menu.addAction(self._running_action)
+
         self.menu.addAction("Restart App", self.restart_app)
         self.menu.addAction("Exit", self.confirm_exit)
 
@@ -552,31 +594,95 @@ class TrayApp:
         else:
             self.executor.execute_command(command)
 
-        self.reload_commands()
         self.reload_history_commands()
         self.reload_favorites_commands()
 
     def show_command_output(self, title, command):
-        """Execute a command and show the output in a new window."""
+        """Execute a command, show output in RichOutputWindow, and update badge."""
+        import uuid
+        proc_id = str(uuid.uuid4())
+
         process = self.executor.execute_command_process(self.app, command)
 
-        def handle_finished(exit_code, exit_status):
-            stdout = process.readAllStandardOutput().data().decode()
-            stderr = process.readAllStandardError().data().decode()
-            output = stdout if stdout else stderr
-            output_window = OutputWindow(title, output, parent=self.app.activeWindow())
-            self.output_windows.append(output_window)
-            output_window.destroyed.connect(
-                lambda _,: (
-                    self.output_windows.remove(output_window)
-                    if output_window in self.output_windows
-                    else None
-                )
+        # Open a tab immediately so the user sees the window straight away
+        output_win = RichOutputWindow(self.app.activeWindow())
+        tab = output_win.open_process_tab(title)
+        self.output_windows.append(output_win)
+        output_win.destroyed.connect(
+            lambda _: (
+                self.output_windows.remove(output_win)
+                if output_win in self.output_windows
+                else None
             )
-            output_window.show()
+        )
 
-        process.finished.connect(handle_finished)
+        # Stream stdout/stderr into the tab as it arrives
+        process.readyReadStandardOutput.connect(
+            lambda: output_win.append_output(
+                tab,
+                process.readAllStandardOutput().data().decode(errors="replace"),
+            )
+        )
+        process.readyReadStandardError.connect(
+            lambda: output_win.append_output(
+                tab,
+                process.readAllStandardError().data().decode(errors="replace"),
+            )
+        )
+
+        # Register process and update badge
+        self._running_processes[proc_id] = process
+        self._update_tray_badge()
+
+        def _on_finished():
+            self._running_processes.pop(proc_id, None)
+            self._update_tray_badge()
+
+        process.finished.connect(_on_finished)
         process.start()
+
+    def _update_tray_badge(self):
+        """Repaint the tray icon with a badge showing running process count."""
+        count = len(self._running_processes)
+
+        # Update dynamic "Running: N" menu item (non-interactive)
+        if self._running_action is not None:
+            if count > 0:
+                self._running_action.setText(f"Running: {count}")
+                self._running_action.setVisible(True)
+            else:
+                self._running_action.setVisible(False)
+
+        base = QPixmap(self.icon_file)
+        if base.isNull():
+            return
+
+        if count == 0:
+            self.tray_icon.setIcon(QIcon(base))
+            return
+
+        # Paint badge overlay
+        badge_size = max(base.width() // 3, 12)
+        painter = QPainter(base)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Red circle bottom-right
+        bx = base.width() - badge_size - 1
+        by = base.height() - badge_size - 1
+        painter.setBrush(QColor("#e64553"))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(bx, by, badge_size, badge_size)
+
+        # White number
+        font = QFont()
+        font.setPixelSize(max(badge_size - 4, 8))
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(QColor("white"))
+        painter.drawText(bx, by, badge_size, badge_size, Qt.AlignmentFlag.AlignCenter, str(count))
+        painter.end()
+
+        self.tray_icon.setIcon(QIcon(base))
 
     # Utility methods
     def save_commands(self, commands):
@@ -683,6 +789,16 @@ class TrayApp:
         self.favorites_menu.clear()
         self.favorites.populate_favorites_menu(self.favorites_menu)
 
+    def _open_command_manager(self):
+        """Open the Command Manager dialog."""
+        dlg = CommandManagerDialog(self.services, self._running_processes, parent=None)
+        dlg.exec()
+
+    def _open_settings(self):
+        """Open the Settings dialog."""
+        dlg = SettingsDialog(self.theme_manager, parent=None)
+        dlg.exec()
+
     def restart_app(self):
         """Restart the application."""
         self.cleanup()
@@ -699,6 +815,8 @@ class TrayApp:
         logger.info("Cleaning up before exit")
         for window in self.output_windows:
             window.close()
+        self.palette.unregister_hotkey()
+        self.quick_launch_bar.close()
         # Always clear single instance lock and PID file
         self.instance_checker.cleanup()
 

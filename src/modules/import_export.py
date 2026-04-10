@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 class ImportExport:
     """Handles import and export operations for commands."""
 
-    def __init__(self, tray_app):
-        """Initialize with a reference to the TrayApp."""
-        self.tray_app = tray_app
+    def __init__(self, services):
+        """Initialize with an AppServices instance."""
+        self.services = services
 
     def export_command_group(self):
         """Export a command group to a JSON file."""
@@ -100,7 +100,7 @@ class ImportExport:
                     "Import Successful",
                     "Command group has been imported successfully.",
                 )
-                self.tray_app.reload_commands(rebuild_menu=True)
+                self.services.reload_commands(rebuild_menu=True)
             else:
                 QMessageBox.warning(
                     None,

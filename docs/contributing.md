@@ -97,7 +97,7 @@ Run this before committing to avoid formatting-only review comments.
 - **Logging**: Use `logging.getLogger(__name__)` in every module. Do not use `print()` for diagnostic output.
 - **Configuration access**: All file I/O for config and state must go through `config_manager` (the singleton from `core/config_manager.py`). Do not read or write JSON files directly.
 - **Qt threading**: Long-running operations (encryption, external processes with large output) must run in a `QThread` to keep the UI responsive.
-- **License header**: Every new `.py` file must include `# SPDX-License-Identifier: GPL-3.0-or-later` as the first line.
+- **License header**: Every new Python module under `src/` must include `# SPDX-License-Identifier: GPL-3.0-or-later` as the first line. Files under `tests/` should follow the existing test-file conventions used in the repository.
 
 ---
 
@@ -116,17 +116,20 @@ Any pull request that adds or changes a user-facing feature **must** update the 
 
 ## Testing
 
-There are currently no automated unit tests. The primary validation method is:
+The repository includes unit tests under `tests/`:
 
-1. Syntax check with `python3 -m py_compile` (see above).
-2. Headless startup test with `QT_QPA_PLATFORM=offscreen`.
-3. Manual GUI validation — requires a display server or VNC.
+Run the unit tests with:
 
-New tests should be placed in `tests/` and can be run with:
+ ```bash
+ python3 -m unittest discover -s tests -p "test_*.py"
+ ```
 
-```bash
-python3 -m pytest tests/
-```
+ In addition to the unit tests, contributors should still run the following validation steps:
+
+ 1. Syntax check with `python3 -m py_compile` (see above).
+ 2. Headless startup test with `QT_QPA_PLATFORM=offscreen`.
+ 3. Manual GUI validation — requires a display server or VNC.
+ New tests should be placed in `tests/` and follow the `test_*.py` naming pattern so they are picked up by `unittest` discovery.
 
 ---
 

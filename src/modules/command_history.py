@@ -1,8 +1,6 @@
 
 
 import logging
-import os
-import json
 import datetime
 from PyQt6.QtGui import QIcon, QAction
 from core.config_manager import config_manager
@@ -13,29 +11,9 @@ logger = logging.getLogger(__name__)
 class CommandHistory:
     """Manages the command history functionality."""
 
-    def __init__(self, tray_app):
-        """Initialize with a reference to the TrayApp."""
-        self.tray_app = tray_app
-
-    def load_history(self):
-        """Load command history from file."""
-        history_file = os.path.join(self.BASE_DIR, "../config/history.json")
-        try:
-            if os.path.exists(history_file):
-                with open(history_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            return []
-        except Exception:
-            return []
-
-    def save_history(self):
-        """Save command history to file."""
-        history_file = os.path.join(self.BASE_DIR, "../config/history.json")
-        try:
-            with open(history_file, "w", encoding="utf-8") as f:
-                json.dump(self.history, f, indent=4)
-        except Exception as e:
-            logger.error("Failed to save command history: %s", str(e))
+    def __init__(self, services):
+        """Initialize with an AppServices instance."""
+        self.services = services
 
     def add_to_history(self, title, command, confirm, show_output, prompt):
         """Add a command to the history."""
@@ -77,11 +55,11 @@ class CommandHistory:
                 c=command,
                 cf=confirm,
                 so=show_output,
-                p=prompt: self.tray_app.execute(t, c, cf, so, p)
+                p=prompt: self.services.execute(t, c, cf, so, p)
             )
             menu.addAction(action)
 
     def clear_history(self):
         """Clear the command history."""
         config_manager.clear_history()
-        self.populate_menu(self.tray_app.history_menu)
+        self.services.reload_history_commands()

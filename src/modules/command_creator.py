@@ -1,7 +1,6 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 
 import os
-import json
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -15,16 +14,15 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 
-from utils.utils import load_commands
+from core.config_manager import config_manager
 
 
 class CommandCreator:
     """Handles the creation of new commands via a GUI interface."""
 
-    def __init__(self, app):
-        """Initialize with reference to the main app."""
-        self.app = app
-        self.BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    def __init__(self, services):
+        """Initialize with an AppServices instance."""
+        self.services = services
 
     def show_dialog(self):
         """Show a dialog to create a new command."""
@@ -37,7 +35,7 @@ class CommandCreator:
         group_layout.addWidget(QLabel("Group:"))
         group_combo = QComboBox()
 
-        commands = load_commands()
+        commands = config_manager.get_commands()
         groups = list(commands.keys())
         group_combo.addItems(groups)
         group_combo.setEditable(True)
@@ -132,17 +130,17 @@ class CommandCreator:
                 cmd_data["prompt"] = prompt_edit.text()
 
             # Add the command to the config
-            commands = load_commands()
+            commands = config_manager.get_commands()
             if group not in commands:
                 commands[group] = {}
 
             commands[group][name] = cmd_data
 
             # Save the config
-            self.app.save_commands(commands)
+            self.services.save_commands(commands)
 
-            # Reload the menu
-            self.app.restart_app()
+            # Rebuild the menu without restarting
+            self.services.reload_commands(rebuild_menu=True)
 
             dialog.accept()
 

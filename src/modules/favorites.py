@@ -6,16 +6,15 @@ from PyQt6.QtWidgets import QMenu, QMessageBox, QInputDialog
 from PyQt6.QtGui import QIcon, QCursor, QAction
 from PyQt6.QtCore import Qt
 
-from utils.utils import load_commands
 from core.config_manager import config_manager
 
 
 class Favorites:
     """Handles favorites functionality."""
 
-    def __init__(self, tray_app):
-        """Initialize with a reference to the TrayApp."""
-        self.tray_app = tray_app
+    def __init__(self, services):
+        """Initialize with an AppServices instance."""
+        self.services = services
 
     def add_to_favorites(self):
         """Add a command to favorites by reference."""
@@ -73,7 +72,7 @@ class Favorites:
                         "Added to Favorites",
                         f"'{label}' has been added to Favorites as a reference to the original command.",
                     )
-                    self.tray_app.reload_favorites_commands()
+                    self.services.reload_favorites_commands()
                 else:
                     QMessageBox.warning(
                         None, "Failed", "Failed to add command to Favorites."
@@ -96,7 +95,7 @@ class Favorites:
             QMessageBox.information(
                 None, "Added to Favorites", f"'{label}' has been added to Favorites."
             )
-            self.tray_app.reload_favorites_commands()
+            self.services.reload_favorites_commands()
         else:
             QMessageBox.warning(None, "Failed", "Failed to add command to Favorites.")
 
@@ -108,7 +107,7 @@ class Favorites:
                 "Removed from Favorites",
                 f"'{label}' has been removed from Favorites.",
             )
-            self.tray_app.reload_favorites_commands()
+            self.services.reload_favorites_commands()
         else:
             QMessageBox.warning(
                 None, "Failed", f"Failed to remove '{label}' from Favorites."
@@ -153,14 +152,14 @@ class Favorites:
                 
                 # If this is a reference, resolve it to get the actual command data
                 if "ref" in item:
-                    resolved_item = self.tray_app._resolve_command_reference("Favorites", label, item)
+                    resolved_item = self.services.resolve_command_reference("Favorites", label, item)
                 
                 # Check if we have a valid command (either direct or resolved)
                 if "command" in resolved_item:
                     # Get icon from the resolved command, not from favorites
                     icon_path = None
                     if "icon" in resolved_item:
-                        icon_path = self.tray_app._resolve_icon_path(resolved_item.get("icon"))
+                        icon_path = self.services.resolve_icon_path(resolved_item.get("icon"))
                     
                     # Fall back to default icon if no icon specified or resolution failed
                     if not icon_path or not os.path.isfile(icon_path):
@@ -181,7 +180,7 @@ class Favorites:
                         lbl=label,
                         conf=confirm,
                         show=show_output,
-                        prmpt=prompt: self.tray_app.execute(lbl, cmd, conf, show, prmpt)
+                        prmpt=prompt: self.services.execute(lbl, cmd, conf, show, prmpt)
                     )
 
                     menu.addAction(action)
