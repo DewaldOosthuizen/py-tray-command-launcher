@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 """Tests for command_executor module.
 
 Tests cover subprocess-based execution, PID logging, QProcess creation, and

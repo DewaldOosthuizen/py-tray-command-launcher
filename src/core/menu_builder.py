@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 """MenuBuilder: Encapsulates all menu construction logic for TrayApp.
 
 This module provides the MenuBuilder class that handles hierarchical menu
@@ -204,7 +206,7 @@ class MenuBuilder:
                 # This is a reference, resolve it
                 ref_path = item["ref"]
                 path_parts = ref_path.split(".")
-                if len(path_parts) < 2:
+                if len(path_parts)< 2:
                     logger.warning("Invalid reference path: %s", ref_path)
                     return item
 
