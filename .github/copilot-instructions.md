@@ -4,6 +4,12 @@ py-tray-command-launcher is a Python-based system tray application that allows u
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
+## Code Exploration and Token Efficiency
+
+- If `.codegraph/` exists in the project, use CodeGraph tools first for symbol lookup, context gathering, and call tracing.
+- Prefer CodeGraph over manual grep/file-scanning to reduce token usage and speed up exploration.
+- Use shell/file search as a fallback only when CodeGraph is unavailable or does not return needed results.
+
 ## Working Effectively
 
 ### Bootstrap, Build, and Test the Repository
@@ -85,38 +91,52 @@ Always reference these instructions first and fallback to search or bash command
 
 ### Key Directories and Files
 ```
-├── src/                      # Main source code
-│   ├── main.py              # Application entry point
-│   ├── core/                # Core functionality
-│   │   ├── tray_app.py      # Main tray application class
-│   │   ├── config_manager.py # Configuration management
-│   │   └── output_window.py  # Command output display
-│   ├── modules/             # Feature modules
-│   │   ├── command_executor.py  # Command execution
-│   │   ├── command_search.py   # Command search functionality
-│   │   ├── command_creator.py  # GUI command creation
-│   │   ├── command_history.py  # Command history tracking
-│   │   ├── favorites.py        # Favorites management
-│   │   ├── backup_restore.py   # Backup/restore functionality
-│   │   └── import_export.py    # Import/export features
-│   └── utils/               # Utility functions
-│       ├── dialogs.py       # UI dialogs
-│       └── utils.py         # General utilities
-├── config/                  # Configuration files
-│   ├── commands.json        # Main command definitions (Linux)
-│   └── win-commands.json    # Windows command definitions
-├── resources/               # Application resources
-│   └── icons/              # Icon files for UI
-├── scripts/                # Setup and utility scripts
-│   └── install_packages.sh # System dependency installer
-├── requirements.txt        # Python dependencies
-└── README.md              # Project documentation
+├── src/                         # Main source code
+│   ├── main.py                  # Application entry point
+│   ├── core/                    # Core services and app orchestration
+│   │   ├── tray_app.py
+│   │   ├── menu_builder.py
+│   │   ├── services.py
+│   │   ├── theme_manager.py
+│   │   ├── config_manager.py
+│   │   ├── logging_config.py
+│   │   └── output_window.py
+│   ├── modules/                 # Feature modules (commands, schedules, backup, etc.)
+│   │   ├── command_executor.py
+│   │   ├── command_search.py
+│   │   ├── command_creator.py
+│   │   ├── command_history.py
+│   │   ├── favorites.py
+│   │   ├── backup_restore.py
+│   │   ├── import_export.py
+│   │   ├── file_encryptor.py
+│   │   ├── schedule_creator.py
+│   │   └── schedule_viewer.py
+│   ├── ui/                      # Modern UI widgets and dialogs
+│   │   ├── command_palette.py
+│   │   ├── quick_launch_bar.py
+│   │   ├── command_manager.py
+│   │   ├── settings_dialog.py
+│   │   └── output_window.py
+│   └── utils/                   # Utility functions and helpers
+├── config/                      # Command configuration files
+├── resources/                   # Icons and themes
+├── tests/                       # Unit/integration tests
+├── docs/                        # Project documentation
+├── openspec/                    # Change proposals/specs/tasks
+├── scripts/                     # Build and setup scripts
+├── requirements.txt             # Runtime dependencies
+└── requirements-build.txt       # Packaging/build dependencies
 ```
 
 ### Important File Locations
 - **Main application:** `src/main.py`
 - **Configuration:** `config/commands.json`
 - **Icons:** `resources/icons/` (icon.png is the main tray icon)
+- **Themes:** `resources/themes/` (`light.qss` and `dark.qss`)
+- **UI layer:** `src/ui/`
+- **Tests:** `tests/`
+- **OpenSpec artifacts:** `openspec/changes/` and `openspec/specs/`
 - **System setup:** `scripts/install_packages.sh`
 
 ## Validation
@@ -125,26 +145,27 @@ Always reference these instructions first and fallback to search or bash command
 Since this is a GUI application, you MUST perform manual validation after making changes:
 
 1. **Configuration validation:**
-   ```bash
-   source venv/bin/activate
-   python3 -c "
-   import sys; sys.path.append('src')
-   from core.config_manager import config_manager
-   commands = config_manager.get_commands()
-   print('Categories:', list(commands.keys()))
-   "
-   ```
+
+  ```bash
+  source venv/bin/activate
+  python3 -c "
+  import sys; sys.path.append('src')
+  from core.config_manager import config_manager
+  commands = config_manager.get_commands()
+  print('Categories:', list(commands.keys()))
+  "
+  ```
 
 2. **Application startup validation:**
-   ```bash
-   source venv/bin/activate
-   QT_QPA_PLATFORM=offscreen timeout 5 python3 src/main.py
-   ```
-   Should start without errors and show config loading messages.
+  ```bash
+  source venv/bin/activate
+  QT_QPA_PLATFORM=offscreen timeout 5 python3 src/main.py
+  ```
+  Should start without errors and show config loading messages.
 
 3. **Code quality validation:**
-   - ALWAYS run `flake8 src/` before committing
-   - Check that all Python files compile: `find src -name "*.py" -exec python3 -m py_compile {} \;`
+  - ALWAYS run `flake8 src/` before committing
+  - Check that all Python files compile: `find src -name "*.py" -exec python3 -m py_compile {} \;`
 
 ### GUI Testing Limitations
 - You CANNOT interact with the GUI in headless environments
@@ -157,7 +178,7 @@ Since this is a GUI application, you MUST perform manual validation after making
 - `python3` - Python 3.x runtime
 - `python3-pip` - Python package manager
 - `libxcb-xinerama0` - X11 extension library
-- `libxcb-cursor0` - X11 cursor library  
+- `libxcb-cursor0` - X11 cursor library
 - `policykit-1` - Policy management
 - `libegl1` - EGL library (may be needed for Qt)
 
@@ -209,15 +230,15 @@ QT_QPA_PLATFORM=offscreen timeout 3 python3 src/main.py
 - Requires Qt platform plugins for proper display
 
 ### Testing Infrastructure
-- NO unit tests currently exist in the repository
-- NO CI/CD workflows configured
-- Manual validation is the primary testing method
+- Unit tests exist under `tests/` (currently 6 Python test files)
+- Manual validation is still required for GUI behavior
+- Headless startup checks remain important for CI and local verification
 
 ## Timing Expectations
 
 **NEVER CANCEL these operations - they complete within expected timeframes:**
 - System package installation: 20-30 seconds
-- Virtual environment creation: 3-5 seconds  
+- Virtual environment creation: 3-5 seconds
 - Python dependency installation: 4-6 seconds
 - Application import validation: <1 second
 - Linting operations: <1 second
@@ -234,18 +255,27 @@ ls -la
 .git/
 .gitignore
 LICENSE
+AppDir/
 README.md
+build/
 config/
+docs/
+openspec/
+packaging/
+py-tray-command-launcher.spec
+requirements-build.txt
 requirements.txt
 resources/
 scripts/
 src/
+tests/
+tools/
 ```
 
 ### Source Code Statistics
-- 13 Python files in `src/`
-- ~1932 total lines of code
-- Main modules: core (3 files), modules (7 files), utils (2 files)
+- 27 Python files in `src/`
+- 6 Python test files in `tests/`
+- Main application layers: core, modules, ui, and utils
 
 ### Requirements File
 ```bash
@@ -258,7 +288,7 @@ PyQt6
 ### Configuration Categories
 Available command categories in `config/commands.json`:
 - System (terminal, updates, system info)
-- Media (music, video applications)  
+- Media (music, video applications)
 - Studies (educational tools)
 - Utilities (file management, etc.)
 - Development (coding tools)

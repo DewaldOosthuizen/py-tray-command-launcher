@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 """Tests for backup_restore module.
 
 Tests call the real public methods (backup_commands, restore_commands) while

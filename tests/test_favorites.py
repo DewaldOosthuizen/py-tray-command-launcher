@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 """Tests for favorites module.
 
 Tests call the real public methods (add_to_favorites_directly,

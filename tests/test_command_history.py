@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 """Tests for command_history module.
 
 Tests call the real public methods (add_to_history, populate_menu,

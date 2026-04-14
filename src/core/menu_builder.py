@@ -1,3 +1,5 @@
+#  SPDX-License-Identifier: GPL-3.0-or-later
+
 """MenuBuilder: Encapsulates all menu construction logic for TrayApp.
 
 This module provides the MenuBuilder class that handles hierarchical menu
