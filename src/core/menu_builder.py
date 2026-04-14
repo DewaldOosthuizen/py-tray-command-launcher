@@ -206,7 +206,7 @@ class MenuBuilder:
                 # This is a reference, resolve it
                 ref_path = item["ref"]
                 path_parts = ref_path.split(".")
-                if len(path_parts)< 2:
+                if len(path_parts) < 2:
                     logger.warning("Invalid reference path: %s", ref_path)
                     return item
 
