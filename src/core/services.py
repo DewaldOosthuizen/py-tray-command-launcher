@@ -1,4 +1,4 @@
-#  SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """
 AppServices dataclass — thin service interface passed to all feature modules.

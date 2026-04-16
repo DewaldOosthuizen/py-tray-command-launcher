@@ -1,4 +1,4 @@
-#  SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """
 CommandPalette — spotlight-style popup overlay for quick command access.
@@ -20,7 +20,7 @@ Public API
 
 import logging
 
-from PyQt6.QtCore import Qt, QObject, pyqtSignal
+from PyQt6.QtCore import Qt, QObject, QEvent, pyqtSignal
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import (
     QApplication,
@@ -184,7 +184,7 @@ class _PaletteWindow(QWidget):
     # ------------------------------------------------------------------
 
     def eventFilter(self, obj, event):
-        if obj is self._search and isinstance(event, QKeyEvent):
+        if obj is self._search and isinstance(event, QKeyEvent) and event.type() == QEvent.Type.KeyPress:
             key = event.key()
             if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
                 self._execute()

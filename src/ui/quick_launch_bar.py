@@ -1,4 +1,4 @@
-#  SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """
 QuickLaunchBar — a compact, frameless floating toolbar pinned to the desktop.

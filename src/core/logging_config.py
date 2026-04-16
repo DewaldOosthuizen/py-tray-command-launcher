@@ -1,4 +1,4 @@
-#  SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """Centralized logging configuration for py-tray-command-launcher."""
 

@@ -1,4 +1,4 @@
-#  SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """
 RichOutputWindow — tabbed, ANSI-aware command output display.
