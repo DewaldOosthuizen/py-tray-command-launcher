@@ -92,6 +92,7 @@ class MenuBuilder:
         commands_menu = QMenu("Commands", menu)
         commands_menu.setIcon(QIcon(self.tray_app.icon_file))
         commands_menu.addAction("Quick Launch (Palette)", self.tray_app.palette.show_palette)
+        commands_menu.addAction("App Launcher", self.tray_app.palette.show_app_launcher)
         commands_menu.addAction("Search Commands", self.tray_app.search.show_dialog)
         commands_menu.addAction("Manage Commands", self.tray_app._open_command_manager)
         commands_menu.addAction("Edit commands file", self.tray_app.open_commands_json)

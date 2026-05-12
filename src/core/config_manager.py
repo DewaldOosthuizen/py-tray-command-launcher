@@ -117,6 +117,7 @@ class ConfigManager:
     _SETTINGS_DEFAULTS: Dict[str, Any] = {
         "theme": "system",
         "hotkey": "ctrl+shift+space",
+        "app_launcher_hotkey": "ctrl+alt+a",
         "history_limit": 50,
         "output_font": {"family": "monospace", "size": 10},
         "quick_launch_bar": {"visible": False, "position": [100, 100], "pinned": [], "hotkey": "ctrl+shift+b"},

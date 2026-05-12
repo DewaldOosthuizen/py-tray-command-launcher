@@ -38,11 +38,13 @@ logger = logging.getLogger(__name__)
 class SettingsDialog(QDialog):
     """Settings dialog covering theme, hotkey, logging, history, and output font."""
 
-    def __init__(self, theme_manager, parent=None, hotkey_callback=None, bar_hotkey_callback=None):
+    def __init__(self, theme_manager, parent=None, hotkey_callback=None,
+                 bar_hotkey_callback=None, app_launcher_hotkey_callback=None):
         super().__init__(parent)
         self._theme_manager = theme_manager
         self._hotkey_callback = hotkey_callback
         self._bar_hotkey_callback = bar_hotkey_callback
+        self._app_launcher_hotkey_callback = app_launcher_hotkey_callback
         self.setWindowTitle("Settings")
         self.setMinimumWidth(420)
 
@@ -74,6 +76,12 @@ class SettingsDialog(QDialog):
         self._hotkey_edit = QLineEdit(settings.get("hotkey", "ctrl+shift+space"))
         self._hotkey_edit.setPlaceholderText("e.g. ctrl+shift+space")
         behaviour_form.addRow("Command Palette hotkey:", self._hotkey_edit)
+
+        self._app_launcher_hotkey_edit = QLineEdit(
+            settings.get("app_launcher_hotkey", "ctrl+alt+a")
+        )
+        self._app_launcher_hotkey_edit.setPlaceholderText("e.g. ctrl+alt+a")
+        behaviour_form.addRow("App Launcher hotkey:", self._app_launcher_hotkey_edit)
 
         self._history_spin = QSpinBox()
         self._history_spin.setRange(0, 500)
@@ -161,6 +169,7 @@ class SettingsDialog(QDialog):
 
             settings["theme"] = self._theme_combo.currentText()
             settings["hotkey"] = self._hotkey_edit.text().strip()
+            settings["app_launcher_hotkey"] = self._app_launcher_hotkey_edit.text().strip()
             settings["history_limit"] = self._history_spin.value()
             settings["output_font"] = {
                 "family": self._font_family_edit.text().strip() or "monospace",
@@ -189,6 +198,8 @@ class SettingsDialog(QDialog):
                 self._hotkey_callback(settings["hotkey"])
             if self._bar_hotkey_callback:
                 self._bar_hotkey_callback(qlb_cfg["hotkey"])
+            if self._app_launcher_hotkey_callback:
+                self._app_launcher_hotkey_callback(settings["app_launcher_hotkey"])
             self.accept()
         except Exception as exc:
             QMessageBox.critical(self, "Error", f"Failed to save settings:\n{exc}")

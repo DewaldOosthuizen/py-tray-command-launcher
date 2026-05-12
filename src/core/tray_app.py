@@ -325,7 +325,8 @@ class TrayApp:
         self.history_menu = []
         self.palette = CommandPalette(self.services)
         hotkey = settings.get("hotkey", "ctrl+shift+space")
-        self.palette.register_hotkey(hotkey)
+        app_launcher_hotkey = settings.get("app_launcher_hotkey", "ctrl+alt+a")
+        self.palette.register_hotkeys(hotkey, app_launcher_hotkey)
         self.quick_launch_bar = QuickLaunchBar(self.services, self.icon_file)
         bar_hotkey = settings.get("quick_launch_bar", {}).get("hotkey", "ctrl+shift+b")
         self.quick_launch_bar.register_hotkey(bar_hotkey)
@@ -612,17 +613,25 @@ class TrayApp:
             parent=None,
             hotkey_callback=self._reregister_hotkey,
             bar_hotkey_callback=self._reregister_bar_hotkey,
+            app_launcher_hotkey_callback=self._reregister_app_launcher_hotkey,
         )
         dlg.exec()
 
     def _reregister_hotkey(self, hotkey: str) -> None:
         """Unregister the current palette hotkey and register the new one."""
         try:
-            self.palette.unregister_hotkey()
             self.palette.register_hotkey(hotkey)
             logger.info("Palette hotkey re-registered: %s", hotkey)
         except Exception as exc:
             logger.warning("Failed to re-register palette hotkey '%s': %s", hotkey, exc)
+
+    def _reregister_app_launcher_hotkey(self, hotkey: str) -> None:
+        """Unregister the app launcher hotkey and register the new one."""
+        try:
+            self.palette.update_app_launcher_hotkey(hotkey)
+            logger.info("App Launcher hotkey re-registered: %s", hotkey)
+        except Exception as exc:
+            logger.warning("Failed to re-register app launcher hotkey '%s': %s", hotkey, exc)
 
     def _reregister_bar_hotkey(self, hotkey: str) -> None:
         """Unregister the current bar hotkey and register the new one."""
