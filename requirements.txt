@@ -1,4 +1,4 @@
-PyQt6>=6.10.2
+PyQt6>=6.11.0
 cryptography>=48.0.0
 rapidfuzz>=3.14.5
 pynput>=1.8.2
