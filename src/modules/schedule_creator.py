@@ -45,11 +45,11 @@ class ScheduleCreator:
         # Populate with all available commands
         try:
             all_commands = self.services.get_all_commands()
-            self.command_data = {}
+            command_data: dict = {}
             for cmd_info in all_commands:
                 display_text = f"{cmd_info['group']} → {cmd_info['label']}"
                 command_combo.addItem(display_text)
-                self.command_data[display_text] = cmd_info
+                command_data[display_text] = cmd_info
         except Exception as e:
             QMessageBox.critical(dialog, "Error", f"Failed to load commands: {str(e)}")
             return
@@ -123,14 +123,14 @@ class ScheduleCreator:
         create_btn = QPushButton("Create Schedule")
         cancel_btn = QPushButton("Cancel")
 
-        def on_create():
+        def on_create(_command_data=command_data):
             # Get selected command
             selected_command_text = command_combo.currentText()
-            if not selected_command_text or selected_command_text not in self.command_data:
+            if not selected_command_text or selected_command_text not in _command_data:
                 QMessageBox.warning(dialog, "Error", "Please select a command.")
                 return
 
-            selected_command = self.command_data[selected_command_text]
+            selected_command = _command_data[selected_command_text]
 
             # Get selected time
             time = time_edit.time()

@@ -10,6 +10,7 @@ testability.
 
 import logging
 import os
+from functools import partial
 from PyQt6.QtWidgets import QMenu
 from PyQt6.QtGui import QIcon, QAction
 
@@ -283,6 +284,11 @@ class MenuBuilder:
                 )
 
                 menu.addAction(action)
+                self._attach_pin_context_menu(
+                    action,
+                    {"label": label, "command": command, "confirm": confirm,
+                     "showOutput": show_output, "prompt": prompt},
+                )
                 return action
 
         # Regular command processing
@@ -310,15 +316,30 @@ class MenuBuilder:
         )
 
         menu.addAction(action)
+        self._attach_pin_context_menu(
+            action,
+            {"label": label, "command": command, "confirm": confirm,
+             "showOutput": show_output, "prompt": prompt},
+        )
         return action
+
+    def _attach_pin_context_menu(self, action: QAction, cmd_info: dict) -> None:
+        """Attach a right-click context menu with 'Pin to Quick-Launch Bar' to *action*."""
+        context_menu = QMenu()
+        pin_action = QAction("Pin to Quick-Launch Bar", context_menu)
+        pin_action.triggered.connect(
+            partial(self.tray_app._pin_to_quick_launch, cmd_info)
+        )
+        context_menu.addAction(pin_action)
+        action.setMenu(context_menu)
 
     def _get_item_icon_path(self, icon_spec, fallback_path):
         """Resolve icon path with fallback to parent or default.
-        
+
         Args:
             icon_spec: Icon path from config (or None)
             fallback_path: Path to use if icon_spec doesn't exist or is None
-            
+
         Returns:
             Valid icon path (either resolved icon_spec or fallback_path)
         """

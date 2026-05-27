@@ -75,15 +75,15 @@ class TestCommandExecutor(unittest.TestCase):
         mock_process.setArguments.assert_called_once_with(["-c", "top"])
         self.assertIs(result, mock_process)
 
-    def test_execute_command_process_does_not_start_process(self):
-        """execute_command_process should return the process without calling start()."""
+    def test_execute_command_process_starts_process(self):
+        """execute_command_process should call start() before returning."""
         mock_process = MagicMock()
         mock_app = MagicMock()
 
         with patch('modules.command_executor.QProcess', return_value=mock_process):
             self.executor.execute_command_process(mock_app, "pwd")
 
-        mock_process.start.assert_not_called()
+        mock_process.start.assert_called_once()
 
     # ------------------------------------------------------------------
     # execute_command_process_silently

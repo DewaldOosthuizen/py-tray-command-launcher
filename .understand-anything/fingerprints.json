@@ -1,0 +1,3263 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "45adc26",
+  "generatedAt": "2026-05-27T13:20:07.327Z",
+  "files": {
+    "src/core/services.py": {
+      "filePath": "src/core/services.py",
+      "contentHash": "cc3b337eb17001c74056f138b01315046ded433948d03df8e61860fdf74d4af7",
+      "functions": [],
+      "classes": [
+        {
+          "name": "AppServices",
+          "methods": [],
+          "properties": [
+            "config_manager",
+            "execute",
+            "reload_commands",
+            "show_output",
+            "get_all_commands",
+            "save_commands",
+            "reload_history_commands",
+            "reload_favorites_commands",
+            "resolve_icon_path"
+          ],
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "imports": [
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "TYPE_CHECKING",
+            "Callable",
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "AppServices"
+      ],
+      "totalLines": 32,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/config_manager.py": {
+      "filePath": "src/core/config_manager.py",
+      "contentHash": "3be313659f34abccfd43835379d63c1ef73f7b55c56c9d8df32a370664a9d305",
+      "functions": [
+        {
+          "name": "_get_base_dir",
+          "params": [],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [
+        {
+          "name": "ConfigurationError",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "ConfigManager",
+          "methods": [
+            "__init__",
+            "get_config_dir",
+            "set_commands_override",
+            "get_active_commands_file",
+            "get_command_paths",
+            "_deep_merge",
+            "_write_json_atomic",
+            "get_settings",
+            "save_settings",
+            "get_configured_log_level",
+            "_get_commands_file_for_read",
+            "_get_commands_file_for_write",
+            "get_commands",
+            "save_commands",
+            "get_history",
+            "save_history",
+            "add_to_history",
+            "clear_history",
+            "get_favorites",
+            "save_favorites",
+            "backup_commands",
+            "list_backups",
+            "restore_from_backup",
+            "import_command_group",
+            "export_command_group",
+            "add_to_favorites",
+            "remove_from_favorites",
+            "migrate_favorites_from_commands",
+            "_validate_commands",
+            "_validate_commands_schema",
+            "_create_default_commands",
+            "get_base_dir",
+            "_get_user_config_dir",
+            "_legacy_config_dirs",
+            "_load_commands_from_file",
+            "_merge_commands_preserving_canonical",
+            "_migrate_legacy_command_files",
+            "_legacy_files_for"
+          ],
+          "properties": [
+            "_SETTINGS_DEFAULTS"
+          ],
+          "exported": true,
+          "lineCount": 1031
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "copy",
+          "specifiers": [
+            "copy"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Optional",
+            "List",
+            "Tuple"
+          ]
+        }
+      ],
+      "exports": [
+        "ConfigurationError",
+        "_get_base_dir",
+        "ConfigManager"
+      ],
+      "totalLines": 1077,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/logging_config.py": {
+      "filePath": "src/core/logging_config.py",
+      "contentHash": "6d2ef5ad52fb86eb10d1990efa627badda76fe281449971b0123391e6e198f72",
+      "functions": [
+        {
+          "name": "_parse_log_level",
+          "params": [
+            "level_name"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "resolve_log_level",
+          "params": [
+            "config_level"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "configure_logging",
+          "params": [
+            "config_level"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "_parse_log_level",
+        "resolve_log_level",
+        "configure_logging"
+      ],
+      "totalLines": 46,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/icon_resolver.py": {
+      "filePath": "src/core/icon_resolver.py",
+      "contentHash": "2c6aca479a080372b638187a861d99fc3f485f4bc2e45f12fbc68f628d202807",
+      "functions": [],
+      "classes": [
+        {
+          "name": "IconResolver",
+          "methods": [
+            "__init__",
+            "set_cache_ttl",
+            "resource_roots",
+            "resolve_tray_icon",
+            "download_icon",
+            "resolve_icon_path",
+            "_resolve_base64_icon"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 274
+        }
+      ],
+      "imports": [
+        {
+          "source": "base64",
+          "specifiers": [
+            "base64"
+          ]
+        },
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "urllib.error",
+          "specifiers": [
+            "urllib.error"
+          ]
+        },
+        {
+          "source": "urllib.request",
+          "specifiers": [
+            "urllib.request"
+          ]
+        }
+      ],
+      "exports": [
+        "IconResolver"
+      ],
+      "totalLines": 302,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/theme_manager.py": {
+      "filePath": "src/core/theme_manager.py",
+      "contentHash": "12368e7c1eede4d5cf3163da90453e63940a77c58ba39a1b98cc7591708f4ce5",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ThemeManager",
+          "methods": [
+            "__init__",
+            "apply_theme",
+            "current_theme",
+            "_resolve_qss_path"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 95
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QApplication"
+          ]
+        }
+      ],
+      "exports": [
+        "ThemeManager"
+      ],
+      "totalLines": 120,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/menu_builder.py": {
+      "filePath": "src/core/menu_builder.py",
+      "contentHash": "70ec5c0e2eb96ecf8fe063bbcd960019476b003217b8f723053889074a53a134",
+      "functions": [],
+      "classes": [
+        {
+          "name": "MenuBuilder",
+          "methods": [
+            "__init__",
+            "build",
+            "_add_menu_items",
+            "_resolve_command_reference",
+            "_add_command_to_menu",
+            "_attach_pin_context_menu",
+            "_get_item_icon_path"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 329
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "functools",
+          "specifiers": [
+            "partial"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QMenu"
+          ]
+        },
+        {
+          "source": "PyQt6.QtGui",
+          "specifiers": [
+            "QIcon",
+            "QAction"
+          ]
+        },
+        {
+          "source": "utils.dialogs",
+          "specifiers": [
+            "show_error_and_raise"
+          ]
+        }
+      ],
+      "exports": [
+        "MenuBuilder"
+      ],
+      "totalLines": 351,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/tray_app.py": {
+      "filePath": "src/core/tray_app.py",
+      "contentHash": "e59d722a183a94322034fa898284351ad971a963563869ae7232e7bfd5f6ebbb",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TrayApp",
+          "methods": [
+            "__init__",
+            "_setup_paths",
+            "_setup_theme",
+            "_setup_tray_icon",
+            "_build_services",
+            "_build_modules",
+            "_build_ui",
+            "_build_menu",
+            "_resolve_icon_path",
+            "_update_tray_tooltip",
+            "load_tray_menu",
+            "execute",
+            "show_command_output",
+            "_on_output_window_closed",
+            "_update_tray_badge",
+            "save_commands",
+            "get_all_commands",
+            "open_commands_json",
+            "reload_commands",
+            "reload_history_commands",
+            "reload_favorites_commands",
+            "_open_command_manager",
+            "_pin_to_quick_launch",
+            "_open_settings",
+            "_reregister_hotkey",
+            "_reregister_app_launcher_hotkey",
+            "_reregister_bar_hotkey",
+            "restart_app",
+            "confirm_exit",
+            "cleanup",
+            "run"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 499
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "weakref",
+          "specifiers": [
+            "weakref"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "Qt"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QMenu",
+            "QSystemTrayIcon",
+            "QMessageBox",
+            "QInputDialog"
+          ]
+        },
+        {
+          "source": "PyQt6.QtGui",
+          "specifiers": [
+            "QIcon",
+            "QAction",
+            "QColor",
+            "QFont",
+            "QPainter",
+            "QPixmap"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager",
+            "ConfigurationError"
+          ]
+        },
+        {
+          "source": "core.icon_resolver",
+          "specifiers": [
+            "IconResolver"
+          ]
+        },
+        {
+          "source": "core.services",
+          "specifiers": [
+            "AppServices"
+          ]
+        },
+        {
+          "source": "core.theme_manager",
+          "specifiers": [
+            "ThemeManager"
+          ]
+        },
+        {
+          "source": "core.menu_builder",
+          "specifiers": [
+            "MenuBuilder"
+          ]
+        },
+        {
+          "source": "utils.dialogs",
+          "specifiers": [
+            "confirm_execute",
+            "show_error_and_raise",
+            "confirm_exit"
+          ]
+        },
+        {
+          "source": "ui.output_window",
+          "specifiers": [
+            "RichOutputWindow"
+          ]
+        },
+        {
+          "source": "ui.settings_dialog",
+          "specifiers": [
+            "SettingsDialog"
+          ]
+        },
+        {
+          "source": "ui.command_manager",
+          "specifiers": [
+            "CommandManagerDialog"
+          ]
+        },
+        {
+          "source": "ui.command_palette",
+          "specifiers": [
+            "CommandPalette"
+          ]
+        },
+        {
+          "source": "ui.quick_launch_bar",
+          "specifiers": [
+            "QuickLaunchBar"
+          ]
+        },
+        {
+          "source": "modules.command_history",
+          "specifiers": [
+            "CommandHistory"
+          ]
+        },
+        {
+          "source": "modules.command_creator",
+          "specifiers": [
+            "CommandCreator"
+          ]
+        },
+        {
+          "source": "modules.command_executor",
+          "specifiers": [
+            "CommandExecutor"
+          ]
+        },
+        {
+          "source": "modules.command_search",
+          "specifiers": [
+            "CommandSearch"
+          ]
+        },
+        {
+          "source": "modules.backup_restore",
+          "specifiers": [
+            "BackupRestore"
+          ]
+        },
+        {
+          "source": "modules.import_export",
+          "specifiers": [
+            "ImportExport"
+          ]
+        },
+        {
+          "source": "modules.favorites",
+          "specifiers": [
+            "Favorites"
+          ]
+        },
+        {
+          "source": "modules.file_encryptor",
+          "specifiers": [
+            "FileEncryptor"
+          ]
+        },
+        {
+          "source": "modules.schedule_creator",
+          "specifiers": [
+            "ScheduleCreator"
+          ]
+        },
+        {
+          "source": "modules.schedule_viewer",
+          "specifiers": [
+            "ScheduleViewer"
+          ]
+        }
+      ],
+      "exports": [
+        "TrayApp"
+      ],
+      "totalLines": 540,
+      "hasStructuralAnalysis": true
+    },
+    "src/main.py": {
+      "filePath": "src/main.py",
+      "contentHash": "ce9fcdb0b36c6de6b327d9ee053ea8218e7b7f6b6a0087432521aa81ac5fc969",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "atexit",
+          "specifiers": [
+            "atexit"
+          ]
+        },
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "getpass",
+          "specifiers": [
+            "getpass"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "signal",
+          "specifiers": [
+            "signal"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "core.logging_config",
+          "specifiers": [
+            "configure_logging"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 113,
+      "hasStructuralAnalysis": true
+    },
+    "src/utils/single_instance.py": {
+      "filePath": "src/utils/single_instance.py",
+      "contentHash": "45717359fb5e986593b74a45341d11637619f86c41352849c83ae800b4052399",
+      "functions": [],
+      "classes": [
+        {
+          "name": "SingleInstanceChecker",
+          "methods": [
+            "__init__",
+            "is_pid_running",
+            "force_unlock",
+            "is_another_instance_running",
+            "acquire_lock",
+            "show_already_running_message",
+            "cleanup"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 169
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "QSharedMemory"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QMessageBox"
+          ]
+        }
+      ],
+      "exports": [
+        "SingleInstanceChecker"
+      ],
+      "totalLines": 187,
+      "hasStructuralAnalysis": true
+    },
+    "src/utils/dialogs.py": {
+      "filePath": "src/utils/dialogs.py",
+      "contentHash": "e8a7a84842137f38c5eb8ce4a144a42b7a564e13029c84d9be32e3f6b56fac98",
+      "functions": [
+        {
+          "name": "show_error_and_raise",
+          "params": [
+            "message"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "confirm_execute",
+          "params": [
+            "command"
+          ],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "confirm_exit",
+          "params": [],
+          "exported": true,
+          "lineCount": 10
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QMessageBox"
+          ]
+        }
+      ],
+      "exports": [
+        "show_error_and_raise",
+        "confirm_execute",
+        "confirm_exit"
+      ],
+      "totalLines": 35,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/command_search.py": {
+      "filePath": "src/modules/command_search.py",
+      "contentHash": "f6d87268a5683be65ff9e61b67409d6112373a5b67f3380ec080d4133601bc5a",
+      "functions": [
+        {
+          "name": "_score",
+          "params": [
+            "query",
+            "text"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [
+        {
+          "name": "CommandSearch",
+          "methods": [
+            "__init__",
+            "show_dialog"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 131
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "Qt"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QDialog",
+            "QHBoxLayout",
+            "QLineEdit",
+            "QPushButton",
+            "QSplitter",
+            "QTextEdit",
+            "QTreeWidget",
+            "QTreeWidgetItem",
+            "QVBoxLayout"
+          ]
+        }
+      ],
+      "exports": [
+        "_score",
+        "CommandSearch"
+      ],
+      "totalLines": 180,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/schedule_creator.py": {
+      "filePath": "src/modules/schedule_creator.py",
+      "contentHash": "c5ca38c655ea3360b8d98944ab49c52b6351ea7cd786a9545564994ae6f4dc92",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ScheduleCreator",
+          "methods": [
+            "__init__",
+            "show_dialog",
+            "create_schedule",
+            "_create_windows_task",
+            "_create_linux_cron",
+            "_human_cron"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 305
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QDialog",
+            "QVBoxLayout",
+            "QHBoxLayout",
+            "QLabel",
+            "QComboBox",
+            "QTimeEdit",
+            "QPushButton",
+            "QMessageBox",
+            "QCheckBox",
+            "QGridLayout"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "QTime"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager",
+            "ConfigurationError"
+          ]
+        }
+      ],
+      "exports": [
+        "ScheduleCreator"
+      ],
+      "totalLines": 331,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/favorites.py": {
+      "filePath": "src/modules/favorites.py",
+      "contentHash": "d838962ec8b315823ed0550d184d45e0a462a76e6461f1b9ff2bb5a0a0489854",
+      "functions": [
+        {
+          "name": "_build_command_path",
+          "params": [
+            "group",
+            "label"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 17
+        }
+      ],
+      "classes": [
+        {
+          "name": "Favorites",
+          "methods": [
+            "__init__",
+            "add_to_favorites",
+            "add_to_favorites_directly",
+            "remove_from_favorites",
+            "create_context_menu",
+            "populate_favorites_menu"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 166
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QMenu",
+            "QMessageBox",
+            "QInputDialog"
+          ]
+        },
+        {
+          "source": "PyQt6.QtGui",
+          "specifiers": [
+            "QIcon",
+            "QCursor",
+            "QAction"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "Qt"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager"
+          ]
+        }
+      ],
+      "exports": [
+        "_build_command_path",
+        "Favorites"
+      ],
+      "totalLines": 200,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/app_discovery.py": {
+      "filePath": "src/modules/app_discovery.py",
+      "contentHash": "2c6215fe294da3668378d98e11e4c498dcc62c718d598c4e41dafd5b47550fa6",
+      "functions": [
+        {
+          "name": "_score",
+          "params": [
+            "query",
+            "text"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "AppEntry",
+          "methods": [
+            "categories_str"
+          ],
+          "properties": [
+            "name",
+            "exec_cmd",
+            "icon_name",
+            "categories",
+            "terminal"
+          ],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "AppDiscovery",
+          "methods": [
+            "__init__",
+            "load",
+            "_load_linux",
+            "_load_windows",
+            "_parse_desktop_file",
+            "get_all",
+            "search",
+            "resolve_icon_pixmap",
+            "_find_pixmap",
+            "_scale",
+            "_build_icon_index",
+            "_fallback_pixmap",
+            "clean_exec",
+            "build_launch_args",
+            "is_windows_lnk_entry"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 375
+        }
+      ],
+      "imports": [
+        {
+          "source": "configparser",
+          "specifiers": [
+            "configparser"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "shlex",
+          "specifiers": [
+            "shlex"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "threading",
+          "specifiers": [
+            "threading"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass",
+            "field"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "Qt"
+          ]
+        },
+        {
+          "source": "PyQt6.QtGui",
+          "specifiers": [
+            "QIcon",
+            "QPixmap"
+          ]
+        }
+      ],
+      "exports": [
+        "_score",
+        "AppEntry",
+        "AppDiscovery"
+      ],
+      "totalLines": 459,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/command_creator.py": {
+      "filePath": "src/modules/command_creator.py",
+      "contentHash": "e20bceacb9f4aea4806bef2837f87f779380857d7001e1625c16b4d94655fe7a",
+      "functions": [],
+      "classes": [
+        {
+          "name": "CommandCreator",
+          "methods": [
+            "__init__",
+            "show_dialog"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 135
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QDialog",
+            "QVBoxLayout",
+            "QHBoxLayout",
+            "QLabel",
+            "QLineEdit",
+            "QComboBox",
+            "QCheckBox",
+            "QPushButton",
+            "QFileDialog",
+            "QMessageBox"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager"
+          ]
+        }
+      ],
+      "exports": [
+        "CommandCreator"
+      ],
+      "totalLines": 155,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/file_encryptor.py": {
+      "filePath": "src/modules/file_encryptor.py",
+      "contentHash": "cd07a0ddb636b640b6736c8cb7150c6951132dd3e97e4f16a875b07363ec9e8a",
+      "functions": [],
+      "classes": [
+        {
+          "name": "EncryptionWorker",
+          "methods": [
+            "__init__",
+            "_derive_key",
+            "_encrypt_file",
+            "_decrypt_file",
+            "_get_all_files",
+            "run"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 200
+        },
+        {
+          "name": "PasswordDialog",
+          "methods": [
+            "__init__",
+            "setup_ui",
+            "toggle_password_visibility",
+            "validate_and_accept",
+            "get_password",
+            "_clear_password_fields",
+            "accept",
+            "reject",
+            "closeEvent"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 102
+        },
+        {
+          "name": "ProgressDialog",
+          "methods": [
+            "__init__",
+            "setup_ui",
+            "update_progress",
+            "update_status",
+            "disable_cancel"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 48
+        },
+        {
+          "name": "FileEncryptor",
+          "methods": [
+            "__init__",
+            "encrypt_file_or_folder",
+            "decrypt_file_or_folder",
+            "_process_file",
+            "_on_operation_finished"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 90
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "cryptography.fernet",
+          "specifiers": [
+            "Fernet"
+          ]
+        },
+        {
+          "source": "cryptography.hazmat.primitives",
+          "specifiers": [
+            "hashes"
+          ]
+        },
+        {
+          "source": "cryptography.hazmat.primitives.kdf.pbkdf2",
+          "specifiers": [
+            "PBKDF2HMAC"
+          ]
+        },
+        {
+          "source": "base64",
+          "specifiers": [
+            "base64"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QDialog",
+            "QVBoxLayout",
+            "QHBoxLayout",
+            "QLabel",
+            "QLineEdit",
+            "QPushButton",
+            "QFileDialog",
+            "QMessageBox",
+            "QProgressBar",
+            "QTextEdit",
+            "QCheckBox"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "QThread",
+            "pyqtSignal",
+            "Qt"
+          ]
+        }
+      ],
+      "exports": [
+        "EncryptionWorker",
+        "PasswordDialog",
+        "ProgressDialog",
+        "FileEncryptor"
+      ],
+      "totalLines": 478,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/backup_restore.py": {
+      "filePath": "src/modules/backup_restore.py",
+      "contentHash": "db3432337eda46670c5affd15fa4591e8dbc856fe0f6d506fb8e3d62cfaf5a5e",
+      "functions": [],
+      "classes": [
+        {
+          "name": "BackupRestore",
+          "methods": [
+            "__init__",
+            "backup_commands",
+            "restore_commands"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 66
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QMessageBox",
+            "QInputDialog"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager"
+          ]
+        }
+      ],
+      "exports": [
+        "BackupRestore"
+      ],
+      "totalLines": 77,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/command_executor.py": {
+      "filePath": "src/modules/command_executor.py",
+      "contentHash": "871d9e946f9a665feaf9604ce8b58d0e9551a3a9dc38e73dc2921641a755c1d0",
+      "functions": [],
+      "classes": [
+        {
+          "name": "CommandExecutor",
+          "methods": [
+            "__init__",
+            "execute_command",
+            "execute_command_process",
+            "execute_command_process_silently"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 33
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "QProcess"
+          ]
+        }
+      ],
+      "exports": [
+        "CommandExecutor"
+      ],
+      "totalLines": 44,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/import_export.py": {
+      "filePath": "src/modules/import_export.py",
+      "contentHash": "048f6b1d957ebb64ca26fb66a5cfa45b2ac1446112d9ebb5b9518004a8907456",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ImportExport",
+          "methods": [
+            "__init__",
+            "export_command_group",
+            "import_command_group"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 95
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QFileDialog",
+            "QMessageBox",
+            "QInputDialog"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager"
+          ]
+        }
+      ],
+      "exports": [
+        "ImportExport"
+      ],
+      "totalLines": 110,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/command_history.py": {
+      "filePath": "src/modules/command_history.py",
+      "contentHash": "039ca7157fad09c143547962973daa82730d7a9d7de973f58d4bfebdd10a42c6",
+      "functions": [],
+      "classes": [
+        {
+          "name": "CommandHistory",
+          "methods": [
+            "__init__",
+            "add_to_history",
+            "populate_menu",
+            "clear_history"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 57
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "PyQt6.QtGui",
+          "specifiers": [
+            "QIcon",
+            "QAction"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager"
+          ]
+        }
+      ],
+      "exports": [
+        "CommandHistory"
+      ],
+      "totalLines": 68,
+      "hasStructuralAnalysis": true
+    },
+    "src/modules/schedule_viewer.py": {
+      "filePath": "src/modules/schedule_viewer.py",
+      "contentHash": "04c34973c432fcb5281247396a03101c542b5605b9c8140b3e641d7c8a774dbf",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ScheduleViewer",
+          "methods": [
+            "__init__",
+            "show_dialog",
+            "get_schedules",
+            "_get_windows_tasks",
+            "_get_linux_cron_jobs",
+            "_convert_cron_days_to_text",
+            "edit_schedule",
+            "delete_schedule",
+            "_delete_windows_task",
+            "_delete_linux_cron_job",
+            "refresh_dialog"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 371
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QDialog",
+            "QVBoxLayout",
+            "QHBoxLayout",
+            "QLabel",
+            "QPushButton",
+            "QMessageBox",
+            "QTableWidget",
+            "QTableWidgetItem",
+            "QHeaderView",
+            "QScrollArea",
+            "QWidget",
+            "QTextEdit",
+            "QGroupBox"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "Qt"
+          ]
+        },
+        {
+          "source": "PyQt6.QtGui",
+          "specifiers": [
+            "QFont"
+          ]
+        }
+      ],
+      "exports": [
+        "ScheduleViewer"
+      ],
+      "totalLines": 401,
+      "hasStructuralAnalysis": true
+    },
+    "src/ui/__init__.py": {
+      "filePath": "src/ui/__init__.py",
+      "contentHash": "39c5cd3f08c3c9b5ad73100bd08845b4a88c12b1cfe31ba0520a4c28f6e96063",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "src/ui/command_palette.py": {
+      "filePath": "src/ui/command_palette.py",
+      "contentHash": "841016aff6089fb8dbc4d9f7758c3a7840ef6e195cef563c6412c1ca31a9c5e3",
+      "functions": [
+        {
+          "name": "_to_pynput_str",
+          "params": [
+            "hotkey"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_score",
+          "params": [
+            "query",
+            "text"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "_HotkeyTrigger",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_PaletteWindow",
+          "methods": [
+            "__init__",
+            "_switch_tab",
+            "_populate",
+            "_populate_commands",
+            "_populate_apps",
+            "_active_list",
+            "_execute",
+            "_launch_app",
+            "eventFilter",
+            "show_on_tab",
+            "_show_centered",
+            "show_centered"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 312
+        },
+        {
+          "name": "CommandPalette",
+          "methods": [
+            "__init__",
+            "show_palette",
+            "show_app_launcher",
+            "show_on_tab",
+            "register_hotkeys",
+            "register_hotkey",
+            "update_app_launcher_hotkey",
+            "unregister_hotkey"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 84
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "Qt",
+            "QObject",
+            "QEvent",
+            "pyqtSignal",
+            "QSize",
+            "QTimer"
+          ]
+        },
+        {
+          "source": "PyQt6.QtGui",
+          "specifiers": [
+            "QKeyEvent"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QApplication",
+            "QFrame",
+            "QHBoxLayout",
+            "QLabel",
+            "QLineEdit",
+            "QListWidget",
+            "QListWidgetItem",
+            "QPushButton",
+            "QSizePolicy",
+            "QStackedWidget",
+            "QVBoxLayout",
+            "QWidget"
+          ]
+        }
+      ],
+      "exports": [
+        "_to_pynput_str",
+        "_HotkeyTrigger",
+        "_score",
+        "_PaletteWindow",
+        "CommandPalette"
+      ],
+      "totalLines": 494,
+      "hasStructuralAnalysis": true
+    },
+    "src/ui/command_manager.py": {
+      "filePath": "src/ui/command_manager.py",
+      "contentHash": "f43f1ef7376a51b47d1516b3575e8d2c0f4eb7563de8cf4be15dbfe0976017ca",
+      "functions": [],
+      "classes": [
+        {
+          "name": "_CommandFormDialog",
+          "methods": [
+            "__init__",
+            "_validate_and_accept",
+            "result_data"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 91
+        },
+        {
+          "name": "CommandManagerDialog",
+          "methods": [
+            "__init__",
+            "_load_tree",
+            "_populate_group",
+            "_add_command",
+            "_edit_command",
+            "_delete_command",
+            "_move_up",
+            "_move_down",
+            "_move_item",
+            "_save",
+            "closeEvent",
+            "_update_save_btn"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 284
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "Qt",
+            "QTimer"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QCheckBox",
+            "QComboBox",
+            "QDialog",
+            "QDialogButtonBox",
+            "QFormLayout",
+            "QGroupBox",
+            "QHBoxLayout",
+            "QLabel",
+            "QLineEdit",
+            "QMessageBox",
+            "QPushButton",
+            "QToolBar",
+            "QTreeWidget",
+            "QTreeWidgetItem",
+            "QVBoxLayout"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager"
+          ]
+        }
+      ],
+      "exports": [
+        "_CommandFormDialog",
+        "CommandManagerDialog"
+      ],
+      "totalLines": 424,
+      "hasStructuralAnalysis": true
+    },
+    "src/ui/settings_dialog.py": {
+      "filePath": "src/ui/settings_dialog.py",
+      "contentHash": "57259195ae95d1e059591b9d1130a9a0ebcc3b3fef7ce2cd7604b43096fc7635",
+      "functions": [],
+      "classes": [
+        {
+          "name": "SettingsDialog",
+          "methods": [
+            "__init__",
+            "_preview_theme",
+            "_save",
+            "_cancel"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 173
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "Qt"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QComboBox",
+            "QDialog",
+            "QDialogButtonBox",
+            "QFormLayout",
+            "QGroupBox",
+            "QLabel",
+            "QLineEdit",
+            "QMessageBox",
+            "QPushButton",
+            "QSpinBox",
+            "QVBoxLayout",
+            "QCheckBox"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager"
+          ]
+        }
+      ],
+      "exports": [
+        "SettingsDialog"
+      ],
+      "totalLines": 211,
+      "hasStructuralAnalysis": true
+    },
+    "src/ui/quick_launch_bar.py": {
+      "filePath": "src/ui/quick_launch_bar.py",
+      "contentHash": "87ea1858d9c18909f854dd1c82a1fd6729b680984dcf96e796cb7307eee1da2b",
+      "functions": [
+        {
+          "name": "_to_pynput_str",
+          "params": [
+            "hotkey"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [
+        {
+          "name": "_HotkeyTrigger",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "QuickLaunchBar",
+          "methods": [
+            "__init__",
+            "_build_buttons",
+            "refresh",
+            "toggle",
+            "_normalize_position",
+            "_restore_position",
+            "_save_position",
+            "mousePressEvent",
+            "mouseMoveEvent",
+            "mouseReleaseEvent",
+            "register_hotkey",
+            "unregister_hotkey"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 213
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "QObject",
+            "QPoint",
+            "Qt",
+            "pyqtSignal"
+          ]
+        },
+        {
+          "source": "PyQt6.QtGui",
+          "specifiers": [
+            "QIcon"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QHBoxLayout",
+            "QSizePolicy",
+            "QToolButton",
+            "QWidget"
+          ]
+        }
+      ],
+      "exports": [
+        "_to_pynput_str",
+        "_HotkeyTrigger",
+        "QuickLaunchBar"
+      ],
+      "totalLines": 273,
+      "hasStructuralAnalysis": true
+    },
+    "src/ui/output_window.py": {
+      "filePath": "src/ui/output_window.py",
+      "contentHash": "727f7229cef60e51f4e540daf82efec18a4e94b8837836abfda29eb1f681a9dd",
+      "functions": [
+        {
+          "name": "_parse_sgr",
+          "params": [
+            "codes",
+            "fmt"
+          ],
+          "returnType": "QTextCharFormat",
+          "exported": true,
+          "lineCount": 29
+        }
+      ],
+      "classes": [
+        {
+          "name": "_OutputTab",
+          "methods": [
+            "__init__",
+            "append_ansi"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 35
+        },
+        {
+          "name": "RichOutputWindow",
+          "methods": [
+            "__init__",
+            "open_process_tab",
+            "append_output",
+            "show_output",
+            "_toggle_auto_scroll",
+            "_copy_tab",
+            "_clear_tab",
+            "_change_font",
+            "_close_tab",
+            "_current_tab",
+            "_maybe_scroll"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 133
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "PyQt6.QtCore",
+          "specifiers": [
+            "Qt"
+          ]
+        },
+        {
+          "source": "PyQt6.QtGui",
+          "specifiers": [
+            "QColor",
+            "QFont",
+            "QTextCharFormat",
+            "QTextCursor",
+            "QAction"
+          ]
+        },
+        {
+          "source": "PyQt6.QtWidgets",
+          "specifiers": [
+            "QApplication",
+            "QFontDialog",
+            "QMainWindow",
+            "QTabWidget",
+            "QTextEdit",
+            "QToolBar",
+            "QWidget"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "config_manager"
+          ]
+        }
+      ],
+      "exports": [
+        "_parse_sgr",
+        "_OutputTab",
+        "RichOutputWindow"
+      ],
+      "totalLines": 276,
+      "hasStructuralAnalysis": true
+    },
+    "tests/conftest.py": {
+      "filePath": "tests/conftest.py",
+      "contentHash": "0906d25c9062001d2fb25db6b090530ec3bc1cef4380bf1792a48e0bc4216982",
+      "functions": [
+        {
+          "name": "tmp_config_dir",
+          "params": [
+            "tmp_path"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "tmp_commands_file",
+          "params": [
+            "tmp_config_dir"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "mock_services",
+          "params": [],
+          "returnType": "MagicMock",
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        }
+      ],
+      "exports": [
+        "tmp_config_dir",
+        "tmp_commands_file",
+        "mock_services"
+      ],
+      "totalLines": 69,
+      "hasStructuralAnalysis": true
+    },
+    "tests/__init__.py": {
+      "filePath": "tests/__init__.py",
+      "contentHash": "39c5cd3f08c3c9b5ad73100bd08845b4a88c12b1cfe31ba0520a4c28f6e96063",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_icon_resolver.py": {
+      "filePath": "tests/test_icon_resolver.py",
+      "contentHash": "10c943b5fc16b56d55eea69976c409161fdfee17566906ab918b1ac5285c40ed",
+      "functions": [
+        {
+          "name": "_resolver",
+          "params": [
+            "base_dir"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_cache_path_for",
+          "params": [
+            "url"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestUrlGating",
+          "methods": [
+            "test_http_url_rejected",
+            "test_https_url_accepted_calls_urlopen"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "TestBase64Icon",
+          "methods": [
+            "test_valid_base64_png_handled"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "TestPathResolution",
+          "methods": [
+            "test_absolute_existing_path_returned_as_is",
+            "test_nonexistent_absolute_falls_back",
+            "test_relative_path_resolved_against_resource_roots"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "TestCacheTTL",
+          "methods": [
+            "test_expired_cache_triggers_redownload",
+            "test_fresh_cache_skips_download"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 43
+        },
+        {
+          "name": "TestResolveTrayIcon",
+          "methods": [
+            "test_returns_str_or_none"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "imports": [
+        {
+          "source": "base64",
+          "specifiers": [
+            "base64"
+          ]
+        },
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "types",
+          "specifiers": [
+            "types"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch",
+            "MagicMock"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "core.icon_resolver",
+          "specifiers": [
+            "IconResolver"
+          ]
+        }
+      ],
+      "exports": [
+        "_resolver",
+        "_cache_path_for",
+        "TestUrlGating",
+        "TestBase64Icon",
+        "TestPathResolution",
+        "TestCacheTTL",
+        "TestResolveTrayIcon"
+      ],
+      "totalLines": 195,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_command_executor.py": {
+      "filePath": "tests/test_command_executor.py",
+      "contentHash": "c35f3f545d57c6f788441fb289cfaf50b7ec005e81e0ee838a73a8908355d97f",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TestCommandExecutor",
+          "methods": [
+            "setUp",
+            "test_execute_command_calls_popen",
+            "test_execute_command_logs_pid",
+            "test_execute_command_process_returns_qprocess",
+            "test_execute_command_process_starts_process",
+            "test_execute_command_process_silently_starts_process",
+            "test_execute_command_process_silently_logs_command"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 89
+        }
+      ],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch",
+            "MagicMock",
+            "call"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "modules.command_executor",
+          "specifiers": [
+            "CommandExecutor"
+          ]
+        }
+      ],
+      "exports": [
+        "TestCommandExecutor"
+      ],
+      "totalLines": 119,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_backup_restore.py": {
+      "filePath": "tests/test_backup_restore.py",
+      "contentHash": "e7b4f6668b0d5105053bdfc998168f403972c14cbcbbdbe0d8a6de0b5e336b80",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TestBackupRestore",
+          "methods": [
+            "setUp",
+            "test_backup_commands_calls_config_manager",
+            "test_backup_commands_success_shows_information",
+            "test_backup_commands_failure_shows_warning",
+            "test_restore_commands_no_backups_shows_information",
+            "test_restore_commands_calls_restore_on_confirmation",
+            "test_restore_commands_reloads_on_success",
+            "test_restore_commands_cancelled_by_user"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 112
+        }
+      ],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch",
+            "MagicMock",
+            "call"
+          ]
+        },
+        {
+          "source": "modules.backup_restore",
+          "specifiers": [
+            "BackupRestore"
+          ]
+        }
+      ],
+      "exports": [
+        "TestBackupRestore"
+      ],
+      "totalLines": 139,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_favorites.py": {
+      "filePath": "tests/test_favorites.py",
+      "contentHash": "2f6a545ad48e182fb831e0b83d55813261d57b040345536844f920d60c1914d8",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TestFavorites",
+          "methods": [
+            "setUp",
+            "test_add_favorite_directly_success",
+            "test_add_favorite_directly_reloads_on_success",
+            "test_add_favorite_directly_no_reload_on_failure",
+            "test_remove_favorite_success",
+            "test_remove_favorite_reloads_on_success",
+            "test_remove_favorite_no_reload_on_failure",
+            "test_populate_favorites_menu_with_entries",
+            "test_populate_favorites_menu_empty"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 120
+        }
+      ],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch",
+            "MagicMock",
+            "call"
+          ]
+        },
+        {
+          "source": "modules.favorites",
+          "specifiers": [
+            "Favorites"
+          ]
+        }
+      ],
+      "exports": [
+        "TestFavorites"
+      ],
+      "totalLines": 148,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_logging_config.py": {
+      "filePath": "tests/test_logging_config.py",
+      "contentHash": "4b0cf6cd0afa21b7a62b85e744174472b4fcda221f45713bdf2de33834cf68e8",
+      "functions": [],
+      "classes": [
+        {
+          "name": "LoggingConfigTests",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "test_resolve_uses_config_level_when_env_not_set",
+            "test_resolve_env_overrides_config_level",
+            "test_resolve_invalid_level_falls_back_to_default",
+            "test_configure_logging_is_idempotent_for_handlers"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 37
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch"
+          ]
+        },
+        {
+          "source": "core.logging_config",
+          "specifiers": [
+            "DEFAULT_LOG_LEVEL",
+            "LOG_LEVEL_ENV_VAR",
+            "configure_logging",
+            "resolve_log_level"
+          ]
+        }
+      ],
+      "exports": [
+        "LoggingConfigTests"
+      ],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_favorites_path.py": {
+      "filePath": "tests/test_favorites_path.py",
+      "contentHash": "a06d274e250e98b24cbf7097618aeec266d1fd94a3763d8205792abbe85ef0da",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TestBuildCommandPath",
+          "methods": [
+            "test_flat_group",
+            "test_nested_group_single_separator",
+            "test_nested_group_multiple_separators",
+            "test_group_with_leading_trailing_spaces",
+            "test_label_with_arrow_in_value",
+            "test_empty_group_parts_skipped",
+            "test_single_word_group",
+            "test_empty_group_string",
+            "test_regression_old_impl_would_differ_for_nested"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 59
+        }
+      ],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "types",
+          "specifiers": [
+            "types"
+          ]
+        },
+        {
+          "source": "modules.favorites",
+          "specifiers": [
+            "_build_command_path"
+          ]
+        }
+      ],
+      "exports": [
+        "TestBuildCommandPath"
+      ],
+      "totalLines": 100,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_command_history.py": {
+      "filePath": "tests/test_command_history.py",
+      "contentHash": "3586f6334519309bc8472900ca91c7326a502dc1bcc1a23e1e8ecb1b0701225f",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TestCommandHistory",
+          "methods": [
+            "setUp",
+            "test_add_command_to_history",
+            "test_add_command_logs_debug_message",
+            "test_clear_history",
+            "test_clear_history_reloads_commands",
+            "test_populate_history_menu",
+            "test_history_empty_state",
+            "test_history_entries_order"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 123
+        }
+      ],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch",
+            "MagicMock",
+            "call"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "modules.command_history",
+          "specifiers": [
+            "CommandHistory"
+          ]
+        }
+      ],
+      "exports": [
+        "TestCommandHistory"
+      ],
+      "totalLines": 151,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_config_path_consistency.py": {
+      "filePath": "tests/test_config_path_consistency.py",
+      "contentHash": "34221b9020c32b4c0d761a903fb983292095a074efa3a6466de0b5e8a7d6e855",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ConfigPathConsistencyTests",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "_new_manager",
+            "test_uses_canonical_xdg_config_dir",
+            "test_migrates_legacy_commands_into_canonical",
+            "test_merges_legacy_without_overwriting_canonical",
+            "test_import_and_duplicate_detection_use_active_commands_file",
+            "test_reads_configured_log_level_from_settings"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 173
+        }
+      ],
+      "imports": [
+        {
+          "source": "importlib",
+          "specifiers": [
+            "importlib"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch"
+          ]
+        },
+        {
+          "source": "core",
+          "specifiers": [
+            "config_module"
+          ]
+        }
+      ],
+      "exports": [
+        "ConfigPathConsistencyTests"
+      ],
+      "totalLines": 201,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_config_manager.py": {
+      "filePath": "tests/test_config_manager.py",
+      "contentHash": "f48b54120d7650631f30d59582e5ad18b40e421996efbacb3ed7e4c214ef5537",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TestDeepMerge",
+          "methods": [
+            "test_adds_missing_key",
+            "test_nested_dict_merged_recursively",
+            "test_leaf_override_wins",
+            "test_original_not_mutated"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "TestAtomicWrite",
+          "methods": [
+            "test_write_and_read_roundtrip",
+            "test_atomic_write_creates_parent_dirs"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "TestGetCommands",
+          "methods": [
+            "test_loads_valid_commands",
+            "test_raises_on_invalid_json"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "TestSetCommandsOverride",
+          "methods": [
+            "test_valid_path_accepted",
+            "test_nonexistent_path_ignored",
+            "test_directory_ignored",
+            "test_override_busts_cache"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "TestValidateCommands",
+          "methods": [
+            "_mgr",
+            "test_valid_commands_passes",
+            "test_non_dict_root_raises",
+            "test_non_string_command_raises",
+            "test_non_dict_group_raises",
+            "test_item_without_command_key_is_allowed"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 31
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch",
+            "MagicMock"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "core.config_manager",
+          "specifiers": [
+            "ConfigManager",
+            "ConfigurationError"
+          ]
+        }
+      ],
+      "exports": [
+        "TestDeepMerge",
+        "TestAtomicWrite",
+        "TestGetCommands",
+        "TestSetCommandsOverride",
+        "TestValidateCommands"
+      ],
+      "totalLines": 194,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_single_instance.py": {
+      "filePath": "tests/test_single_instance.py",
+      "contentHash": "b363d2a1e9c7d3169e40cf6f7797c1749f24e5a73094a6551953985be9d07c69",
+      "functions": [
+        {
+          "name": "_make_checker",
+          "params": [
+            "key",
+            "pidfile"
+          ],
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestIsPidRunning",
+          "methods": [
+            "test_own_pid_is_running",
+            "test_negative_pid_returns_false",
+            "test_zero_pid_returns_false",
+            "test_non_numeric_returns_false",
+            "test_dead_pid_returns_false"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "TestAcquireLock",
+          "methods": [
+            "test_writes_pid_file_on_success",
+            "test_pid_file_oserror_is_logged_not_swallowed",
+            "test_returns_false_when_already_locked"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 35
+        },
+        {
+          "name": "TestHeadlessDetection",
+          "methods": [
+            "_is_headless",
+            "test_x11_only_is_not_headless",
+            "test_wayland_only_is_not_headless",
+            "test_both_displays_not_headless",
+            "test_no_display_no_wayland_is_headless",
+            "test_offscreen_platform_is_always_headless"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "TestCleanupLogging",
+          "methods": [
+            "test_force_unlock_logs_oserror",
+            "test_cleanup_logs_oserror"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 22
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "types",
+          "specifiers": [
+            "types"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch",
+            "MagicMock",
+            "call"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "utils.single_instance",
+          "specifiers": [
+            "SingleInstanceChecker"
+          ]
+        }
+      ],
+      "exports": [
+        "_make_checker",
+        "TestIsPidRunning",
+        "TestAcquireLock",
+        "TestHeadlessDetection",
+        "TestCleanupLogging"
+      ],
+      "totalLines": 179,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/build-linux.sh": {
+      "filePath": "scripts/build-linux.sh",
+      "contentHash": "511d5291504753af2b10fd924178bc476c090a4fb9e35181fdb204fe7ec66d96",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 51,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/build-windows.bat": {
+      "filePath": "scripts/build-windows.bat",
+      "contentHash": "f5117f5a74453299c53846e69817c472b802811e3b29c83344c3959d9c5f98cf",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 53,
+      "hasStructuralAnalysis": false
+    },
+    "scripts/build-deb.sh": {
+      "filePath": "scripts/build-deb.sh",
+      "contentHash": "ee3dc664599b5b3138e408b0e259a1345d363997ee1628932ad43f4fc37a9a17",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 51,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/build-appimage.sh": {
+      "filePath": "scripts/build-appimage.sh",
+      "contentHash": "2d9c2780449939526f1bd749621611c7bc6ae9e01eff67910d2d2a5a7c9d21b8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 94,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/install_packages.sh": {
+      "filePath": "scripts/install_packages.sh",
+      "contentHash": "e243f21537d3e2ce8f04dec07660050156c5dcf24badcc1b2d6b5c77ddca63b6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/build-all.sh": {
+      "filePath": "scripts/build-all.sh",
+      "contentHash": "d702d738f5b4a461c99b84707f2bb90545ece5df91b81e29f91ab243d95ecd41",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 102,
+      "hasStructuralAnalysis": true
+    },
+    "config/commands.json": {
+      "filePath": "config/commands.json",
+      "contentHash": "d16e925d2a71d897e8cbc0098b861dde8068681ea0cca63304c10ff0ac1034a9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 194,
+      "hasStructuralAnalysis": true
+    },
+    "config/win-commands.json": {
+      "filePath": "config/win-commands.json",
+      "contentHash": "5df3e81812e901c94ee1c2358455f5d36756a55e3e653ae53556817c59d0b2d6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 142,
+      "hasStructuralAnalysis": true
+    },
+    "config/commands.schema.json": {
+      "filePath": "config/commands.schema.json",
+      "contentHash": "896f2b9df6c90024dff2fde7eb57d48c9335542972a58ba287d958f07663c193",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 55,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

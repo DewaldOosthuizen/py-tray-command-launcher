@@ -145,6 +145,7 @@ See [docs/packaging.md](docs/packaging.md) for prerequisites, output locations, 
 
 | Document | Description |
 |---|---|
+| [docs/add/README.md](docs/add/README.md) | Architecture Design Decisions (ADD) records |
 | [docs/configuration.md](docs/configuration.md) | Full `commands.json` and `settings.json` field reference |
 | [docs/features.md](docs/features.md) | Detailed guide to all application features |
 | [docs/architecture.md](docs/architecture.md) | Module structure, responsibilities, and data flow |

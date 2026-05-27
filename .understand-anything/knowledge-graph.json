@@ -1,0 +1,3356 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "py-tray-command-launcher",
+    "languages": [
+      "Python",
+      "JSON",
+      "Markdown",
+      "Shell",
+      "YAML",
+      "TOML"
+    ],
+    "frameworks": [
+      "PyQt6",
+      "pynput",
+      "cryptography",
+      "jsonschema",
+      "rapidfuzz",
+      "pytest"
+    ],
+    "description": "A Python/PyQt6 system tray application for launching custom shell commands from a hierarchical menu, with favorites, palette search, history, encryption, scheduling, and theming.",
+    "analyzedAt": "2026-05-27T13:17:48.695179Z",
+    "gitCommitHash": "45adc26"
+  },
+  "nodes": [
+    {
+      "id": "file:src/core/menu_builder.py",
+      "type": "file",
+      "name": "menu_builder.py",
+      "filePath": "src/core/menu_builder.py",
+      "summary": "Encapsulates all tray context menu construction logic, building hierarchical QMenu structures from command config with icon resolution and reference support.",
+      "tags": [
+        "menu",
+        "qt",
+        "ui",
+        "hierarchical",
+        "builder"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/core/services.py",
+      "type": "file",
+      "name": "services.py",
+      "filePath": "src/core/services.py",
+      "summary": "Defines the AppServices dataclass \u2014 a thin dependency-injection interface that decouples feature modules from the TrayApp god-object.",
+      "tags": [
+        "services",
+        "dataclass",
+        "dependency-injection",
+        "interface"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/core/theme_manager.py",
+      "type": "file",
+      "name": "theme_manager.py",
+      "filePath": "src/core/theme_manager.py",
+      "summary": "Loads and applies QSS stylesheets for dark/light/system themes globally via QApplication, with fallback handling for missing theme files.",
+      "tags": [
+        "theme",
+        "qt",
+        "stylesheet",
+        "qss"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/core/tray_app.py",
+      "type": "file",
+      "name": "tray_app.py",
+      "filePath": "src/core/tray_app.py",
+      "summary": "Main TrayApp class orchestrating the system tray icon, menu construction, module wiring, theme management, command execution, and all feature module initialization.",
+      "tags": [
+        "tray",
+        "qt",
+        "core",
+        "orchestration",
+        "system-tray"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/command_executor.py",
+      "type": "file",
+      "name": "command_executor.py",
+      "filePath": "src/modules/command_executor.py",
+      "summary": "Provides CommandExecutor class with methods to run shell commands via subprocess or as tracked QProcess instances.",
+      "tags": [
+        "executor",
+        "subprocess",
+        "qprocess",
+        "shell",
+        "tested"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/command_history.py",
+      "type": "file",
+      "name": "command_history.py",
+      "filePath": "src/modules/command_history.py",
+      "summary": "Manages command history \u2014 adding entries with timestamps, populating the history QMenu, and clearing history via config_manager.",
+      "tags": [
+        "history",
+        "menu",
+        "commands",
+        "qt"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/file_encryptor.py",
+      "type": "file",
+      "name": "file_encryptor.py",
+      "filePath": "src/modules/file_encryptor.py",
+      "summary": "Provides file/folder encryption and decryption using Fernet (AES) with PBKDF2-derived keys, running operations in a QThread worker with a Qt progress dialog.",
+      "tags": [
+        "encryption",
+        "cryptography",
+        "qt",
+        "threading"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/schedule_creator.py",
+      "type": "file",
+      "name": "schedule_creator.py",
+      "filePath": "src/modules/schedule_creator.py",
+      "summary": "Provides a Qt dialog for scheduling commands as cron jobs or system scheduled tasks, using available commands from AppServices.",
+      "tags": [
+        "scheduler",
+        "cron",
+        "qt",
+        "dialog"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/ui/command_palette.py",
+      "type": "file",
+      "name": "command_palette.py",
+      "filePath": "src/ui/command_palette.py",
+      "summary": "Spotlight-style frameless popup palette providing fuzzy-search quick launch for commands and apps, with global hotkey support via pynput.",
+      "tags": [
+        "ui",
+        "palette",
+        "fuzzy-search",
+        "hotkey",
+        "qt"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/ui/output_window.py",
+      "type": "file",
+      "name": "output_window.py",
+      "filePath": "src/ui/output_window.py",
+      "summary": "Tabbed ANSI-aware command output window (RichOutputWindow) with per-process tabs, auto-scroll, copy, clear, and font selection toolbar actions.",
+      "tags": [
+        "ui",
+        "output",
+        "ansi",
+        "qt",
+        "tabs"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/ui/settings_dialog.py",
+      "type": "file",
+      "name": "settings_dialog.py",
+      "filePath": "src/ui/settings_dialog.py",
+      "summary": "Qt settings dialog for editing application configuration including theme, hotkeys, logging level, history size, and output font.",
+      "tags": [
+        "ui",
+        "settings",
+        "dialog",
+        "qt",
+        "configuration"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/core/menu_builder.py:MenuBuilder",
+      "type": "class",
+      "name": "MenuBuilder",
+      "filePath": "src/core/menu_builder.py",
+      "summary": "Builds the hierarchical tray QMenu from command config, resolving icons and command references recursively.",
+      "tags": [
+        "menu",
+        "builder",
+        "qt"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/core/services.py:AppServices",
+      "type": "class",
+      "name": "AppServices",
+      "filePath": "src/core/services.py",
+      "summary": "Dataclass holding typed callable fields (execute, reload, show_output, etc.) for injecting TrayApp capabilities into feature modules.",
+      "tags": [
+        "services",
+        "dataclass",
+        "interface"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/core/theme_manager.py:ThemeManager",
+      "type": "class",
+      "name": "ThemeManager",
+      "filePath": "src/core/theme_manager.py",
+      "summary": "Applies QSS theme files to the running QApplication with path resolution for source, bundle, and AppImage environments.",
+      "tags": [
+        "theme",
+        "qt",
+        "stylesheet"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/core/tray_app.py:TrayApp",
+      "type": "class",
+      "name": "TrayApp",
+      "filePath": "src/core/tray_app.py",
+      "summary": "Central application class managing the system tray icon, menu lifecycle, module instances, command execution, and settings.",
+      "tags": [
+        "tray",
+        "core",
+        "qt",
+        "orchestration"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/command_executor.py:CommandExecutor",
+      "type": "class",
+      "name": "CommandExecutor",
+      "filePath": "src/modules/command_executor.py",
+      "summary": "Wraps subprocess/QProcess shell command execution with logging.",
+      "tags": [
+        "executor",
+        "subprocess"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/command_history.py:CommandHistory",
+      "type": "class",
+      "name": "CommandHistory",
+      "filePath": "src/modules/command_history.py",
+      "summary": "Stores and retrieves timestamped command history entries and populates the history submenu.",
+      "tags": [
+        "history",
+        "commands"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/schedule_creator.py:ScheduleCreator",
+      "type": "class",
+      "name": "ScheduleCreator",
+      "filePath": "src/modules/schedule_creator.py",
+      "summary": "Shows a dialog to schedule any configured command as a cron or system task.",
+      "tags": [
+        "scheduler",
+        "cron",
+        "dialog"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/ui/command_palette.py:CommandPalette",
+      "type": "class",
+      "name": "CommandPalette",
+      "filePath": "src/ui/command_palette.py",
+      "summary": "Spotlight-style popup with fuzzy command/app search and global hotkey registration.",
+      "tags": [
+        "palette",
+        "ui",
+        "search"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/ui/output_window.py:RichOutputWindow",
+      "type": "class",
+      "name": "RichOutputWindow",
+      "filePath": "src/ui/output_window.py",
+      "summary": "Tabbed ANSI-aware Qt output window for displaying per-process command output.",
+      "tags": [
+        "output",
+        "ui",
+        "ansi"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/ui/settings_dialog.py:SettingsDialog",
+      "type": "class",
+      "name": "SettingsDialog",
+      "filePath": "src/ui/settings_dialog.py",
+      "summary": "Modal Qt dialog for configuring theme, hotkeys, logging, history, and font settings.",
+      "tags": [
+        "settings",
+        "dialog",
+        "ui"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/core/config_manager.py",
+      "type": "file",
+      "name": "config_manager.py",
+      "filePath": "src/core/config_manager.py",
+      "summary": "Singleton ConfigManager class that centralizes all configuration operations including loading, saving, validating, caching, and backing up commands, settings, history, and favorites as JSON files.",
+      "tags": [
+        "config",
+        "singleton",
+        "storage",
+        "validation",
+        "cache",
+        "tested"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/core/config_manager.py:ConfigManager",
+      "type": "class",
+      "name": "ConfigManager",
+      "filePath": "src/core/config_manager.py",
+      "summary": "Central configuration manager singleton handling all read/write/backup operations for the application's JSON config files.",
+      "tags": [
+        "singleton",
+        "config",
+        "json"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/core/config_manager.py:ConfigurationError",
+      "type": "class",
+      "name": "ConfigurationError",
+      "filePath": "src/core/config_manager.py",
+      "summary": "Custom exception raised for configuration-related errors.",
+      "tags": [
+        "exception",
+        "error"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "function:src/core/config_manager.py:_validate_commands",
+      "type": "function",
+      "name": "_validate_commands",
+      "filePath": "src/core/config_manager.py",
+      "summary": "Validates the structure of a commands dictionary, ensuring groups are dicts and command values are strings.",
+      "tags": [
+        "validation",
+        "commands"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/command_creator.py",
+      "type": "file",
+      "name": "command_creator.py",
+      "filePath": "src/modules/command_creator.py",
+      "summary": "PyQt6 GUI module providing a CommandCreator dialog for interactively creating new commands and adding them to the configuration.",
+      "tags": [
+        "gui",
+        "commands",
+        "dialog",
+        "pyqt6"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/command_creator.py:CommandCreator",
+      "type": "class",
+      "name": "CommandCreator",
+      "filePath": "src/modules/command_creator.py",
+      "summary": "Handles creation of new commands via a PyQt6 dialog, saving them to config and triggering menu rebuild.",
+      "tags": [
+        "gui",
+        "dialog",
+        "commands"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/import_export.py",
+      "type": "file",
+      "name": "import_export.py",
+      "filePath": "src/modules/import_export.py",
+      "summary": "PyQt6 GUI module providing ImportExport class for importing and exporting command groups to/from JSON files via file dialogs.",
+      "tags": [
+        "gui",
+        "import",
+        "export",
+        "commands"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/import_export.py:ImportExport",
+      "type": "class",
+      "name": "ImportExport",
+      "filePath": "src/modules/import_export.py",
+      "summary": "Handles import and export of command groups through file dialogs and delegates to config_manager.",
+      "tags": [
+        "import",
+        "export",
+        "gui"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/backup_restore.py",
+      "type": "file",
+      "name": "backup_restore.py",
+      "filePath": "src/modules/backup_restore.py",
+      "summary": "PyQt6 GUI module providing BackupRestore class for creating and restoring command configuration backups via dialogs.",
+      "tags": [
+        "gui",
+        "backup",
+        "restore",
+        "commands",
+        "tested"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/backup_restore.py:BackupRestore",
+      "type": "class",
+      "name": "BackupRestore",
+      "filePath": "src/modules/backup_restore.py",
+      "summary": "Handles backup creation and restoration of commands configuration with Qt dialog prompts.",
+      "tags": [
+        "backup",
+        "restore",
+        "gui"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/app_discovery.py",
+      "type": "file",
+      "name": "app_discovery.py",
+      "filePath": "src/modules/app_discovery.py",
+      "summary": "Cross-platform application discovery module that scans XDG .desktop files (Linux) and Start Menu shortcuts (Windows) with fuzzy search and icon resolution support.",
+      "tags": [
+        "discovery",
+        "apps",
+        "xdg",
+        "search",
+        "icons"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/app_discovery.py:AppDiscovery",
+      "type": "class",
+      "name": "AppDiscovery",
+      "filePath": "src/modules/app_discovery.py",
+      "summary": "Discovers installed applications from platform-specific sources, supports fuzzy search, and resolves application icons with background indexing.",
+      "tags": [
+        "discovery",
+        "apps",
+        "icons",
+        "search"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/app_discovery.py:AppEntry",
+      "type": "class",
+      "name": "AppEntry",
+      "filePath": "src/modules/app_discovery.py",
+      "summary": "Dataclass representing a single installed application with name, exec command, icon, categories, and terminal flag.",
+      "tags": [
+        "dataclass",
+        "apps"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_config_manager.py",
+      "type": "file",
+      "name": "test_config_manager.py",
+      "filePath": "tests/test_config_manager.py",
+      "summary": "Pytest test suite for ConfigManager covering deep_merge behavior, atomic writes, get_commands loading/error handling, set_commands_override, and _validate_commands validation.",
+      "tags": [
+        "tests",
+        "config",
+        "validation",
+        "pytest"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_backup_restore.py",
+      "type": "file",
+      "name": "test_backup_restore.py",
+      "filePath": "tests/test_backup_restore.py",
+      "summary": "Unittest test suite for BackupRestore module verifying backup and restore flows with mocked config_manager and Qt dialog interactions.",
+      "tags": [
+        "tests",
+        "backup",
+        "restore",
+        "unittest"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_command_history.py",
+      "type": "file",
+      "name": "test_command_history.py",
+      "filePath": "tests/test_command_history.py",
+      "summary": "Unittest test suite for CommandHistory module verifying add_to_history, clear_history, and populate_menu behaviors with mocked dependencies.",
+      "tags": [
+        "tests",
+        "history",
+        "commands",
+        "unittest"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/core/logging_config.py",
+      "type": "file",
+      "name": "logging_config.py",
+      "filePath": "src/core/logging_config.py",
+      "summary": "Centralised logging configuration module. Provides functions to parse log level strings, resolve the effective log level (config value vs PY_TRAY_LOG_LEVEL env var override), and configure the root logger with a stream handler and standard format.",
+      "tags": [
+        "logging",
+        "configuration",
+        "utilities",
+        "tested"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "function:src/core/logging_config.py:configure_logging",
+      "type": "function",
+      "name": "configure_logging",
+      "filePath": "src/core/logging_config.py",
+      "summary": "Configures the root logger once (adds StreamHandler if no handlers exist) and returns the resolved integer log level.",
+      "tags": [
+        "logging",
+        "setup"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "function:src/core/logging_config.py:resolve_log_level",
+      "type": "function",
+      "name": "resolve_log_level",
+      "filePath": "src/core/logging_config.py",
+      "summary": "Resolves the effective log level by checking the PY_TRAY_LOG_LEVEL environment variable first, then falling back to the supplied config level.",
+      "tags": [
+        "logging",
+        "configuration"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/main.py",
+      "type": "file",
+      "name": "main.py",
+      "filePath": "src/main.py",
+      "summary": "Application entry point. Configures logging early, parses CLI arguments (--config, --force-unlock), creates QApplication, applies config overrides, acquires single-instance lock via SingleInstanceChecker, then creates and runs TrayApp. Handles SIGINT/SIGTERM for clean shutdown.",
+      "tags": [
+        "entrypoint",
+        "cli",
+        "startup",
+        "pyqt6"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/utils/single_instance.py",
+      "type": "file",
+      "name": "single_instance.py",
+      "filePath": "src/utils/single_instance.py",
+      "summary": "Provides SingleInstanceChecker class that prevents multiple concurrent application instances using Qt QSharedMemory as a lock and an optional PID file. Supports force-unlock, stale-lock detection, and a GUI dialog for user notification.",
+      "tags": [
+        "single-instance",
+        "locking",
+        "pyqt6",
+        "utilities",
+        "tested"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/utils/single_instance.py:SingleInstanceChecker",
+      "type": "class",
+      "name": "SingleInstanceChecker",
+      "filePath": "src/utils/single_instance.py",
+      "summary": "Uses QSharedMemory and a PID file to ensure only one application instance runs at a time. Methods: is_another_instance_running, acquire_lock, force_unlock, show_already_running_message, cleanup.",
+      "tags": [
+        "single-instance",
+        "locking",
+        "pyqt6"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/core/icon_resolver.py",
+      "type": "file",
+      "name": "icon_resolver.py",
+      "filePath": "src/core/icon_resolver.py",
+      "summary": "IconResolver class handles all icon path resolution across packaging modes (source, PyInstaller, AppImage). Supports tray icon discovery, HTTPS URL download with SSL/size/Content-Type validation, base64 data URI decoding with caching, and relative/absolute filesystem path resolution. HTTP URLs are rejected.",
+      "tags": [
+        "icons",
+        "resolution",
+        "security",
+        "caching",
+        "tested"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/core/icon_resolver.py:IconResolver",
+      "type": "class",
+      "name": "IconResolver",
+      "filePath": "src/core/icon_resolver.py",
+      "summary": "Resolves icon paths for all packaging modes. Key methods: resource_roots, resolve_tray_icon, download_icon (HTTPS with caching), resolve_icon_path (dispatches by scheme/type), _resolve_base64_icon.",
+      "tags": [
+        "icons",
+        "caching",
+        "security"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/conftest.py",
+      "type": "file",
+      "name": "conftest.py",
+      "filePath": "tests/conftest.py",
+      "summary": "Shared pytest fixtures for the test suite. Adds src/ to sys.path, and provides tmp_config_dir (temp dir), tmp_commands_file (minimal commands.json), and mock_services (MagicMock quacking like AppServices) fixtures. Avoids top-level PyQt6 imports to support headless CI.",
+      "tags": [
+        "testing",
+        "fixtures",
+        "pytest",
+        "configuration"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/favorites.py",
+      "type": "file",
+      "name": "favorites.py",
+      "filePath": "src/modules/favorites.py",
+      "summary": "Implements favorites management for the system tray application. Provides the Favorites class and _build_command_path helper. Favorites handles adding (interactively or directly), removing, and populating a PyQt6 QMenu with favorite commands stored by reference in config. _build_command_path converts a group breadcrumb string (with ' \u2192 ' separators) and label into a dot-separated command path key.",
+      "tags": [
+        "favorites",
+        "PyQt6",
+        "QMenu",
+        "context-menu",
+        "config",
+        "tray",
+        "tested"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/favorites.py:Favorites",
+      "type": "class",
+      "name": "Favorites",
+      "filePath": "src/modules/favorites.py",
+      "summary": "Main class encapsulating favorites functionality. Holds a reference to AppServices and delegates persistence to config_manager. Key methods: add_to_favorites (interactive dialog), add_to_favorites_directly (context-menu shortcut), remove_from_favorites, create_context_menu, and populate_favorites_menu.",
+      "tags": [
+        "favorites",
+        "PyQt6",
+        "tray",
+        "menu"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "function:src/modules/favorites.py:_build_command_path",
+      "type": "function",
+      "name": "_build_command_path",
+      "filePath": "src/modules/favorites.py",
+      "summary": "Pure helper that splits a group string on ' \u2192 ' display separator and joins parts with label using dots to produce a stable dot-separated command path key (e.g. 'Tools \u2192 Git' + 'Commit' -> 'Tools.Git.Commit'). Strips whitespace and filters empty segments.",
+      "tags": [
+        "path",
+        "helper",
+        "pure-function"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_favorites.py",
+      "type": "file",
+      "name": "test_favorites.py",
+      "filePath": "tests/test_favorites.py",
+      "summary": "unittest-based test suite for the Favorites class. Patches config_manager and QMessageBox to avoid filesystem I/O and GUI. Tests cover add_to_favorites_directly (success/failure/reload), remove_from_favorites (success/failure/reload), and populate_favorites_menu (with entries and empty).",
+      "tags": [
+        "test",
+        "unittest",
+        "favorites",
+        "mock"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_favorites_path.py",
+      "type": "file",
+      "name": "test_favorites_path.py",
+      "filePath": "tests/test_favorites_path.py",
+      "summary": "pytest-based tests for the _build_command_path pure helper. Stubs PyQt6 modules so tests run without a display or Qt install. Covers flat groups, nested groups with single/multiple ' \u2192 ' separators, whitespace trimming, edge cases (empty group, leading separator), and a regression test showing old naive implementation would produce wrong paths for nested groups.",
+      "tags": [
+        "test",
+        "pytest",
+        "favorites",
+        "path",
+        "regression"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "document:.github/prompts/opsx-apply.prompt.md",
+      "type": "document",
+      "name": "opsx-apply.prompt.md",
+      "filePath": ".github/prompts/opsx-apply.prompt.md",
+      "summary": "GitHub Copilot prompt for the opsx:apply workflow. Instructs the AI to implement pending tasks from an OpenSpec change. Covers selecting a change, checking status and schema, fetching apply instructions via CLI, reading context files, looping through and implementing tasks (marking each complete), and reporting progress or pausing on blockers. Includes output templates for in-progress, completion, and pause states, plus guardrails around minimal scoped changes and not guessing on ambiguity.",
+      "tags": [
+        "openspec",
+        "copilot-prompt",
+        "workflow",
+        "task-implementation",
+        "opsx",
+        "cli"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:.github/prompts/opsx-archive.prompt.md",
+      "type": "document",
+      "name": "opsx-archive.prompt.md",
+      "filePath": ".github/prompts/opsx-archive.prompt.md",
+      "summary": "GitHub Copilot prompt for the opsx:archive workflow. Instructs the AI to archive a completed OpenSpec change by: prompting for change selection, checking artifact and task completion status (with warnings if incomplete), assessing delta spec sync state and optionally syncing specs to main, then moving the change directory to openspec/changes/archive/ with a date-prefixed name. Includes output templates for success, success with warnings, and failure (duplicate archive) cases.",
+      "tags": [
+        "openspec",
+        "copilot-prompt",
+        "workflow",
+        "archive",
+        "opsx",
+        "cli",
+        "spec-sync"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:.github/prompts/opsx-explore.prompt.md",
+      "type": "document",
+      "name": "opsx-explore.prompt.md",
+      "filePath": ".github/prompts/opsx-explore.prompt.md",
+      "summary": "GitHub Copilot prompt that defines an 'explore mode' stance for ideation and problem investigation. Explicitly forbids writing code; allows reading files and creating OpenSpec artifacts. Encourages curiosity, ASCII diagrams, codebase grounding, and open-ended discussion. Covers checking for active OpenSpec changes for context, offering to capture design decisions, and ending exploration by flowing into a proposal or just providing clarity. No fixed steps or required outputs.",
+      "tags": [
+        "openspec",
+        "copilot-prompt",
+        "explore",
+        "opsx",
+        "ideation",
+        "discovery",
+        "design"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "config:.gitignore",
+      "type": "config",
+      "name": ".gitignore",
+      "filePath": ".gitignore",
+      "summary": "Standard Python .gitignore covering bytecode, virtual environments, build/dist artifacts, PyInstaller files, test/coverage reports, IDE settings (VS Code), and application-specific files (config/history.json, config/favorites.json, config/backups). Also excludes AppDir/, tools/, and debian/ build directories.",
+      "tags": [
+        "git",
+        "vcs",
+        "python",
+        "build",
+        "vscode"
+      ],
+      "complexity": "simple",
+      "language": "Text"
+    },
+    {
+      "id": "document:LICENSE",
+      "type": "document",
+      "name": "LICENSE",
+      "filePath": "LICENSE",
+      "summary": "GNU General Public License v3.0, copyright 2025 Dewald Oosthuizen. Permits use, study, modification, and commercial distribution with copyleft requirements: source disclosure and GPL licensing of derivative works.",
+      "tags": [
+        "license",
+        "gpl3",
+        "open-source",
+        "legal"
+      ],
+      "complexity": "simple",
+      "language": "Text"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "Main project documentation for py-tray-command-launcher. Describes a Python/PyQt6 system tray app for launching hierarchical commands and scripts. Covers features (fuzzy command search, command palette with Ctrl+Shift+Space hotkey, quick-launch bar, theming with Catppuccin, file encryption, scheduling, backup/restore, CRUD command manager), installation steps, configuration via commands.json, running with python3 src/main.py, packaging scripts for Linux (.deb, AppImage, binary) and Windows (.exe), and links to docs/.",
+      "tags": [
+        "readme",
+        "documentation",
+        "pyqt6",
+        "system-tray",
+        "python",
+        "installation",
+        "packaging"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "config:requirements.txt",
+      "type": "config",
+      "name": "requirements.txt",
+      "filePath": "requirements.txt",
+      "summary": "Runtime and test dependencies: PyQt6>=6.10.2 (UI framework), cryptography>=46.0.3 (file encryption), rapidfuzz>=3.14.5 (fuzzy command search), pynput>=1.8.1 (global hotkey listener), jsonschema>=4.0 (config validation), pytest>=8.0 and pytest-qt>=4.4 for testing.",
+      "tags": [
+        "dependencies",
+        "python",
+        "pyqt6",
+        "cryptography",
+        "rapidfuzz",
+        "pynput",
+        "pytest"
+      ],
+      "complexity": "simple",
+      "language": "Text"
+    },
+    {
+      "id": "config:requirements-build.txt",
+      "type": "config",
+      "name": "requirements-build.txt",
+      "filePath": "requirements-build.txt",
+      "summary": "Build-time dependencies for creating distributable packages: PyInstaller==6.10.0 (binary packaging), setuptools, wheel (Python packaging), plus rapidfuzz and pynput needed at build time for proper bundling.",
+      "tags": [
+        "build",
+        "pyinstaller",
+        "setuptools",
+        "packaging",
+        "dependencies"
+      ],
+      "complexity": "simple",
+      "language": "Text"
+    },
+    {
+      "id": "config:pyproject.toml",
+      "type": "config",
+      "name": "pyproject.toml",
+      "filePath": "pyproject.toml",
+      "summary": "Project metadata and tooling configuration. Defines project name 'py-tray-command-launcher' v1.0.0, requires Python>=3.10, GPL-3.0-or-later license, PyQt6>=6.4 as core dependency. Uses setuptools build backend with packages sourced from src/. Configures pytest (testpaths=['tests']), and ruff linter (line-length=100, py310 target, E/F/W/I/UP rule sets).",
+      "tags": [
+        "pyproject",
+        "setuptools",
+        "pytest",
+        "ruff",
+        "build",
+        "python",
+        "pyqt6",
+        "linting"
+      ],
+      "complexity": "simple",
+      "language": "TOML"
+    },
+    {
+      "id": "config:config/commands.json",
+      "type": "config",
+      "name": "commands.json",
+      "filePath": "config/commands.json",
+      "summary": "Main Linux command configuration file defining grouped menu entries for the system tray launcher. Organizes commands into five top-level groups: System (terminal, update, disk/memory info, reboot, shutdown, Cinnamon reload, kill-by-port with prompt), Media (YouTube Music via Brave), Studies (Anki), Utilities (screenshot, CPU-X, disk analyzer, system monitor, text editor), and Development (VSCode, Geany, DBeaver, Postman, Docker PS/Images). Each command specifies a shell command string, showOutput flag, confirm flag, and optional icon (path, absolute, or base64 data URI) and prompt fields. Supports nested subgroups (e.g. Tailscale under Networking) and the {promptInput} substitution token.",
+      "tags": [
+        "commands",
+        "config",
+        "linux",
+        "menu",
+        "system-tray",
+        "shell"
+      ],
+      "complexity": "moderate",
+      "language": "JSON"
+    },
+    {
+      "id": "config:config/commands.schema.json",
+      "type": "config",
+      "name": "commands.schema.json",
+      "filePath": "config/commands.schema.json",
+      "summary": "JSON Schema (draft-07) defining the structure of commands.json and win-commands.json. The root object allows any number of named group keys, each referencing a recursive group definition. Groups contain command entries or nested groups. A command object requires a 'command' string field and optionally allows 'confirm' (boolean), 'showOutput' (boolean), 'icon' (string \u2014 path, URL, or data URI), 'prompt' (string for user input substituted as {promptInput}), and 'ref' (dot-separated path referencing another command). Enforces additionalProperties: false on command objects.",
+      "tags": [
+        "schema",
+        "validation",
+        "json-schema",
+        "config"
+      ],
+      "complexity": "simple",
+      "language": "JSON"
+    },
+    {
+      "id": "config:config/win-commands.json",
+      "type": "config",
+      "name": "win-commands.json",
+      "filePath": "config/win-commands.json",
+      "summary": "Windows-specific command configuration file mirroring the structure of commands.json for use on Windows. Defines five groups: System (cmd.exe, PowerShell, system update via sfc, Task Manager, disk/memory info, system info, reboot, shutdown), Media (Spotify, VLC), Utilities (screenshot via SendKeys, Disk Cleanup, Performance Monitor, Notepad), Development (VSCode, DBeaver, Postman, Git Bash, Docker PS/Images via PowerShell), and Networking (ipconfig, netstat, ping, Get-NetAdapter, netsh wlan). Uses Windows-native executables and PowerShell commands. Placeholder paths (e.g. C:\\Users\\<YourUsername>\\...) indicate this is a sample/template file.",
+      "tags": [
+        "commands",
+        "config",
+        "windows",
+        "menu",
+        "system-tray",
+        "shell",
+        "powershell"
+      ],
+      "complexity": "moderate",
+      "language": "JSON"
+    },
+    {
+      "id": "document:docs/add/README.md",
+      "type": "document",
+      "name": "ADD README: Architecture Design Decisions Index",
+      "filePath": "docs/add/README.md",
+      "summary": "Index and conventions for the Architecture Design Decision records of py-tray-command-launcher, describing the purpose, format, and numbering scheme for ADD documents.",
+      "tags": [
+        "add",
+        "architecture",
+        "index",
+        "documentation"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-001-configuration-storage-and-platform-paths.md",
+      "type": "document",
+      "name": "ADD-001: Configuration storage and platform paths",
+      "filePath": "docs/add/ADD-001-configuration-storage-and-platform-paths.md",
+      "summary": "Justifies use of XDG_CONFIG_HOME on Linux and APPDATA on Windows for config storage, explains base_dir resolution across source/PyInstaller/AppImage packaging modes, and describes the Windows dual-file (INI + JSON) strategy.",
+      "tags": [
+        "add",
+        "architecture",
+        "config",
+        "cross-platform",
+        "storage"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-002-singleton-config-manager.md",
+      "type": "document",
+      "name": "ADD-002: Singleton ConfigManager \u2014 module-level instance",
+      "filePath": "docs/add/ADD-002-singleton-config-manager.md",
+      "summary": "Explains the decision to instantiate ConfigManager once at module level rather than using a __new__ singleton, enabling shared in-memory caches and simple import-based access while keeping tests able to substitute the instance.",
+      "tags": [
+        "add",
+        "architecture",
+        "config",
+        "singleton"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-003-dependency-injection-via-appservices.md",
+      "type": "document",
+      "name": "ADD-003: Dependency injection via AppServices dataclass",
+      "filePath": "docs/add/ADD-003-dependency-injection-via-appservices.md",
+      "summary": "Describes the AppServices dataclass defined in core/services.py that is passed to feature modules instead of TrayApp, breaking circular dependencies and enabling unit testing without a full Qt application.",
+      "tags": [
+        "add",
+        "architecture",
+        "dependency-injection",
+        "coupling"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-004-command-schema-and-validation.md",
+      "type": "document",
+      "name": "ADD-004: commands.json schema and soft validation",
+      "filePath": "docs/add/ADD-004-command-schema-and-validation.md",
+      "summary": "Documents the JSON schema format for commands.json and the decision to use soft (warning-only) validation so older configs remain usable while structural errors surface as clear ConfigurationError messages.",
+      "tags": [
+        "add",
+        "architecture",
+        "config",
+        "validation",
+        "schema",
+        "commands"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-005-atomic-json-writes.md",
+      "type": "document",
+      "name": "ADD-005: Atomic JSON writes via temp-file rename",
+      "filePath": "docs/add/ADD-005-atomic-json-writes.md",
+      "summary": "Explains the use of write-to-temp-file then atomic rename in ConfigManager._write_json_atomic() to prevent partial/corrupt JSON files from unexpected process termination.",
+      "tags": [
+        "add",
+        "architecture",
+        "storage",
+        "reliability",
+        "data-integrity"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-006-menu-builder-decomposition.md",
+      "type": "document",
+      "name": "ADD-006: MenuBuilder extraction from TrayApp",
+      "filePath": "docs/add/ADD-006-menu-builder-decomposition.md",
+      "summary": "Records the decision to extract tray menu construction from the monolithic TrayApp into a dedicated MenuBuilder class in core/menu_builder.py to improve readability, testability, and separation of concerns.",
+      "tags": [
+        "add",
+        "architecture",
+        "refactoring",
+        "menu",
+        "separation-of-concerns"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-007-icon-resolver-and-cache.md",
+      "type": "document",
+      "name": "ADD-007: IconResolver with TTL-aware local cache",
+      "filePath": "docs/add/ADD-007-icon-resolver-and-cache.md",
+      "summary": "Describes IconResolver in core/icon_resolver.py which centralises icon path resolution (file path, theme name, or HTTPS URL) with a TTL-aware disk cache in the system temp directory to avoid repeated network downloads.",
+      "tags": [
+        "add",
+        "architecture",
+        "icons",
+        "cache",
+        "networking"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-008-single-instance-locking.md",
+      "type": "document",
+      "name": "ADD-008: Single-instance locking \u2014 QSharedMemory + PID file",
+      "filePath": "docs/add/ADD-008-single-instance-locking.md",
+      "summary": "Documents the two-layer single-instance strategy in utils/single_instance.py using QSharedMemory as the primary cross-platform lock and a PID file as a fallback to prevent duplicate tray icon instances.",
+      "tags": [
+        "add",
+        "architecture",
+        "single-instance",
+        "ipc",
+        "locking"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-009-command-execution-strategies.md",
+      "type": "document",
+      "name": "ADD-009: Command execution strategies \u2014 subprocess vs QProcess",
+      "filePath": "docs/add/ADD-009-command-execution-strategies.md",
+      "summary": "Explains CommandExecutor's three execution modes (fire-and-forget via subprocess, output-window via QProcess, terminal emulator launch) and the rationale for choosing subprocess over QProcess for background commands.",
+      "tags": [
+        "add",
+        "architecture",
+        "execution",
+        "subprocess",
+        "QProcess"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-010-theming-via-qss.md",
+      "type": "document",
+      "name": "ADD-010: Theming via QSS stylesheets",
+      "filePath": "docs/add/ADD-010-theming-via-qss.md",
+      "summary": "Documents the decision to use Qt Style Sheets (QSS) applied globally via ThemeManager in core/theme_manager.py, providing consistent Catppuccin-inspired theming across all widgets without per-widget styling code.",
+      "tags": [
+        "add",
+        "architecture",
+        "ui",
+        "theming",
+        "qss"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-011-command-palette-and-global-hotkeys.md",
+      "type": "document",
+      "name": "ADD-011: Command palette and global hotkeys via pynput",
+      "filePath": "docs/add/ADD-011-command-palette-and-global-hotkeys.md",
+      "summary": "Explains the command palette UI design and the choice of pynput (over the keyboard library) for global hotkey listening on X11 and Wayland without requiring root privileges.",
+      "tags": [
+        "add",
+        "architecture",
+        "ui",
+        "hotkeys",
+        "pynput",
+        "command-palette"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-012-favorites-path-encoding.md",
+      "type": "document",
+      "name": "ADD-012: Favorites command path encoding",
+      "filePath": "docs/add/ADD-012-favorites-path-encoding.md",
+      "summary": "Documents the dot-separated group.label path encoding introduced in modules/favorites.py to uniquely identify favourited commands while correctly handling names that contain the previously used ' \u2192 ' separator.",
+      "tags": [
+        "add",
+        "architecture",
+        "favorites",
+        "data-model",
+        "encoding"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-013-file-encryption.md",
+      "type": "document",
+      "name": "ADD-013: File encryption with Fernet and PBKDF2",
+      "filePath": "docs/add/ADD-013-file-encryption.md",
+      "summary": "Records the decision to use the cryptography library's Fernet authenticated symmetric encryption with PBKDF2 key derivation in FileEncryptor for protecting sensitive command catalogues, rejecting GPG and age as external system dependencies.",
+      "tags": [
+        "add",
+        "architecture",
+        "security",
+        "encryption",
+        "cryptography"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-014-scheduling-via-cron.md",
+      "type": "document",
+      "name": "ADD-014: Command scheduling via cron / Task Scheduler",
+      "filePath": "docs/add/ADD-014-scheduling-via-cron.md",
+      "summary": "Justifies delegating all command scheduling to the OS scheduler (cron on Linux/macOS, Task Scheduler on Windows) via ScheduleCreator rather than building an in-process scheduling loop, so commands run even when the tray app is not active.",
+      "tags": [
+        "add",
+        "architecture",
+        "scheduling",
+        "cron",
+        "automation"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/add/ADD-015-app-discovery-desktop-files.md",
+      "type": "document",
+      "name": "ADD-015: App discovery via .desktop file scanning",
+      "filePath": "docs/add/ADD-015-app-discovery-desktop-files.md",
+      "summary": "Documents AppDiscovery in modules/app_discovery.py which scans XDG .desktop files in a background thread at startup to populate the Apps tab in the command palette without any user configuration.",
+      "tags": [
+        "add",
+        "architecture",
+        "app-launcher",
+        "desktop-files",
+        "discovery"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/architecture.md",
+      "type": "document",
+      "name": "architecture.md",
+      "filePath": "docs/architecture.md",
+      "summary": "Describes the overall codebase structure and module responsibilities. Covers the directory layout (src/, config/, resources/, tests/, packaging/), documents each core module (TrayApp, ConfigManager, logging_config, OutputWindow), all feature modules (command_executor, command_search, command_creator, command_history, favorites, backup_restore, import_export, file_encryptor, schedule_creator, schedule_viewer), and utility modules (utils, dialogs, single_instance). Includes a startup data flow diagram and explains the logging configuration and log level resolution order.",
+      "tags": [
+        "architecture",
+        "modules",
+        "data-flow",
+        "logging",
+        "PyQt6",
+        "structure"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/configuration.md",
+      "type": "document",
+      "name": "configuration.md",
+      "filePath": "docs/configuration.md",
+      "summary": "Full reference for all configuration files used by the application. Covers the OS-specific config directory locations (XDG on Linux, %APPDATA% on Windows), and documents each config file: commands.json (command hierarchy with category and command entry fields including command, showOutput, confirm, icon, prompt, and the {promptInput} placeholder), settings.json (log level field), history.json, and favorites.json. Includes complete JSON examples.",
+      "tags": [
+        "configuration",
+        "commands.json",
+        "settings.json",
+        "history.json",
+        "favorites.json",
+        "reference"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/contributing.md",
+      "type": "document",
+      "name": "contributing.md",
+      "filePath": "docs/contributing.md",
+      "summary": "Developer contribution guidelines covering development environment setup (system deps, virtualenv, pip install), running the application normally and headlessly, code quality requirements (py_compile syntax checks, flake8, black formatting), project conventions (logging with getLogger, config access via config_manager singleton, Qt threading, GPL-3.0 license header), documentation policy (which docs/ file to update for each change type), testing instructions (unittest discovery), and pull request submission steps.",
+      "tags": [
+        "contributing",
+        "development",
+        "setup",
+        "code-quality",
+        "flake8",
+        "black",
+        "testing",
+        "conventions"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/features.md",
+      "type": "document",
+      "name": "features.md",
+      "filePath": "docs/features.md",
+      "summary": "User-facing feature guide covering all major capabilities: hierarchical command menu with category submenus, command execution (basic, output display, confirmation dialogs, user input prompts via {promptInput}), command search dialog with real-time filtering, favorites pinning, recent commands history, graphical command creator, backup/restore and import/export of commands.json, password-based file encryption (PBKDF2+Fernet, background thread), cron-based command scheduling, single-instance enforcement with force-unlock, raw JSON editor, and app restart.",
+      "tags": [
+        "features",
+        "user-guide",
+        "command-execution",
+        "search",
+        "favorites",
+        "history",
+        "encryption",
+        "scheduling",
+        "tray"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:docs/packaging.md",
+      "type": "document",
+      "name": "packaging.md",
+      "filePath": "docs/packaging.md",
+      "summary": "Build and packaging instructions for creating distributable packages. Covers prerequisites for Linux and Windows builds, all supported package formats (Linux executable, Debian .deb, AppImage, Windows .exe) with their respective build scripts. Explains step-by-step build processes using PyInstaller via .spec file, the build-all.sh convenience script with optional flags, expected build artifacts directory layout, requirements files (runtime: PyQt6/cryptography; build: PyInstaller/setuptools/wheel), and troubleshooting for common build issues (permission errors, appimagetool failures, missing modules, headless smoke test failures).",
+      "tags": [
+        "packaging",
+        "build",
+        "PyInstaller",
+        "AppImage",
+        "debian",
+        "deb",
+        "Windows",
+        "distribution"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "resource:resources/icons/developer.jpeg",
+      "type": "resource",
+      "name": "developer.jpeg",
+      "filePath": "resources/icons/developer.jpeg",
+      "summary": "Category icon representing developer-related tools or commands in the system tray menu.",
+      "tags": [
+        "icon",
+        "image",
+        "category",
+        "developer",
+        "resource"
+      ],
+      "complexity": "simple",
+      "language": "Binary"
+    },
+    {
+      "id": "resource:resources/icons/education.jpeg",
+      "type": "resource",
+      "name": "education.jpeg",
+      "filePath": "resources/icons/education.jpeg",
+      "summary": "Category icon representing education-related tools or commands in the system tray menu.",
+      "tags": [
+        "icon",
+        "image",
+        "category",
+        "education",
+        "resource"
+      ],
+      "complexity": "simple",
+      "language": "Binary"
+    },
+    {
+      "id": "resource:resources/icons/icon.png",
+      "type": "resource",
+      "name": "icon.png",
+      "filePath": "resources/icons/icon.png",
+      "summary": "Main application tray icon displayed in the system tray.",
+      "tags": [
+        "icon",
+        "image",
+        "resource",
+        "tray",
+        "main"
+      ],
+      "complexity": "simple",
+      "language": "Binary"
+    },
+    {
+      "id": "resource:resources/icons/media.jpeg",
+      "type": "resource",
+      "name": "media.jpeg",
+      "filePath": "resources/icons/media.jpeg",
+      "summary": "Category icon representing media-related tools or commands in the system tray menu.",
+      "tags": [
+        "icon",
+        "image",
+        "category",
+        "media",
+        "resource"
+      ],
+      "complexity": "simple",
+      "language": "Binary"
+    },
+    {
+      "id": "resource:resources/icons/system.jpeg",
+      "type": "resource",
+      "name": "system.jpeg",
+      "filePath": "resources/icons/system.jpeg",
+      "summary": "Category icon representing system-related tools or commands in the system tray menu.",
+      "tags": [
+        "icon",
+        "image",
+        "category",
+        "system",
+        "resource"
+      ],
+      "complexity": "simple",
+      "language": "Binary"
+    },
+    {
+      "id": "resource:resources/icons/utilities.jpeg",
+      "type": "resource",
+      "name": "utilities.jpeg",
+      "filePath": "resources/icons/utilities.jpeg",
+      "summary": "Category icon representing utility tools or commands in the system tray menu.",
+      "tags": [
+        "icon",
+        "image",
+        "category",
+        "utilities",
+        "resource"
+      ],
+      "complexity": "simple",
+      "language": "Binary"
+    },
+    {
+      "id": "config:resources/styles/catppuccin-frappe.qss",
+      "type": "config",
+      "name": "catppuccin-frappe.qss",
+      "filePath": "resources/styles/catppuccin-frappe.qss",
+      "summary": "Qt stylesheet implementing the Catppuccin Frappe theme \u2014 a soothing medium-contrast dark variant with muted cool-grey tones.",
+      "tags": [
+        "theme",
+        "qss",
+        "catppuccin",
+        "frappe",
+        "dark",
+        "style"
+      ],
+      "complexity": "simple",
+      "language": "QSS"
+    },
+    {
+      "id": "config:resources/styles/catppuccin-latte.qss",
+      "type": "config",
+      "name": "catppuccin-latte.qss",
+      "filePath": "resources/styles/catppuccin-latte.qss",
+      "summary": "Qt stylesheet implementing the Catppuccin Latte theme \u2014 the light variant of the Catppuccin palette with warm pastel tones.",
+      "tags": [
+        "theme",
+        "qss",
+        "catppuccin",
+        "latte",
+        "light",
+        "style"
+      ],
+      "complexity": "simple",
+      "language": "QSS"
+    },
+    {
+      "id": "config:resources/styles/catppuccin-macchiato.qss",
+      "type": "config",
+      "name": "catppuccin-macchiato.qss",
+      "filePath": "resources/styles/catppuccin-macchiato.qss",
+      "summary": "Qt stylesheet implementing the Catppuccin Macchiato theme \u2014 a dark variant with a balance between Frappe and Mocha darkness levels.",
+      "tags": [
+        "theme",
+        "qss",
+        "catppuccin",
+        "macchiato",
+        "dark",
+        "style"
+      ],
+      "complexity": "simple",
+      "language": "QSS"
+    },
+    {
+      "id": "config:resources/styles/catppuccin-mocha.qss",
+      "type": "config",
+      "name": "catppuccin-mocha.qss",
+      "filePath": "resources/styles/catppuccin-mocha.qss",
+      "summary": "Qt stylesheet implementing the Catppuccin Mocha theme \u2014 the darkest variant of the Catppuccin palette with deep, rich dark tones.",
+      "tags": [
+        "theme",
+        "qss",
+        "catppuccin",
+        "mocha",
+        "dark",
+        "style"
+      ],
+      "complexity": "simple",
+      "language": "QSS"
+    },
+    {
+      "id": "resource:packaging/py-tray-command-launcher.desktop",
+      "type": "resource",
+      "name": "py-tray-command-launcher.desktop",
+      "filePath": "packaging/py-tray-command-launcher.desktop",
+      "summary": "XDG desktop entry file for Linux desktop integration. Registers the application as a Utility with no terminal, enabling launch from application menus and autostart. Exec=py-tray-command-launcher, Category=Utility.",
+      "tags": [
+        "desktop-entry",
+        "xdg",
+        "linux",
+        "packaging",
+        "integration",
+        "infra"
+      ],
+      "complexity": "simple",
+      "language": "INI"
+    },
+    {
+      "id": "file:scripts/build-all.sh",
+      "type": "file",
+      "name": "build-all.sh",
+      "filePath": "scripts/build-all.sh",
+      "summary": "Master build orchestration script that sequentially invokes build-linux.sh, build-deb.sh, and build-appimage.sh. Supports CLI flags (--linux-only, --deb-only, --appimage-only, --clean) to selectively run sub-builds. Prints a final summary of built artifacts in dist/ and notes that Windows builds require running build-windows.bat on a Windows machine.",
+      "tags": [
+        "build",
+        "orchestration",
+        "linux",
+        "packaging",
+        "shell"
+      ],
+      "complexity": "moderate",
+      "language": "Shell"
+    },
+    {
+      "id": "file:scripts/build-appimage.sh",
+      "type": "file",
+      "name": "build-appimage.sh",
+      "filePath": "scripts/build-appimage.sh",
+      "summary": "Builds an AppImage package for Linux. Downloads appimagetool if absent, calls build-linux.sh to produce the binary, constructs an AppDir structure (binary, desktop file, icon, QSS themes, AppRun script), then runs appimagetool to produce dist/py-tray-command-launcher-x86_64.AppImage. Performs a quick offscreen smoke-test after packaging.",
+      "tags": [
+        "build",
+        "appimage",
+        "linux",
+        "packaging",
+        "pyinstaller"
+      ],
+      "complexity": "moderate",
+      "language": "Shell"
+    },
+    {
+      "id": "file:scripts/build-deb.sh",
+      "type": "file",
+      "name": "build-deb.sh",
+      "filePath": "scripts/build-deb.sh",
+      "summary": "Builds a Debian .deb package. Installs debhelper/devscripts via apt, calls build-linux.sh to produce the binary, copies the packaging/debian directory, runs debuild to create the package, and moves the resulting .deb into dist/. Prints package info via dpkg-deb.",
+      "tags": [
+        "build",
+        "debian",
+        "deb",
+        "packaging",
+        "linux"
+      ],
+      "complexity": "moderate",
+      "language": "Shell"
+    },
+    {
+      "id": "file:scripts/build-linux.sh",
+      "type": "file",
+      "name": "build-linux.sh",
+      "filePath": "scripts/build-linux.sh",
+      "summary": "Core Linux build script using PyInstaller. Creates/activates a Python venv, installs requirements.txt and requirements-build.txt, cleans prior build artifacts, then runs PyInstaller with py-tray-command-launcher.spec to produce dist/py-tray-command-launcher. Performs a brief offscreen smoke-test on the resulting binary.",
+      "tags": [
+        "build",
+        "linux",
+        "pyinstaller",
+        "packaging",
+        "venv"
+      ],
+      "complexity": "simple",
+      "language": "Shell"
+    },
+    {
+      "id": "file:scripts/build-windows.bat",
+      "type": "file",
+      "name": "build-windows.bat",
+      "filePath": "scripts/build-windows.bat",
+      "summary": "Windows batch script for building the Windows executable via PyInstaller. Verifies Python is on PATH, creates/activates a venv, installs requirements.txt and requirements-build.txt, cleans prior build artifacts, then runs PyInstaller with py-tray-command-launcher.spec to produce dist/py-tray-command-launcher.exe. Intended to be run on a Windows machine.",
+      "tags": [
+        "build",
+        "windows",
+        "pyinstaller",
+        "packaging",
+        "batch"
+      ],
+      "complexity": "simple",
+      "language": "Batch"
+    },
+    {
+      "id": "file:scripts/install_packages.sh",
+      "type": "file",
+      "name": "install_packages.sh",
+      "filePath": "scripts/install_packages.sh",
+      "summary": "Simple bootstrapping script that installs system-level prerequisites via apt: python3, python3-pip, python3.12-venv, Qt/XCB runtime libraries (libxcb-xinerama0, libxcb-cursor0), policykit-1, and speedtest-cli. Intended to prepare a fresh Linux environment before running build scripts.",
+      "tags": [
+        "setup",
+        "dependencies",
+        "apt",
+        "linux",
+        "bootstrap"
+      ],
+      "complexity": "simple",
+      "language": "Shell"
+    },
+    {
+      "id": "document:.github/copilot-instructions.md",
+      "type": "document",
+      "name": "copilot-instructions.md",
+      "filePath": ".github/copilot-instructions.md",
+      "summary": "GitHub Copilot instructions for the py-tray-command-launcher project. Covers project overview, repository structure, bootstrap/build/test workflows, running the application (GUI and headless), code quality tools (flake8, black), dependency information, configuration usage, and known limitations. Serves as the primary AI agent reference for working with this codebase.",
+      "tags": [
+        "github",
+        "copilot",
+        "instructions",
+        "documentation",
+        "devops"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "config:.github/dependabot.yml",
+      "type": "config",
+      "name": "dependabot.yml",
+      "filePath": ".github/dependabot.yml",
+      "summary": "GitHub Dependabot configuration enabling weekly automated dependency updates for Python pip packages on Mondays. Tags resulting PRs with 'dependencies' and 'python' labels.",
+      "tags": [
+        "github",
+        "dependabot",
+        "dependencies",
+        "automation",
+        "security"
+      ],
+      "complexity": "simple",
+      "language": "YAML"
+    },
+    {
+      "id": "document:.github/skills/openspec-apply-change/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".github/skills/openspec-apply-change/SKILL.md",
+      "summary": "OpenSpec skill definition for applying (implementing) changes. Provides step-by-step instructions for an AI agent to select a change, check its status and schema, read context files, and implement tasks one-by-one, marking them complete. Handles blocked states, ambiguous tasks, and completion reporting. Supports spec-driven and other schema workflows.",
+      "tags": [
+        "openspec",
+        "skill",
+        "ai-agent",
+        "implementation",
+        "workflow"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:.github/skills/openspec-archive-change/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".github/skills/openspec-archive-change/SKILL.md",
+      "summary": "OpenSpec skill definition for archiving completed changes. Guides an AI agent through selecting a change, checking artifact and task completion status, assessing delta spec sync state, and moving the change directory to openspec/changes/archive with a date-stamped name. Includes warnings for incomplete artifacts/tasks and optional spec sync before archiving.",
+      "tags": [
+        "openspec",
+        "skill",
+        "ai-agent",
+        "archive",
+        "workflow"
+      ],
+      "complexity": "moderate",
+      "language": "Markdown"
+    },
+    {
+      "id": "document:.github/skills/openspec-explore-change/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".github/skills/openspec-explore-change/SKILL.md",
+      "summary": "OpenSpec skill definition for exploring changes (file not found in repository). Likely describes how an AI agent should browse, inspect, and understand OpenSpec change proposals and their artifacts.",
+      "tags": [
+        "openspec",
+        "skill",
+        "ai-agent",
+        "explore",
+        "workflow"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "pipeline:.github/workflows/ci.yml",
+      "type": "pipeline",
+      "name": "ci.yml",
+      "filePath": ".github/workflows/ci.yml",
+      "summary": "GitHub Actions CI pipeline for the py-tray-command-launcher project (file not found; likely runs linting with flake8, syntax checks, and unit tests under a headless Qt environment based on project conventions described in copilot-instructions.md).",
+      "tags": [
+        "ci",
+        "github-actions",
+        "testing",
+        "linting",
+        "automation"
+      ],
+      "complexity": "simple",
+      "language": "YAML"
+    },
+    {
+      "id": "config:openspec/config.yaml",
+      "type": "config",
+      "name": "config.yaml",
+      "filePath": "openspec/config.yaml",
+      "summary": "OpenSpec configuration file specifying 'spec-driven' schema for change management. Provides optional project context and per-artifact rule placeholders. Currently minimal with commented-out examples for tech stack context and custom artifact rules.",
+      "tags": [
+        "openspec",
+        "config",
+        "spec-driven",
+        "change-management"
+      ],
+      "complexity": "simple",
+      "language": "YAML"
+    },
+    {
+      "id": "document:openspec/changes/fix-high-priority-issues/proposal.md",
+      "type": "document",
+      "name": "proposal.md",
+      "filePath": "openspec/changes/fix-high-priority-issues/proposal.md",
+      "summary": "OpenSpec change proposal for fixing high-priority issues in the project (file not found; likely describes bugs or improvements targeted for this change cycle).",
+      "tags": [
+        "openspec",
+        "proposal",
+        "fix",
+        "high-priority",
+        "change"
+      ],
+      "complexity": "simple",
+      "language": "Markdown"
+    },
+    {
+      "id": "file:tests/__init__.py",
+      "type": "file",
+      "name": "__init__.py",
+      "filePath": "tests/__init__.py",
+      "summary": "Empty package initializer for the tests directory, making it a Python package.",
+      "tags": [
+        "tests",
+        "python",
+        "package"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_command_executor.py",
+      "type": "file",
+      "name": "test_command_executor.py",
+      "filePath": "tests/test_command_executor.py",
+      "summary": "Unit tests for the CommandExecutor module. Covers subprocess-based command execution via Popen (execute_command), QProcess-based execution (execute_command_process), and silent QProcess execution (execute_command_process_silently). Verifies PID logging, process start calls, QProcess configuration with bash -c, and command logging. Uses mocks for subprocess and QProcess.",
+      "tags": [
+        "tests",
+        "unittest",
+        "command-executor",
+        "subprocess",
+        "qprocess",
+        "mocking"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_config_path_consistency.py",
+      "type": "file",
+      "name": "test_config_path_consistency.py",
+      "filePath": "tests/test_config_path_consistency.py",
+      "summary": "Integration tests for ConfigManager path consistency. Verifies XDG config directory usage, legacy config migration (~/.py-tray-command-launcher to XDG path), merge behavior without overwriting canonical entries, import/duplicate detection using the active commands file, and log-level reading from settings. Patches XDG_CONFIG_HOME and HOME environment variables to isolate filesystem side effects.",
+      "tags": [
+        "tests",
+        "unittest",
+        "config-manager",
+        "xdg",
+        "migration",
+        "integration"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_logging_config.py",
+      "type": "file",
+      "name": "test_logging_config.py",
+      "filePath": "tests/test_logging_config.py",
+      "summary": "Unit tests for the logging_config module. Covers resolve_log_level with config-level fallback when env var not set, environment variable override, invalid level fallback to default, and idempotent handler configuration (configure_logging does not add duplicate handlers on repeated calls).",
+      "tags": [
+        "tests",
+        "unittest",
+        "logging",
+        "configuration"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_single_instance.py",
+      "type": "file",
+      "name": "test_single_instance.py",
+      "filePath": "tests/test_single_instance.py",
+      "summary": "Unit tests for SingleInstanceChecker using pytest. Covers is_pid_running with own/negative/zero/non-numeric/dead PIDs, acquire_lock PID file writing and OSError logging, already-locked scenario, headless/Wayland display detection via env vars, and force_unlock/cleanup OSError logging. Stubs PyQt6 symbols at module level to allow headless execution.",
+      "tags": [
+        "tests",
+        "pytest",
+        "single-instance",
+        "pid",
+        "wayland",
+        "headless"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:tests/test_icon_resolver.py",
+      "type": "file",
+      "name": "test_icon_resolver.py",
+      "filePath": "tests/test_icon_resolver.py",
+      "summary": "Unit tests for IconResolver using pytest. Covers HTTP URL rejection, HTTPS URL acceptance with urlopen mock, base64/data-URI icon handling, absolute and relative path resolution with resource_roots, cache TTL expiry triggering re-download, fresh cache skipping download, and resolve_tray_icon returning str or None.",
+      "tags": [
+        "tests",
+        "pytest",
+        "icon-resolver",
+        "url",
+        "cache",
+        "base64"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "file:src/modules/command_search.py",
+      "type": "file",
+      "name": "command_search.py",
+      "filePath": "src/modules/command_search.py",
+      "summary": "Provides a fuzzy command-search dialog using rapidfuzz (with substring fallback) that lets users find and execute any configured command by name or group.",
+      "tags": [
+        "search",
+        "fuzzy",
+        "dialog",
+        "qt",
+        "commands"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/command_search.py:CommandSearch",
+      "type": "class",
+      "name": "CommandSearch",
+      "filePath": "src/modules/command_search.py",
+      "summary": "Provides fuzzy search over the full command tree using rapidfuzz, returning ranked command matches for the command palette.",
+      "tags": [
+        "search",
+        "fuzzy",
+        "commands",
+        "rapidfuzz"
+      ]
+    },
+    {
+      "id": "file:src/modules/schedule_viewer.py",
+      "type": "file",
+      "name": "schedule_viewer.py",
+      "filePath": "src/modules/schedule_viewer.py",
+      "summary": "Provides a dialog for viewing, editing, and deleting scheduled cron jobs and systemd timers on Linux.",
+      "tags": [
+        "schedule",
+        "cron",
+        "dialog",
+        "qt",
+        "systemd"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/modules/schedule_viewer.py:ScheduleViewer",
+      "type": "class",
+      "name": "ScheduleViewer",
+      "filePath": "src/modules/schedule_viewer.py",
+      "summary": "PyQt6 dialog that lists all scheduled cron/Task Scheduler entries created by the app and allows users to delete them.",
+      "tags": [
+        "scheduling",
+        "cron",
+        "qt",
+        "dialog"
+      ]
+    },
+    {
+      "id": "file:src/ui/command_manager.py",
+      "type": "file",
+      "name": "command_manager.py",
+      "filePath": "src/ui/command_manager.py",
+      "summary": "Full CRUD dialog (CommandManagerDialog) for managing commands and groups in the launcher configuration, backed by config_manager.",
+      "tags": [
+        "ui",
+        "dialog",
+        "crud",
+        "commands",
+        "qt"
+      ],
+      "complexity": "complex",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/ui/command_manager.py:CommandManagerDialog",
+      "type": "class",
+      "name": "CommandManagerDialog",
+      "filePath": "src/ui/command_manager.py",
+      "summary": "Full-featured dialog for browsing, editing, creating, and deleting commands across all groups in the config.",
+      "tags": [
+        "ui",
+        "commands",
+        "editor",
+        "qt"
+      ]
+    },
+    {
+      "id": "file:src/ui/quick_launch_bar.py",
+      "type": "file",
+      "name": "quick_launch_bar.py",
+      "filePath": "src/ui/quick_launch_bar.py",
+      "summary": "Implements a floating QuickLaunchBar widget that displays pinned favourite commands as icon buttons with optional global hotkey trigger.",
+      "tags": [
+        "ui",
+        "quick-launch",
+        "hotkey",
+        "favorites",
+        "qt"
+      ],
+      "complexity": "moderate",
+      "language": "Python"
+    },
+    {
+      "id": "class:src/ui/quick_launch_bar.py:QuickLaunchBar",
+      "type": "class",
+      "name": "QuickLaunchBar",
+      "filePath": "src/ui/quick_launch_bar.py",
+      "summary": "Floating borderless toolbar showing pinned favourite commands as icon buttons for one-click execution.",
+      "tags": [
+        "ui",
+        "favorites",
+        "quick-launch",
+        "qt"
+      ]
+    },
+    {
+      "id": "file:src/utils/dialogs.py",
+      "type": "file",
+      "name": "dialogs.py",
+      "filePath": "src/utils/dialogs.py",
+      "summary": "Thin utility wrappers around QMessageBox for showing confirmation and error dialogs consistently across the application.",
+      "tags": [
+        "utils",
+        "dialog",
+        "qt",
+        "messagebox"
+      ],
+      "complexity": "simple",
+      "language": "Python"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:src/core/menu_builder.py",
+      "target": "file:src/core/services.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/menu_builder.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/menu_builder.py",
+      "target": "file:src/core/icon_resolver.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/theme_manager.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/core/menu_builder.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/core/services.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/core/icon_resolver.py",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/core/logging_config.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/modules/command_executor.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/modules/favorites.py",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/modules/command_history.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/modules/app_discovery.py",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/utils/single_instance.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/ui/command_palette.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/ui/settings_dialog.py",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/ui/output_window.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/command_executor.py",
+      "target": "file:src/core/services.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/command_history.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/file_encryptor.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/schedule_creator.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/schedule_creator.py",
+      "target": "file:src/core/services.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/command_palette.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/command_palette.py",
+      "target": "file:src/core/services.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/command_palette.py",
+      "target": "file:src/core/icon_resolver.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/settings_dialog.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/settings_dialog.py",
+      "target": "file:src/core/services.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/menu_builder.py",
+      "target": "class:src/core/menu_builder.py:MenuBuilder",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/services.py",
+      "target": "class:src/core/services.py:AppServices",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/theme_manager.py",
+      "target": "class:src/core/theme_manager.py:ThemeManager",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "class:src/core/tray_app.py:TrayApp",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/command_executor.py",
+      "target": "class:src/modules/command_executor.py:CommandExecutor",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/command_history.py",
+      "target": "class:src/modules/command_history.py:CommandHistory",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/schedule_creator.py",
+      "target": "class:src/modules/schedule_creator.py:ScheduleCreator",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/command_palette.py",
+      "target": "class:src/ui/command_palette.py:CommandPalette",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/output_window.py",
+      "target": "class:src/ui/output_window.py:RichOutputWindow",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/settings_dialog.py",
+      "target": "class:src/ui/settings_dialog.py:SettingsDialog",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/core/tray_app.py:TrayApp",
+      "target": "class:src/core/menu_builder.py:MenuBuilder",
+      "type": "depends_on",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/core/tray_app.py:TrayApp",
+      "target": "class:src/core/services.py:AppServices",
+      "type": "depends_on",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/core/tray_app.py:TrayApp",
+      "target": "class:src/core/theme_manager.py:ThemeManager",
+      "type": "depends_on",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/modules/command_executor.py:CommandExecutor",
+      "target": "class:src/core/services.py:AppServices",
+      "type": "depends_on",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/modules/command_history.py:CommandHistory",
+      "target": "class:src/core/services.py:AppServices",
+      "type": "depends_on",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/modules/schedule_creator.py:ScheduleCreator",
+      "target": "class:src/core/services.py:AppServices",
+      "type": "depends_on",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/ui/command_palette.py:CommandPalette",
+      "target": "class:src/core/services.py:AppServices",
+      "type": "depends_on",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/config_manager.py",
+      "target": "class:src/core/config_manager.py:ConfigManager",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/config_manager.py",
+      "target": "class:src/core/config_manager.py:ConfigurationError",
+      "type": "contains",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/config_manager.py",
+      "target": "function:src/core/config_manager.py:_validate_commands",
+      "type": "contains",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/command_creator.py",
+      "target": "class:src/modules/command_creator.py:CommandCreator",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/import_export.py",
+      "target": "class:src/modules/import_export.py:ImportExport",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/backup_restore.py",
+      "target": "class:src/modules/backup_restore.py:BackupRestore",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/app_discovery.py",
+      "target": "class:src/modules/app_discovery.py:AppDiscovery",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/app_discovery.py",
+      "target": "class:src/modules/app_discovery.py:AppEntry",
+      "type": "contains",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/command_creator.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/import_export.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/backup_restore.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/app_discovery.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:tests/test_config_manager.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:tests/test_backup_restore.py",
+      "target": "file:src/modules/backup_restore.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:tests/test_command_history.py",
+      "target": "file:src/modules/command_history.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/config_manager.py",
+      "target": "file:tests/test_config_manager.py",
+      "type": "tested_by",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/backup_restore.py",
+      "target": "file:tests/test_backup_restore.py",
+      "type": "tested_by",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/modules/command_creator.py:CommandCreator",
+      "target": "class:src/core/config_manager.py:ConfigManager",
+      "type": "depends_on",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/modules/import_export.py:ImportExport",
+      "target": "class:src/core/config_manager.py:ConfigManager",
+      "type": "depends_on",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "class:src/modules/backup_restore.py:BackupRestore",
+      "target": "class:src/core/config_manager.py:ConfigManager",
+      "type": "depends_on",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/logging_config.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.4,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/main.py",
+      "target": "file:src/core/tray_app.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/main.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/main.py",
+      "target": "file:src/core/logging_config.py",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/main.py",
+      "target": "file:src/utils/single_instance.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/icon_resolver.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:tests/conftest.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/logging_config.py",
+      "target": "function:src/core/logging_config.py:configure_logging",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/logging_config.py",
+      "target": "function:src/core/logging_config.py:resolve_log_level",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/utils/single_instance.py",
+      "target": "class:src/utils/single_instance.py:SingleInstanceChecker",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/icon_resolver.py",
+      "target": "class:src/core/icon_resolver.py:IconResolver",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/main.py",
+      "target": "class:src/utils/single_instance.py:SingleInstanceChecker",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/main.py",
+      "target": "function:src/core/logging_config.py:configure_logging",
+      "type": "calls",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/favorites.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/favorites.py",
+      "target": "file:src/core/services.py",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/favorites.py",
+      "target": "class:src/modules/favorites.py:Favorites",
+      "type": "defines",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/favorites.py",
+      "target": "function:src/modules/favorites.py:_build_command_path",
+      "type": "defines",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/favorites.py",
+      "target": "file:tests/test_favorites.py",
+      "type": "tested_by",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/favorites.py",
+      "target": "file:tests/test_favorites_path.py",
+      "type": "tested_by",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:tests/test_favorites.py",
+      "target": "file:src/modules/favorites.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "file:tests/test_favorites_path.py",
+      "target": "file:src/modules/favorites.py",
+      "type": "imports",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "config:pyproject.toml",
+      "target": "file:src/main.py",
+      "type": "configures",
+      "weight": 0.6,
+      "description": "pyproject.toml defines the project entry point, package discovery in src/, and tooling settings that govern how src/main.py and surrounding code is built and linted.",
+      "direction": "forward"
+    },
+    {
+      "source": "config:requirements.txt",
+      "target": "config:pyproject.toml",
+      "type": "relates_to",
+      "weight": 0.5,
+      "description": "requirements.txt provides pinned runtime dependency versions that complement the looser dependency declarations in pyproject.toml.",
+      "direction": "forward"
+    },
+    {
+      "source": "config:requirements-build.txt",
+      "target": "config:pyproject.toml",
+      "type": "relates_to",
+      "weight": 0.5,
+      "description": "requirements-build.txt supplies the build-time toolchain (PyInstaller, setuptools, wheel) used alongside pyproject.toml for creating distribution packages.",
+      "direction": "forward"
+    },
+    {
+      "source": "document:README.md",
+      "target": "document:LICENSE",
+      "type": "references",
+      "weight": 0.4,
+      "description": "README.md references the LICENSE file in its License section.",
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/README.md",
+      "target": "document:README.md",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-001-configuration-storage-and-platform-paths.md",
+      "target": "file:src/core/config_manager.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-002-singleton-config-manager.md",
+      "target": "file:src/core/config_manager.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-003-dependency-injection-via-appservices.md",
+      "target": "file:src/core/services.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-004-command-schema-and-validation.md",
+      "target": "config:config/commands.schema.json",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-005-atomic-json-writes.md",
+      "target": "file:src/core/config_manager.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-006-menu-builder-decomposition.md",
+      "target": "file:src/core/menu_builder.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-007-icon-resolver-and-cache.md",
+      "target": "file:src/core/icon_resolver.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-008-single-instance-locking.md",
+      "target": "file:src/utils/single_instance.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-009-command-execution-strategies.md",
+      "target": "file:src/modules/command_executor.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-010-theming-via-qss.md",
+      "target": "file:src/core/theme_manager.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-011-command-palette-and-global-hotkeys.md",
+      "target": "file:src/ui/command_palette.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-012-favorites-path-encoding.md",
+      "target": "file:src/modules/favorites.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-013-file-encryption.md",
+      "target": "file:src/modules/file_encryptor.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-014-scheduling-via-cron.md",
+      "target": "file:src/modules/schedule_creator.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/add/ADD-015-app-discovery-desktop-files.md",
+      "target": "file:src/modules/app_discovery.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/architecture.md",
+      "target": "file:src/core/tray_app.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/architecture.md",
+      "target": "file:src/core/menu_builder.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/configuration.md",
+      "target": "file:src/core/config_manager.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/contributing.md",
+      "target": "document:README.md",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/features.md",
+      "target": "file:src/core/tray_app.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/packaging.md",
+      "target": "file:src/main.py",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/theme_manager.py",
+      "target": "config:resources/styles/catppuccin-frappe.qss",
+      "type": "reads_from",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/theme_manager.py",
+      "target": "config:resources/styles/catppuccin-latte.qss",
+      "type": "reads_from",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/theme_manager.py",
+      "target": "config:resources/styles/catppuccin-macchiato.qss",
+      "type": "reads_from",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/theme_manager.py",
+      "target": "config:resources/styles/catppuccin-mocha.qss",
+      "type": "reads_from",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/icon_resolver.py",
+      "target": "resource:resources/icons/icon.png",
+      "type": "reads_from",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "resource:packaging/py-tray-command-launcher.desktop",
+      "target": "file:src/main.py",
+      "type": "serves",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/build-all.sh",
+      "target": "file:scripts/build-linux.sh",
+      "type": "triggers",
+      "label": "invokes build-linux.sh",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/build-all.sh",
+      "target": "file:scripts/build-appimage.sh",
+      "type": "triggers",
+      "label": "invokes build-appimage.sh",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/build-all.sh",
+      "target": "file:scripts/build-deb.sh",
+      "type": "triggers",
+      "label": "invokes build-deb.sh",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/build-linux.sh",
+      "target": "file:src/main.py",
+      "type": "triggers",
+      "label": "builds via PyInstaller",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/build-windows.bat",
+      "target": "file:src/main.py",
+      "type": "triggers",
+      "label": "builds via PyInstaller",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/build-linux.sh",
+      "target": "config:requirements-build.txt",
+      "type": "depends_on",
+      "label": "installs build dependencies from requirements-build.txt",
+      "direction": "forward"
+    },
+    {
+      "source": "pipeline:.github/workflows/ci.yml",
+      "target": "file:src/main.py",
+      "type": "triggers",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "pipeline:.github/workflows/ci.yml",
+      "target": "file:tests/test_command_executor.py",
+      "type": "triggers",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/command_executor.py",
+      "target": "file:tests/test_command_executor.py",
+      "type": "tested_by",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/config_manager.py",
+      "target": "file:tests/test_config_path_consistency.py",
+      "type": "tested_by",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/logging_config.py",
+      "target": "file:tests/test_logging_config.py",
+      "type": "tested_by",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/utils/single_instance.py",
+      "target": "file:tests/test_single_instance.py",
+      "type": "tested_by",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/icon_resolver.py",
+      "target": "file:tests/test_icon_resolver.py",
+      "type": "tested_by",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/core/theme_manager.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/modules/command_creator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/modules/backup_restore.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/modules/import_export.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/modules/file_encryptor.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:src/core/tray_app.py",
+      "target": "file:src/modules/schedule_creator.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:src/ui/output_window.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:tests/test_icon_resolver.py",
+      "target": "file:src/core/icon_resolver.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:tests/test_command_executor.py",
+      "target": "file:src/modules/command_executor.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:tests/test_logging_config.py",
+      "target": "file:src/core/logging_config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:tests/test_single_instance.py",
+      "target": "file:src/utils/single_instance.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7,
+      "recoveredFromImportMap": true
+    },
+    {
+      "source": "file:src/core/config_manager.py",
+      "target": "config:config/commands.json",
+      "type": "reads_from",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/command_search.py",
+      "target": "class:src/modules/command_search.py:CommandSearch",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/modules/schedule_viewer.py",
+      "target": "class:src/modules/schedule_viewer.py:ScheduleViewer",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/command_manager.py",
+      "target": "class:src/ui/command_manager.py:CommandManagerDialog",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/command_manager.py",
+      "target": "file:src/core/config_manager.py",
+      "type": "imports",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/ui/quick_launch_bar.py",
+      "target": "class:src/ui/quick_launch_bar.py:QuickLaunchBar",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:entry-and-bootstrap",
+      "name": "Entry & Bootstrap",
+      "description": "Application entry point, argument parsing, logging setup, and single-instance enforcement",
+      "nodeIds": [
+        "file:src/main.py",
+        "file:src/core/logging_config.py",
+        "file:src/utils/single_instance.py"
+      ]
+    },
+    {
+      "id": "layer:core-infrastructure",
+      "name": "Core Infrastructure",
+      "description": "Configuration management, dependency-injection services interface, and icon resolution",
+      "nodeIds": [
+        "file:src/core/config_manager.py",
+        "file:src/core/services.py",
+        "file:src/core/icon_resolver.py"
+      ]
+    },
+    {
+      "id": "layer:tray-and-menu-ui",
+      "name": "Tray & Menu UI",
+      "description": "System tray orchestration, hierarchical menu construction, and theme/stylesheet management",
+      "nodeIds": [
+        "file:src/core/tray_app.py",
+        "file:src/core/menu_builder.py",
+        "file:src/core/theme_manager.py"
+      ]
+    },
+    {
+      "id": "layer:feature-modules",
+      "name": "Feature Modules",
+      "description": "Self-contained feature implementations: command execution, history, favorites, scheduling, encryption, discovery, search, import/export, backup/restore",
+      "nodeIds": [
+        "file:src/modules/command_executor.py",
+        "file:src/modules/command_history.py",
+        "file:src/modules/favorites.py",
+        "file:src/modules/file_encryptor.py",
+        "file:src/modules/schedule_creator.py",
+        "file:src/modules/schedule_viewer.py",
+        "file:src/modules/command_creator.py",
+        "file:src/modules/command_search.py",
+        "file:src/modules/backup_restore.py",
+        "file:src/modules/import_export.py",
+        "file:src/modules/app_discovery.py"
+      ]
+    },
+    {
+      "id": "layer:ui-dialogs",
+      "name": "UI Dialogs",
+      "description": "Qt dialog windows and utility widgets: command palette, output window, settings, manager, quick launch bar, and shared dialog helpers",
+      "nodeIds": [
+        "file:src/ui/command_palette.py",
+        "file:src/ui/output_window.py",
+        "file:src/ui/settings_dialog.py",
+        "file:src/ui/command_manager.py",
+        "file:src/ui/quick_launch_bar.py",
+        "file:src/utils/dialogs.py"
+      ]
+    },
+    {
+      "id": "layer:configuration-and-schema",
+      "name": "Configuration & Schema",
+      "description": "Runtime config files, JSON schemas, dependency specs, and tool configuration",
+      "nodeIds": [
+        "config:config/commands.json",
+        "config:config/commands.schema.json",
+        "config:config/win-commands.json",
+        "config:pyproject.toml",
+        "config:requirements.txt",
+        "config:requirements-build.txt",
+        "config:.gitignore",
+        "config:.github/dependabot.yml",
+        "config:openspec/config.yaml"
+      ]
+    },
+    {
+      "id": "layer:resources-and-themes",
+      "name": "Resources & Themes",
+      "description": "Static assets: icons, QSS theme stylesheets, and desktop integration files",
+      "nodeIds": [
+        "resource:resources/icons/developer.jpeg",
+        "resource:resources/icons/education.jpeg",
+        "resource:resources/icons/icon.png",
+        "resource:resources/icons/media.jpeg",
+        "resource:resources/icons/system.jpeg",
+        "resource:resources/icons/utilities.jpeg",
+        "config:resources/styles/catppuccin-frappe.qss",
+        "config:resources/styles/catppuccin-latte.qss",
+        "config:resources/styles/catppuccin-macchiato.qss",
+        "config:resources/styles/catppuccin-mocha.qss",
+        "resource:packaging/py-tray-command-launcher.desktop"
+      ]
+    },
+    {
+      "id": "layer:documentation",
+      "name": "Documentation",
+      "description": "Project documentation: README, architecture decision docs, feature guides, and license",
+      "nodeIds": [
+        "document:README.md",
+        "document:LICENSE",
+        "document:docs/architecture.md",
+        "document:docs/configuration.md",
+        "document:docs/contributing.md",
+        "document:docs/features.md",
+        "document:docs/packaging.md",
+        "document:docs/add/README.md",
+        "document:docs/add/ADD-001-configuration-storage-and-platform-paths.md",
+        "document:docs/add/ADD-002-singleton-config-manager.md",
+        "document:docs/add/ADD-003-dependency-injection-via-appservices.md",
+        "document:docs/add/ADD-004-command-schema-and-validation.md",
+        "document:docs/add/ADD-005-atomic-json-writes.md",
+        "document:docs/add/ADD-006-menu-builder-decomposition.md",
+        "document:docs/add/ADD-007-icon-resolver-and-cache.md",
+        "document:docs/add/ADD-008-single-instance-locking.md",
+        "document:docs/add/ADD-009-command-execution-strategies.md",
+        "document:docs/add/ADD-010-theming-via-qss.md",
+        "document:docs/add/ADD-011-command-palette-and-global-hotkeys.md",
+        "document:docs/add/ADD-012-favorites-path-encoding.md",
+        "document:docs/add/ADD-013-file-encryption.md",
+        "document:docs/add/ADD-014-scheduling-via-cron.md",
+        "document:docs/add/ADD-015-app-discovery-desktop-files.md",
+        "document:openspec/changes/fix-high-priority-issues/proposal.md"
+      ]
+    },
+    {
+      "id": "layer:build-and-packaging",
+      "name": "Build & Packaging",
+      "description": "Build scripts for Linux, Windows, AppImage, and Debian packages",
+      "nodeIds": [
+        "file:scripts/build-all.sh",
+        "file:scripts/build-appimage.sh",
+        "file:scripts/build-deb.sh",
+        "file:scripts/build-linux.sh",
+        "file:scripts/build-windows.bat",
+        "file:scripts/install_packages.sh"
+      ]
+    },
+    {
+      "id": "layer:tests",
+      "name": "Tests",
+      "description": "Pytest test suite: unit and integration tests for all core modules",
+      "nodeIds": [
+        "file:tests/__init__.py",
+        "file:tests/conftest.py",
+        "file:tests/test_config_manager.py",
+        "file:tests/test_backup_restore.py",
+        "file:tests/test_command_history.py",
+        "file:tests/test_command_executor.py",
+        "file:tests/test_config_path_consistency.py",
+        "file:tests/test_favorites.py",
+        "file:tests/test_favorites_path.py",
+        "file:tests/test_icon_resolver.py",
+        "file:tests/test_logging_config.py",
+        "file:tests/test_single_instance.py"
+      ]
+    },
+    {
+      "id": "layer:developer-tooling",
+      "name": "Developer Tooling",
+      "description": "CI/CD workflows, Copilot instructions, AI prompts, and skills for automated development workflows",
+      "nodeIds": [
+        "document:.github/copilot-instructions.md",
+        "document:.github/prompts/opsx-apply.prompt.md",
+        "document:.github/prompts/opsx-archive.prompt.md",
+        "document:.github/prompts/opsx-explore.prompt.md",
+        "document:.github/skills/openspec-apply-change/SKILL.md",
+        "document:.github/skills/openspec-archive-change/SKILL.md",
+        "document:.github/skills/openspec-explore-change/SKILL.md",
+        "pipeline:.github/workflows/ci.yml"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Project Overview",
+      "description": "Start here to understand the app's purpose, features, and how to configure it. The README describes a system tray launcher that turns a JSON config file into a hierarchical right-click menu of shell commands \u2014 a power-user productivity tool that lives quietly in the taskbar. Reading it first gives you the mental model for everything that follows: config-driven menu, optional features (palette, favorites, scheduling, encryption), and cross-platform packaging.",
+      "nodeIds": [
+        "document:README.md",
+        "document:docs/features.md",
+        "config:config/commands.json"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Application Entry Point",
+      "description": "main.py is the thin bootstrapper: it parses CLI flags (--config, --force-unlock), sets up logging, acquires a single-instance lock, constructs QApplication, and delegates to TrayApp. The single-instance lock (SingleInstanceChecker) uses a lock file to prevent duplicate tray icons \u2014 a common need for tray apps that the OS doesn't handle automatically. This separation keeps main.py intentionally minimal so all real logic lives in testable modules.",
+      "nodeIds": [
+        "file:src/main.py",
+        "file:src/utils/single_instance.py",
+        "class:src/utils/single_instance.py:SingleInstanceChecker",
+        "document:docs/add/ADD-008-single-instance-locking.md"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Logging Infrastructure",
+      "description": "Before any feature runs, logging is configured via configure_logging() and resolve_log_level(). This module is worth understanding early because it determines how you debug the app \u2014 structured log levels let you trace config loads, menu builds, and command executions. It follows the pattern of wiring up Python's standard logging once at startup rather than scattering basicConfig calls throughout the codebase.",
+      "nodeIds": [
+        "file:src/core/logging_config.py",
+        "function:src/core/logging_config.py:configure_logging",
+        "function:src/core/logging_config.py:resolve_log_level"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Configuration Hub",
+      "description": "ConfigManager is the central singleton that every other module reads from \u2014 it owns loading, validating, and atomically persisting the commands.json config. The singleton pattern means there's one source of truth for the app's state, avoiding stale reads when the config is mutated by features like favorites or command creation. The atomic JSON write strategy (write to temp file, rename) protects against config corruption on crash, documented in ADD-005.",
+      "nodeIds": [
+        "file:src/core/config_manager.py",
+        "class:src/core/config_manager.py:ConfigManager",
+        "class:src/core/config_manager.py:ConfigurationError",
+        "function:src/core/config_manager.py:_validate_commands",
+        "config:config/commands.schema.json",
+        "document:docs/add/ADD-002-singleton-config-manager.md",
+        "document:docs/add/ADD-004-command-schema-and-validation.md",
+        "document:docs/add/ADD-005-atomic-json-writes.md",
+        "document:docs/add/ADD-001-configuration-storage-and-platform-paths.md"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Services Contract \u2014 Dependency Injection",
+      "description": "AppServices is a plain dataclass that acts as the app's dependency-injection container \u2014 it holds references to ConfigManager, CommandExecutor, Favorites, and other shared services. This avoids passing the TrayApp god-object into every feature module; instead each module receives only the slice of services it needs. The design is intentionally thin (no DI framework) to stay readable and testable, as explained in ADD-003.",
+      "nodeIds": [
+        "file:src/core/services.py",
+        "class:src/core/services.py:AppServices",
+        "document:docs/add/ADD-003-dependency-injection-via-appservices.md"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Tray Icon & Menu Assembly",
+      "description": "TrayApp wires everything together: it initialises all modules, creates the QSystemTrayIcon, and delegates menu construction to MenuBuilder. MenuBuilder is the most structurally interesting file \u2014 it recursively walks the command tree from config and builds nested QMenu objects, resolving icons through IconResolver and supporting 'reference' nodes that alias other menu sections. This decomposition (ADD-006) keeps TrayApp as an orchestrator and MenuBuilder as a pure UI builder.",
+      "nodeIds": [
+        "file:src/core/tray_app.py",
+        "class:src/core/tray_app.py:TrayApp",
+        "file:src/core/menu_builder.py",
+        "class:src/core/menu_builder.py:MenuBuilder",
+        "file:src/core/icon_resolver.py",
+        "class:src/core/icon_resolver.py:IconResolver",
+        "document:docs/add/ADD-006-menu-builder-decomposition.md",
+        "document:docs/add/ADD-007-icon-resolver-and-cache.md"
+      ]
+    },
+    {
+      "order": 7,
+      "title": "Executing Commands",
+      "description": "CommandExecutor provides two execution strategies: fire-and-forget via subprocess.Popen for simple commands, and tracked QProcess for commands whose output you want to capture in the RichOutputWindow. Choosing between them is a design tradeoff \u2014 subprocess is simpler but opaque; QProcess integrates with Qt's event loop and lets the app react to stdout/stderr. This dual-strategy approach (ADD-009) means the app can serve both 'launch this app' and 'run this script and show me the output' use cases.",
+      "nodeIds": [
+        "file:src/modules/command_executor.py",
+        "class:src/modules/command_executor.py:CommandExecutor",
+        "file:src/ui/output_window.py",
+        "class:src/ui/output_window.py:RichOutputWindow",
+        "document:docs/add/ADD-009-command-execution-strategies.md",
+        "file:tests/test_command_executor.py"
+      ]
+    },
+    {
+      "order": 8,
+      "title": "Command Palette & Search",
+      "description": "The command palette (CommandPalette + CommandSearch) provides keyboard-driven fuzzy search over all commands \u2014 a common pattern from editors like VS Code adapted for a tray app. It registers a global hotkey so the palette can be summoned without touching the tray icon, making the app keyboard-accessible. CommandSearch decouples the search algorithm from the UI widget, which simplifies testing and lets the search logic evolve independently of the Qt dialog.",
+      "nodeIds": [
+        "file:src/ui/command_palette.py",
+        "class:src/ui/command_palette.py:CommandPalette",
+        "file:src/modules/command_search.py",
+        "class:src/modules/command_search.py:CommandSearch",
+        "document:docs/add/ADD-011-command-palette-and-global-hotkeys.md"
+      ]
+    },
+    {
+      "order": 9,
+      "title": "Favorites, History & Quick Launch",
+      "description": "Favorites lets users pin frequently-used commands to the top of the menu; QuickLaunchBar renders them as a floating toolbar for single-click access. CommandHistory records executed commands with timestamps so users can replay recent actions. The Favorites module uses a path-encoding scheme (ADD-012) to uniquely identify commands in a nested tree \u2014 understanding this is key to grasping how the app tracks identity across config reloads.",
+      "nodeIds": [
+        "file:src/modules/favorites.py",
+        "class:src/modules/favorites.py:Favorites",
+        "function:src/modules/favorites.py:_build_command_path",
+        "file:src/ui/quick_launch_bar.py",
+        "class:src/ui/quick_launch_bar.py:QuickLaunchBar",
+        "file:src/modules/command_history.py",
+        "class:src/modules/command_history.py:CommandHistory",
+        "document:docs/add/ADD-012-favorites-path-encoding.md",
+        "file:tests/test_favorites.py",
+        "file:tests/test_favorites_path.py",
+        "file:tests/test_command_history.py"
+      ]
+    },
+    {
+      "order": 10,
+      "title": "Power Features \u2014 Encryption, Scheduling & Backup",
+      "description": "These three modules extend the launcher with optional power-user capabilities. FileEncryptor uses symmetric encryption to protect sensitive files \u2014 useful for toggling encrypted config or secret files from the tray. ScheduleCreator generates cron entries so commands can run on a timer without leaving a terminal open. BackupRestore provides config snapshots, giving users a safety net before bulk edits. Each module is self-contained and injected via AppServices, so disabling one doesn't break the others.",
+      "nodeIds": [
+        "file:src/modules/file_encryptor.py",
+        "file:src/modules/schedule_creator.py",
+        "class:src/modules/schedule_creator.py:ScheduleCreator",
+        "file:src/modules/schedule_viewer.py",
+        "class:src/modules/schedule_viewer.py:ScheduleViewer",
+        "file:src/modules/backup_restore.py",
+        "class:src/modules/backup_restore.py:BackupRestore",
+        "document:docs/add/ADD-013-file-encryption.md",
+        "document:docs/add/ADD-014-scheduling-via-cron.md",
+        "file:tests/test_backup_restore.py"
+      ]
+    },
+    {
+      "order": 11,
+      "title": "Theming System",
+      "description": "ThemeManager loads QSS stylesheets (Qt's CSS-like language) and applies them globally to QApplication, enabling dark, light, and Catppuccin palette themes without restarting. The QSS files in resources/styles/ are the source of truth for all visual styling \u2014 keeping styles out of Python code makes it easy for contributors to tweak colours without touching logic. The fallback-handling pattern in ThemeManager is worth noting as a resilience technique: the app degrades gracefully to the system theme if a QSS file is missing.",
+      "nodeIds": [
+        "file:src/core/theme_manager.py",
+        "class:src/core/theme_manager.py:ThemeManager",
+        "config:resources/styles/catppuccin-frappe.qss",
+        "config:resources/styles/catppuccin-latte.qss",
+        "config:resources/styles/catppuccin-macchiato.qss",
+        "config:resources/styles/catppuccin-mocha.qss",
+        "document:docs/add/ADD-010-theming-via-qss.md"
+      ]
+    },
+    {
+      "order": 12,
+      "title": "App Discovery \u2014 .desktop File Scanning",
+      "description": "AppDiscovery scans the system for installed applications by parsing .desktop files (the Linux application metadata standard) and makes them available as launchable commands inside the tray menu. This bridges the gap between the app's manual JSON config and the set of apps already on the user's machine \u2014 new users can auto-populate their launcher without writing a single line of JSON. AppEntry models each discovered app, and the design decision to scan lazily rather than at startup keeps the tray icon responsive.",
+      "nodeIds": [
+        "file:src/modules/app_discovery.py",
+        "class:src/modules/app_discovery.py:AppDiscovery",
+        "class:src/modules/app_discovery.py:AppEntry",
+        "document:docs/add/ADD-015-app-discovery-desktop-files.md"
+      ]
+    },
+    {
+      "order": 13,
+      "title": "Architecture Decisions & Contributing",
+      "description": "The docs/add/ directory contains Architecture Decision Documents (ADDs) \u2014 short records explaining WHY each non-trivial design choice was made. Reading these gives you the reasoning behind patterns you've seen throughout the tour: the singleton config manager, the DI container, atomic writes, command palette hotkeys, and more. For contributors, docs/contributing.md explains the PR workflow, and the openspec change proposals show how planned changes are tracked before implementation.",
+      "nodeIds": [
+        "document:docs/add/README.md",
+        "document:docs/architecture.md",
+        "document:docs/contributing.md",
+        "document:docs/configuration.md",
+        "config:openspec/config.yaml"
+      ]
+    }
+  ]
+}

@@ -12,6 +12,25 @@ from core.config_manager import config_manager
 logger = logging.getLogger(__name__)
 
 
+def _build_command_path(group: str, label: str) -> str:
+    """Build a dot-separated command path from group breadcrumbs and label.
+
+    Splits *group* on the display separator \" → \" so that nested groups
+    (e.g. \"Tools → Git\") are correctly represented as \"Tools.Git.label\"
+    rather than the literal string \"Tools → Git.label\".
+
+    Args:
+        group: Group string, possibly containing \" → \" for nested groups.
+        label: Command label (the leaf name).
+
+    Returns:
+        Dot-separated path string, e.g. \"Tools.Git.Commit\".
+    """
+    parts = [p.strip() for p in group.split(" → ") if p.strip()]
+    parts.append(label)
+    return ".".join(parts)
+
+
 class Favorites:
     """Handles favorites functionality."""
 
@@ -48,13 +67,7 @@ class Favorites:
             index = command_options.index(selection)
             command_data = all_commands[index]
 
-            # Create command path
-            command_path = command_data["group"]
-            if " → " in command_data["group"]:
-                # Handle nested paths
-                parts = command_data["group"].split(" → ")
-                command_path = ".".join(parts)
-            command_path += "." + command_data["label"]
+            command_path = _build_command_path(command_data["group"], command_data["label"])
 
             # Get a label for the favorite
             default_label = command_data["label"]
@@ -84,13 +97,7 @@ class Favorites:
 
     def add_to_favorites_directly(self, group, label):
         """Add a command to favorites directly when selected from context menu."""
-        # Create command path
-        command_path = group
-        if " → " in group:
-            # Handle nested paths
-            parts = group.split(" → ")
-            command_path = ".".join(parts)
-        command_path += "." + label
+        command_path = _build_command_path(group, label)
 
         # Add to favorites
         success = config_manager.add_to_favorites(command_path, label)

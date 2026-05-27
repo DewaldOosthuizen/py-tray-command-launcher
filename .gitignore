@@ -152,3 +152,7 @@ openspec
 config/history.json
 config/favorites.json
 config/backups
+
+# AI
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json

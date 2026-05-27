@@ -27,11 +27,13 @@ class CommandExecutor:
         logger.debug("Process started (PID %d)", proc.pid)
 
     def execute_command_process(self, app, command):
-        """Execute a shell command as a tracked QProcess and return it (not yet started)."""
-        logger.info("Preparing QProcess for command: %s", command)
+        """Start a shell command as a tracked QProcess and return the running handle."""
+        logger.info("Starting QProcess for command: %s", command)
         process = QProcess(app)
         process.setProgram("bash")
         process.setArguments(["-c", command])
+        process.start()
+        logger.debug("QProcess started (program: bash -c %s)", command)
         return process
 
     def execute_command_process_silently(self, app, command):

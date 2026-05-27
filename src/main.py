@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import atexit
+import argparse
 import getpass
 import logging
 import os
+from pathlib import Path
 import signal
 import sys
 
@@ -43,10 +45,32 @@ if __name__ == "__main__":
     username = getpass.getuser()
     key = f"py-tray-command-launcher-single-instance-{username}"
     pidfile = os.path.expanduser(f"/tmp/py-tray-command-launcher-{username}.pid")
-    app = QApplication(sys.argv)
 
-    # Support --force-unlock argument
-    force_unlock = "--force-unlock" in sys.argv
+    # Parse CLI arguments before QApplication so Qt does not see them
+    parser = argparse.ArgumentParser(
+        prog="py-tray-command-launcher",
+        description="System-tray command launcher",
+    )
+    parser.add_argument(
+        "--config",
+        metavar="FILE",
+        default=None,
+        help="Path to a custom commands.json file (multi-profile support)",
+    )
+    parser.add_argument(
+        "--force-unlock",
+        action="store_true",
+        help="Force-release a stale single-instance lock",
+    )
+    args, qt_args = parser.parse_known_args()
+
+    app = QApplication([sys.argv[0]] + qt_args)
+
+    # Apply --config override before ConfigManager is first used
+    if args.config:
+        config_manager.set_commands_override(Path(args.config))
+
+    force_unlock = args.force_unlock
     instance_checker = SingleInstanceChecker(key=key, pidfile=pidfile)
 
     def cleanup():

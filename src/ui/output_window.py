@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+# Canonical location for OutputWindow / RichOutputWindow — the legacy copy at
+# src/core/output_window.py was removed; always import from ui.output_window.
 
 """
 RichOutputWindow — tabbed, ANSI-aware command output display.

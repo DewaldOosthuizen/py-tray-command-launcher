@@ -60,8 +60,8 @@ class SingleInstanceChecker:
         if self.pidfile:
             try:
                 os.remove(self.pidfile)
-            except Exception:
-                pass
+            except OSError as exc:
+                logger.debug("Could not remove PID file %s during force_unlock: %s", self.pidfile, exc)
     
     def is_another_instance_running(self):
         """
@@ -97,8 +97,8 @@ class SingleInstanceChecker:
                 try:
                     with open(self.pidfile, 'w') as f:
                         f.write(str(os.getpid()))
-                except Exception:
-                    pass
+                except OSError as exc:
+                    logger.warning("Could not write PID file %s: %s", self.pidfile, exc)
             return True
         # Failed to create - another instance is running
         return False
@@ -112,7 +112,9 @@ class SingleInstanceChecker:
         """
         # Check if running in headless mode
         qt_platform = os.environ.get('QT_QPA_PLATFORM', '').lower()
-        is_headless = qt_platform == 'offscreen' or not os.environ.get('DISPLAY')
+        is_headless = qt_platform == 'offscreen' or (
+            not os.environ.get('DISPLAY') and not os.environ.get('WAYLAND_DISPLAY')
+        )
         
         pid_info = ""
         stale_lock = False
@@ -180,5 +182,5 @@ class SingleInstanceChecker:
         if self.pidfile:
             try:
                 os.remove(self.pidfile)
-            except Exception:
-                pass
+            except OSError as exc:
+                logger.debug("Could not remove PID file %s during cleanup: %s", self.pidfile, exc)

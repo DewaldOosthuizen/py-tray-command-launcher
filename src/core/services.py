@@ -7,20 +7,25 @@ Decouples feature modules from the TrayApp god-object so they only depend
 on the specific callables they actually need.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Callable, Optional
+
+if TYPE_CHECKING:
+    from core.config_manager import ConfigManager
 
 
 @dataclass
 class AppServices:
     """Thin service interface passed to all feature modules."""
 
-    config_manager: Any
-    execute: Callable
-    reload_commands: Callable
-    show_output: Callable
-    get_all_commands: Callable
-    save_commands: Callable
-    reload_history_commands: Callable
-    reload_favorites_commands: Callable
-    resolve_icon_path: Callable
+    config_manager: "ConfigManager"
+    execute: Callable[[str, str, bool, bool, Optional[str]], None]
+    reload_commands: Callable[..., None]
+    show_output: Callable[[str, str], None]
+    get_all_commands: Callable[[], list]
+    save_commands: Callable[[dict], None]
+    reload_history_commands: Callable[[], None]
+    reload_favorites_commands: Callable[[], None]
+    resolve_icon_path: Callable[[str], str]

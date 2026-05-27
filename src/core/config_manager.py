@@ -28,31 +28,35 @@ class ConfigurationError(Exception):
     pass
 
 
+def _get_base_dir() -> Path:
+    """Return the application base directory for both dev and packaged modes.
+
+    Handles PyInstaller (sys._MEIPASS) and direct source runs alike.
+    """
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    # src/core/config_manager.py -> src/core -> src -> project root
+    return Path(__file__).resolve().parent.parent.parent
+
+
 class ConfigManager:
+    """Central manager for all configuration operations.
+
+    A module-level singleton is created at the bottom of this file
+    (``config_manager = ConfigManager()``).  Obtain it by importing that
+    name rather than instantiating this class directly — doing so from
+    application code would create a second, independent instance with its
+    own cache state.
+
+    In tests, instantiate ``ConfigManager()`` directly and pass a custom
+    ``config_dir`` or patch ``_get_base_dir`` so each test gets an
+    isolated instance without touching shared singleton state.
     """
-    Singleton class that manages all configuration operations.
-
-    This class handles loading, saving, validating, and managing defaults for
-    all configuration files used by the application.
-    """
-
-    _instance = None
-
-    def __new__(cls):
-        """Ensure only one instance of ConfigManager exists."""
-        if cls._instance is None:
-            cls._instance = super(ConfigManager, cls).__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
 
     def __init__(self):
-        """Initialize the config manager if it hasn't been initialized yet."""
-        if self._initialized:
-            return
-
+        """Initialise the config manager."""
         # Set up paths
-        from utils.utils import get_base_dir
-        self.base_dir = Path(get_base_dir())
+        self.base_dir = _get_base_dir()
 
         # Read-only bundled defaults inside the app image/bundle
         self.defaults_dir = self.base_dir / "config"
@@ -83,6 +87,10 @@ class ConfigManager:
 
         # Mark as initialized
         self._initialized = True
+
+        # Optional override path set by --config CLI flag (takes priority over
+        # the platform-resolved path for reads; writes still go to config_dir)
+        self._commands_override: Optional[Path] = None
         logger.info(
             "ConfigManager initialized (config dir: %s, commands file: %s)",
             self.config_dir,
@@ -98,6 +106,28 @@ class ConfigManager:
     def get_config_dir(self) -> Path:
         """Return the canonical user config directory."""
         return self.config_dir
+    def set_commands_override(self, path: "Path") -> None:
+        """Override the commands file path used for reads.
+
+        Called by main.py when --config is supplied on the CLI.  The path must
+        exist and be a readable JSON file; if validation fails the override is
+        ignored and a warning is logged.
+
+        Args:
+            path: Absolute path to the custom commands.json file.
+        """
+        path = Path(path)
+        if not path.exists():
+            logger.warning("--config path %s does not exist; ignoring override", path)
+            return
+        if not path.is_file():
+            logger.warning("--config path %s is not a file; ignoring override", path)
+            return
+        self._commands_override = path
+        # Bust the cache so the next get_commands() picks up the new file
+        self._commands_cache = None
+        logger.info("Commands file overridden to %s via --config", path)
+
 
     def get_active_commands_file(self) -> Path:
         """Return the resolved commands file used by this runtime."""
@@ -121,6 +151,7 @@ class ConfigManager:
         "history_limit": 50,
         "output_font": {"family": "monospace", "size": 10},
         "quick_launch_bar": {"visible": False, "position": [100, 100], "pinned": [], "hotkey": "ctrl+shift+b"},
+        "icon_cache_ttl_days": 7,
     }
 
     @staticmethod
@@ -235,6 +266,8 @@ class ConfigManager:
 
     def _get_commands_file_for_read(self) -> Path:
         """Resolve which commands file should be used for reading."""
+        if self._commands_override is not None:
+            return self._commands_override
         if self._is_windows:
             # Prefer Windows-specific commands file when present
             if self.win_commands_file.exists():
@@ -290,6 +323,7 @@ class ConfigManager:
 
                 # Validate the configuration
                 self._validate_commands(commands)
+                self._validate_commands_schema(commands)
 
                 self._commands_cache = commands
                 logger.info(f"Commands loaded successfully from {config_file}")
@@ -814,6 +848,35 @@ class ConfigManager:
                             f"prompt in '{group_name}.{item_name}' must be a string"
                         )
 
+    def _validate_commands_schema(self, commands: Dict[str, Any]) -> None:
+        """Validate *commands* against commands.schema.json if available and jsonschema is installed.
+
+        Raises:
+            ConfigurationError: When the commands data does not match the schema.
+        """
+        schema_path = self.defaults_dir / "commands.schema.json"
+        if not schema_path.exists():
+            return
+        try:
+            import jsonschema  # optional dependency
+        except ImportError:
+            logger.debug("jsonschema not installed; skipping commands.json schema validation")
+            return
+        try:
+            with open(schema_path, "r", encoding="utf-8") as f:
+                schema = json.load(f)
+            jsonschema.validate(instance=commands, schema=schema)
+        except jsonschema.ValidationError as exc:
+            path = " → ".join(str(p) for p in exc.absolute_path) or "(root)"
+            raise ConfigurationError(
+                f"commands.json validation error at {path}:\n{exc.message}"
+            ) from exc
+        except jsonschema.SchemaError as exc:
+            logger.warning(
+                "commands.schema.json is invalid; skipping schema validation: %s",
+                exc.message,
+            )
+
     def _create_default_commands(self, config_file: Path) -> None:
         """
         Create a default commands configuration file.
@@ -861,14 +924,12 @@ class ConfigManager:
             logger.error(f"Failed to create default commands file: {str(e)}")
 
     def get_base_dir(self) -> str:
-        """
-        Get the base directory of the application (dev or packaged).
+        """Return the application base directory as a string.
 
-        Returns:
-            Path to the base directory (handles PyInstaller sys._MEIPASS)
+        Delegates to the module-level ``_get_base_dir()`` helper which handles
+        both PyInstaller (sys._MEIPASS) and direct source runs.
         """
-        from utils.utils import get_base_dir
-        return get_base_dir()
+        return str(_get_base_dir())
 
     def _get_user_config_dir(self) -> Path:
         """Return OS-appropriate user config directory for this app."""

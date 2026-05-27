@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "py-tray-command-launcher/commands.schema.json",
+  "title": "py-tray-command-launcher commands.json",
+  "description": "Schema for the commands.json configuration file",
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/definitions/group"
+  },
+  "definitions": {
+    "group": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          { "$ref": "#/definitions/command" },
+          { "$ref": "#/definitions/group" },
+          { "type": "string", "description": "icon path (used for the 'icon' key)" }
+        ]
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["command"],
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Shell command to execute"
+        },
+        "confirm": {
+          "type": "boolean",
+          "description": "Show confirmation dialog before executing"
+        },
+        "showOutput": {
+          "type": "boolean",
+          "description": "Show command output in a window"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon path (relative, absolute, https://, or data:image base64)"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Prompt label for a user input value substituted as {promptInput}"
+        },
+        "ref": {
+          "type": "string",
+          "description": "Dot-separated path referencing another command (e.g. 'Group.Command')"
+        }
+      }
+    }
+  }
+}
