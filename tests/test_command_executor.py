@@ -91,15 +91,24 @@ class TestCommandExecutor(unittest.TestCase):
     # execute_command_process_silently
     # ------------------------------------------------------------------
 
-    def test_execute_command_process_silently_starts_process(self):
-        """execute_command_process_silently should call start() on the QProcess."""
+    def test_execute_command_process_silently_starts_process_exactly_once(self):
+        """QProcess.start() must be called exactly once via the silent path."""
         mock_process = MagicMock()
         mock_app = MagicMock()
 
         with patch('modules.command_executor.QProcess', return_value=mock_process):
-            self.executor.execute_command_process_silently(mock_app, "df -h")
+            # Spy on the inner helper to confirm it is called (and only it starts the process)
+            with patch.object(
+                self.executor,
+                'execute_command_process',
+                wraps=self.executor.execute_command_process,
+            ) as mock_execute_command_process:
+                self.executor.execute_command_process_silently(mock_app, "df -h")
 
-        mock_process.start.assert_called_once()
+        mock_execute_command_process.assert_called_once_with(mock_app, "df -h")
+        # The process must have been started exactly once regardless of call path.
+        self.assertEqual(mock_process.start.call_count, 1,
+                         "QProcess.start() must be called exactly once on the silent path")
 
     def test_execute_command_process_silently_logs_command(self):
         """execute_command_process_silently should log the command."""

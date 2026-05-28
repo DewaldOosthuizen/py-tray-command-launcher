@@ -26,23 +26,28 @@ using the `cryptography` library's `Fernet` scheme.
 
 ### Key derivation
 
-The user provides a passphrase.  A random 16-byte salt is generated with
+The user provides a passphrase. A random 16-byte salt is generated with
 `os.urandom(16)` and stored in a companion `.salt` file alongside the
-encrypted output.  The encryption key is derived from the passphrase + salt
-using PBKDF2-HMAC-SHA256 with 480,000 iterations:
+encrypted output. New `.salt` files are 20 bytes total: a 4-byte big-endian
+iteration count prefix + the 16-byte salt payload. The encryption key is
+derived from the passphrase + salt using PBKDF2-HMAC-SHA256 with 600,000
+iterations:
 
 ```python
 kdf = PBKDF2HMAC(
     algorithm=hashes.SHA256(),
     length=32,
     salt=salt,
-    iterations=480_000,
+    iterations=600_000,
 )
 key = base64.urlsafe_b64encode(kdf.derive(passphrase.encode()))
 fernet = Fernet(key)
 ```
 
 The iteration count follows the 2023 OWASP recommendation for PBKDF2-SHA256.
+For backward compatibility, decryption also supports legacy 16-byte `.salt`
+files (without the iteration prefix) by using the historic 100,000-iteration
+value.
 
 ### Encryption
 
@@ -97,6 +102,6 @@ never encounter the dialog.
   losing it makes decryption impossible.  Users must be aware of this coupling.
 - The `cryptography` library adds a compiled dependency; it is already required
   for other features but will complicate builds on unusual architectures.
-- 480,000 PBKDF2 iterations cause a noticeable (~0.5 s) delay on first
+- 600,000 PBKDF2 iterations cause a noticeable (~0.5 s) delay on first
   key derivation; this is intentional (slows brute-force attacks) but may
   surprise users with slow hardware.

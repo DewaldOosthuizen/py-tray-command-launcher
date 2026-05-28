@@ -17,6 +17,12 @@ if str(SRC_DIR) not in sys.path:
 from core import config_manager as config_module  # noqa: E402
 
 
+# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #37
+# Failure: AttributeError: module 'utils' has no attribute 'utils'
+# Suggested fix: The 'utils' package inside src/ has a sub-module naming
+#   conflict — pkgutil.iter_modules finds a module named 'utils.utils'.
+#   Rename src/utils/ to src/app_utils/ (or add an explicit __init__.py
+#   that does not re-export itself) and update all imports accordingly.
 @unittest.skipIf(
     sys.platform == "win32",
     "Tests rely on XDG/HOME-based config paths which are not used on Windows",
