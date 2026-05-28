@@ -10,13 +10,23 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # Stub PyQt6 so the module can be imported without a display server.
-_qt_stub = MagicMock()
-for _mod in (
-    "PyQt6",
-    "PyQt6.QtWidgets",
-    "PyQt6.QtCore",
-):
-    sys.modules.setdefault(_mod, _qt_stub)
+# QThread must be a real Python class so EncryptionWorker can subclass it
+# and __new__ works correctly during tests.
+class _FakeQThread:
+    """Minimal QThread stub — just enough for EncryptionWorker to subclass."""
+    def __init__(self, *args, **kwargs):
+        pass
+    def start(self):
+        pass
+
+_qt_core_stub = MagicMock()
+_qt_core_stub.QThread = _FakeQThread
+_qt_core_stub.pyqtSignal = MagicMock(return_value=MagicMock())
+_qt_core_stub.Qt = MagicMock()
+
+sys.modules.setdefault("PyQt6", MagicMock())
+sys.modules.setdefault("PyQt6.QtWidgets", MagicMock())
+sys.modules["PyQt6.QtCore"] = _qt_core_stub
 
 # Make src/ importable.
 SRC_DIR = Path(__file__).parent.parent / "src"

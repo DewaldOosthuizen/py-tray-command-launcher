@@ -20,6 +20,8 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #38
+# Failure: ModuleNotFoundError: No module named 'PyQt6' — src/modules/command_executor.py imports PyQt6.QtCore but PyQt6 is not installed. Fix: add sys.modules stubs for PyQt6 before importing.
 from modules.command_executor import CommandExecutor
 
 

@@ -3,6 +3,7 @@
 import logging
 import os
 import hashlib
+import struct
 from pathlib import Path
 from cryptography.fernet import Fernet
 
@@ -28,6 +29,10 @@ from PyQt6.QtCore import QThread, pyqtSignal, Qt
 
 SALT_FILE_SUFFIX = ".salt"
 ENC_FILE_SUFFIX = ".enc"
+# OWASP Password Storage Cheat Sheet (2023): minimum 600 000 for PBKDF2-HMAC-SHA256.
+_PBKDF2_ITERATIONS = 600_000
+# Iteration count used by all files encrypted before this change.
+_LEGACY_ITERATIONS = 100_000
 
 class EncryptionWorker(QThread):
     """Worker thread for encryption/decryption operations."""
@@ -43,17 +48,24 @@ class EncryptionWorker(QThread):
         self.password = password
         self.is_folder = is_folder
         
-    def _derive_key(self, password: str, salt: bytes) -> bytes:
-        """Derive encryption key from password using PBKDF2."""
-        password_bytes = password.encode('utf-8')
+    def _derive_key(self, password: str, salt: bytes,
+                    iterations: int = _PBKDF2_ITERATIONS) -> bytes:
+        """Derive encryption key from password using PBKDF2-HMAC-SHA256.
+
+        Args:
+            password:   plaintext password supplied by the user.
+            salt:       16-byte random salt generated at encryption time.
+            iterations: PBKDF2 iteration count; defaults to _PBKDF2_ITERATIONS.
+                        Pass the value read from the .salt file on decryption to
+                        maintain backward compatibility with older encrypted files.
+        """
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
-            iterations=100000,
+            iterations=iterations,
         )
-        key = base64.urlsafe_b64encode(kdf.derive(password_bytes))
-        return key
+        return base64.urlsafe_b64encode(kdf.derive(password.encode("utf-8")))
     
     def _encrypt_file(self, file_path: str, key: bytes) -> bool:
         """Encrypt a single file."""
@@ -168,6 +180,8 @@ class EncryptionWorker(QThread):
                     # For single files, store salt next to the original file location
                     salt_file = self.file_path + SALT_FILE_SUFFIX
                 with open(salt_file, 'wb') as f:
+                    # 4-byte big-endian uint32 iteration count + 16-byte salt = 20 bytes total
+                    f.write(struct.pack(">I", _PBKDF2_ITERATIONS))
                     f.write(salt)
             else:  # decrypt
                 # Read salt
@@ -184,8 +198,22 @@ class EncryptionWorker(QThread):
                 
                 if os.path.exists(salt_file):
                     with open(salt_file, 'rb') as f:
-                        salt = f.read()
-                    key = self._derive_key(self.password, salt)
+                        raw = f.read()
+                    if len(raw) == 20:
+                        # New format: 4-byte big-endian uint32 + 16-byte salt
+                        stored_iterations = struct.unpack(">I", raw[:4])[0]
+                        salt = raw[4:]
+                    elif len(raw) == 16:
+                        # Legacy format: 16-byte salt only — iteration count was 100 000
+                        stored_iterations = _LEGACY_ITERATIONS
+                        salt = raw
+                    else:
+                        self.finished_signal.emit(
+                            False,
+                            "Salt file is corrupt or unrecognised format. Cannot decrypt."
+                        )
+                        return
+                    key = self._derive_key(self.password, salt, iterations=stored_iterations)
                 else:
                     self.finished_signal.emit(False, "Salt file not found. Cannot decrypt without the original salt.")
                     return

@@ -17,6 +17,8 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #38
+# Failure: ModuleNotFoundError: No module named 'PyQt6' — src/modules/backup_restore.py imports PyQt6.QtWidgets but PyQt6 is not installed on this machine (only PyQt5 is). Fix: add sys.modules stubs for PyQt6 before importing the module under test, same pattern as test_file_encryptor.py.
 from modules.backup_restore import BackupRestore
 
 

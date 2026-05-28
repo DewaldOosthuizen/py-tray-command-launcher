@@ -39,7 +39,7 @@ A Python system tray application for launching custom commands and scripts from 
 - **Favorites** — Pin frequently used commands for one-click access
 - **Recent Commands** — Re-run previously executed commands from the history submenu
 - **Backup and Restore** — Timestamped backups of your command set; restore or import/export configurations
-- **File Encryption** — Password-based encryption and decryption of files and folders (PBKDF2 + Fernet/AES)
+- **File Encryption** — Password-based encryption and decryption of files and folders (PBKDF2-HMAC-SHA256 with 600,000 iterations per OWASP 2023 + Fernet/AES)
 - **Command Scheduling** — Schedule commands via user crontab (`crontab -l` / `crontab`); Edit and Delete existing schedules from the viewer
 - **Single-Instance Enforcement** — Only one running instance allowed; stale locks are cleared automatically
 - **Multi-platform** — Linux (binary, .deb, AppImage) and Windows (.exe)
@@ -157,6 +157,32 @@ See [docs/packaging.md](docs/packaging.md) for prerequisites, output locations, 
 ## Screenshots
 
 <img width="629" height="359" alt="Screenshot from 2026-01-13 20-21-56" src="https://github.com/user-attachments/assets/9ef2015e-7685-4826-919a-6bbe591b6472" />
+
+---
+
+## File Encryption — Breaking Change (v2+)
+
+### Salt file format change
+
+Starting with this version, the `.salt` file written alongside encrypted files is **20 bytes**:
+4-byte big-endian uint32 iteration count + 16-byte random salt. Previous versions wrote a
+16-byte raw salt only.
+
+**Impact:** `.salt` files produced by this version **cannot** be read by older versions of
+the application. `.salt` files produced by older versions are handled transparently by the
+legacy fallback (iteration count assumed to be 100,000).
+
+### Migration path
+
+To benefit from the stronger PBKDF2 work factor (600,000 iterations, OWASP 2023 minimum):
+
+1. Decrypt your existing files using the current version (the legacy fallback handles the
+   old 16-byte salt file automatically).
+2. Re-encrypt the files using the current version — the new `.salt` file will be written in
+   the 20-byte format with 600,000 iterations.
+
+Do **not** copy `.salt` files between machines running different versions of the application
+without verifying the file length (16 bytes = legacy, 20 bytes = current).
 
 ---
 
