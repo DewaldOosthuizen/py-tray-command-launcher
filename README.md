@@ -72,7 +72,11 @@ source venv/bin/activate        # Linux / macOS
 ### 4. Install Python dependencies
 
 ```sh
-pip install -r requirements.txt
+# Standard install (runtime deps only):
+pip install .
+
+# Developer / contributor install (runtime + test tooling):
+pip install -e ".[dev]"
 ```
 
 ---
