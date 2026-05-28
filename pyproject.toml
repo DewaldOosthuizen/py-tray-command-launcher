@@ -17,7 +17,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v"
+addopts = "-v -p no:pytestqt"
 
 [tool.ruff]
 line-length = 100

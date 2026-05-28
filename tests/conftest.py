@@ -29,6 +29,12 @@ def _make_pyqt6_stub():
     # comparison does not raise TypeError.
     pyqt6.QtCore.PYQT_VERSION = 0x060100  # 6.1.0
     pyqt6.QtWidgets = _MagicMock()
+    # pytest-qt calls QApplication.instance() to process events after each test.
+    # Return None so it treats the result as "no app running" and skips gracefully.
+    # Must be set as a MagicMock callable directly on the class object.
+    _qapp_mock = _MagicMock()
+    _qapp_mock.instance = _MagicMock(return_value=None)
+    pyqt6.QtWidgets.QApplication = _qapp_mock
     pyqt6.QtGui = _MagicMock()
     return pyqt6
 
