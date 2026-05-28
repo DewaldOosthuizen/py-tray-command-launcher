@@ -156,3 +156,5 @@ config/backups
 # AI
 .understand-anything/intermediate/
 .understand-anything/diff-overlay.json.hermes_tmp_prompt.txt
+# workspace-orchestrator managed entries
+graphify-out/cache/
