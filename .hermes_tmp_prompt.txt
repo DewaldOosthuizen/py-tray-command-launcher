@@ -1,0 +1,323 @@
+You are a senior developer.  An openspec proposal for issue
+        #38 has been APPROVED by a code reviewer.
+        Your sole job is to implement it exactly as written, no more, no less.
+
+        ══ CONTEXT ══
+        REPOSITORY : DewaldOosthuizen/py-tray-command-launcher
+        REPO PATH  : /home/dewald/Workspace/personal/github/py-tray-command-launcher
+        BRANCH     : fix/issue-38-raise-pbkdf2-iteration-count-to-meet-current-owasp
+        ISSUE #38: Raise PBKDF2 iteration count to meet current OWASP minimums in FileEncryptor
+
+        ══ PROJECT CONVENTIONS (openspec/project.md) ══
+        (no openspec/project.md)
+
+        ══ APPROVED SPEC (.openspec.yaml) ══
+        schema: spec-driven
+created: 2026-05-28
+
+
+        ══ APPROVED PROPOSAL (proposal.md) ══
+        # Raise PBKDF2 Iteration Count to Meet Current OWASP Minimums in FileEncryptor
+
+## Overview
+
+`EncryptionWorker._derive_key` in `src/modules/file_encryptor.py` uses PBKDF2-HMAC-SHA256
+with a hard-coded iteration count of 100,000. The OWASP Password Storage Cheat Sheet
+(updated 2023) raises the minimum for PBKDF2-HMAC-SHA256 to 600,000 iterations to resist
+offline brute-force attacks on commodity hardware. Because the current value is embedded
+directly in the call site with no named constant and is not persisted alongside the salt,
+it cannot be evolved without breaking existing encrypted files silently. This change raises
+the iteration count to the OWASP minimum, persists it in the `.salt` file so decryption
+is always self-describing, and provides a legacy fallback for files encrypted before this
+change.
+
+## Issue 1 — Hard-coded iteration count below OWASP 2023 minimum
+
+**File:** `src/modules/file_encryptor.py` (line 53)
+
+**Problem:** `iterations=100000` is a magic number sitting at roughly 1/6 of the OWASP
+2023 minimum. An attacker with a modern GPU can perform millions of candidate-password
+trials per second at this work factor, materially reducing the protection offered to users
+who store SSH keys, credential files, or private documents.
+
+**Fix:**
+
+Before:
+
+```python
+# line 29-30 (module-level constants)
+SALT_FILE_SUFFIX = ".salt"
+ENC_FILE_SUFFIX = ".enc"
+
+# line 46-56
+def _derive_key(self, password: str, salt: bytes) -> bytes:
+    """Derive encryption key from password using PBKDF2."""
+    password_bytes = password.encode('utf-8')
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password_bytes))
+    return key
+```
+
+After:
+
+```python
+# module-level constants (after existing SALT_FILE_SUFFIX / ENC_FILE_SUFFIX)
+SALT_FILE_SUFFIX = ".salt"
+ENC_FILE_SUFFIX = ".enc"
+# OWASP Password Storage Cheat Sheet (2023): minimum 600 000 for PBKDF2-HMAC-SHA256.
+_PBKDF2_ITERATIONS = 600_000
+
+# _derive_key gains an `iterations` parameter so the value stored in the .salt
+# file can be round-tripped back into the KDF on decryption.
+def _derive_key(self, password: str, salt: bytes,
+                iterations: int = _PBKDF2_ITERATIONS) -> bytes:
+    """Derive encryption key from password using PBKDF2-HMAC-SHA256.
+
+    Args:
+        password:   plaintext password supplied by the user.
+        salt:       16-byte random salt generated at encryption time.
+        iterations: PBKDF2 iteration count; defaults to _PBKDF2_ITERATIONS.
+                    Pass the value read from the .salt file on decryption to
+                    maintain backward compatibility with older encrypted files.
+    """
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=iterations,
+    )
+    return base64.urlsafe_b64encode(kdf.derive(password.encode("utf-8")))
+```
+
+## Issue 2 — Salt file does not persist iteration count, breaking forward compatibility
+
+**File:** `src/modules/file_encryptor.py` (lines 163-171 encrypt path, lines 185-188 decrypt path)
+
+**Problem:** The `.salt` file currently stores only the raw 16-byte salt. When the
+iteration count changes (now or in any future upgrade), files encrypted with the old count
+cannot be decrypted because the KDF will silently derive the wrong key. There is no
+information in the file to detect or correct this.
+
+**Fix:** Prepend a 4-byte big-endian uint32 containing the iteration count to the 16-byte
+salt, producing a 20-byte `.salt` file. On decryption, branch on file length:
+
+- 20 bytes: new format — read uint32 iterations, read 16-byte salt, call `_derive_key`
+  with the stored count.
+- 16 bytes: legacy format — assume 100,000 iterations (the old hard-coded value), call
+  `_derive_key` with `iterations=100_000`.
+- Any other length: corrupt or unrecognised format — emit an error and abort.
+
+Before (encrypt, lines 163-171):
+
+```python
+if self.operation == 'encrypt':
+    if self.is_folder:
+        salt_file = os.path.join(self.file_path, '.encryption_salt')
+    else:
+        salt_file = self.file_path + SALT_FILE_SUFFIX
+    with open(salt_file, 'wb') as f:
+        f.write(salt)            # 16 bytes only
+```
+
+After (encrypt):
+
+```python
+import struct  # add to module-level imports
+
+if self.operation == 'encrypt':
+    if self.is_folder:
+        salt_file = os.path.join(self.file_path, '.encryption_salt')
+    else:
+        salt_file = self.file_path + SALT_FILE_SUFFIX
+    with open(salt_file, 'wb') as f:
+        # 4-byte big-endian uint32 iteration count + 16-byte salt = 20 bytes total
+        f.write(struct.pack(">I", _PBKDF2_ITERATIONS))
+        f.write(salt)
+```
+
+Before (decrypt, lines 185-188):
+
+```python
+if os.path.exists(salt_file):
+    with open(salt_file, 'rb') as f:
+        salt = f.read()         # reads raw 16 bytes, no iteration metadata
+    key = self._derive_key(self.password, salt)
+```
+
+After (decrypt):
+
+```python
+_LEGACY_ITERATIONS = 100_000   # value used by all files encrypted before this change
+
+if os.path.exists(salt_file):
+    with open(salt_file, 'rb') as f:
+        raw = f.read()
+    if len(raw) == 20:
+        # New format: 4-byte big-endian uint32 + 16-byte salt
+        stored_iterations = struct.unpack(">I", raw[:4])[0]
+        salt = raw[4:]
+    elif len(raw) == 16:
+        # Legacy format: 16-byte salt only — iteration count was 100 000
+        stored_iterations = _LEGACY_ITERATIONS
+        salt = raw
+    else:
+        self.finished_signal.emit(
+            False,
+            "Salt file is corrupt or unrecognised format. Cannot decrypt."
+        )
+        return
+    key = self._derive_key(self.password, salt, iterations=stored_iterations)
+```
+
+## Migration Note
+
+Files encrypted with the previous release (iteration count 100,000, 16-byte `.salt` file)
+are handled transparently by the legacy-fallback branch. No user action is required for
+decryption. To benefit from the stronger work factor, users should decrypt existing files
+with the old version (or this version's fallback path) and re-encrypt with the new version.
+The README should document this path clearly as a breaking change for anyone copying `.salt`
+files between machines or versions.
+
+
+        ══ APPROVED TASK LIST (tasks.md) ══
+        # Tasks: Raise PBKDF2 Iteration Count to Meet Current OWASP Minimums
+
+## Module-Level Constants
+
+- [ ] Add `import struct` to the module-level imports in `src/modules/file_encryptor.py` (currently line 3-12 import block)
+- [ ] Define `_PBKDF2_ITERATIONS = 600_000` as a named constant at module level in `src/modules/file_encryptor.py`, immediately after the existing `ENC_FILE_SUFFIX` constant (line 30), with a comment citing OWASP 2023
+- [ ] Define `_LEGACY_ITERATIONS = 100_000` as a named constant at module level, immediately after `_PBKDF2_ITERATIONS`, to document the old value used by legacy `.salt` files
+
+## Key Derivation Function
+
+- [ ] Update `EncryptionWorker._derive_key` signature (line 46) to accept an `iterations` parameter with a default of `_PBKDF2_ITERATIONS`: `def _derive_key(self, password: str, salt: bytes, iterations: int = _PBKDF2_ITERATIONS) -> bytes`
+- [ ] Replace the hard-coded `iterations=100000` on line 53 with the `iterations` parameter variable
+- [ ] Remove the intermediate `password_bytes` local variable (lines 48) — inline `password.encode("utf-8")` directly in the `kdf.derive()` call for consistency with the proposed style
+- [ ] Update the docstring of `_derive_key` to document the `iterations` parameter and its backward-compatibility purpose
+
+## Salt File — Encrypt Path
+
+- [ ] In the encrypt branch of `run()` (lines 170-171), replace `f.write(salt)` with a two-part write: first `f.write(struct.pack(">I", _PBKDF2_ITERATIONS))` (4-byte big-endian uint32), then `f.write(salt)` (16-byte salt), producing a 20-byte `.salt` file
+
+## Salt File — Decrypt Path
+
+- [ ] In the decrypt branch of `run()` (lines 185-188), replace the direct `salt = f.read()` / `key = self._derive_key(self.password, salt)` sequence with length-based branching:
+  - 20 bytes: new format — unpack `struct.unpack(">I", raw[:4])[0]` as `stored_iterations`, slice `raw[4:]` as `salt`
+  - 16 bytes: legacy format — assign `stored_iterations = _LEGACY_ITERATIONS`, assign `salt = raw`
+  - Any other length: call `self.finished_signal.emit(False, "Salt file is corrupt or unrecognised format. Cannot decrypt.")` and `return`
+- [ ] Pass `iterations=stored_iterations` to `self._derive_key(self.password, salt, iterations=stored_iterations)` in the decrypt path so the stored value drives the KDF
+
+## Tests
+
+- [ ] Add a unit test asserting `_PBKDF2_ITERATIONS == 600_000` to catch accidental regressions to the constant value (file: `tests/test_file_encryptor.py`)
+- [ ] Add a unit test for `_derive_key` verifying deterministic output: given the same password, salt, and iteration count, two calls must return identical keys
+- [ ] Add a unit test for `_derive_key` verifying that different iteration counts produce different keys for the same password and salt
+- [ ] Add a unit test for the full encrypt/decrypt round-trip using the new 20-byte salt format: encrypt a temp file, verify the `.salt` file is 20 bytes, decrypt successfully, verify plaintext is restored
+- [ ] Add a unit test for the legacy fallback: write a 16-byte raw salt file (old format), run decrypt, verify the key is derived with `_LEGACY_ITERATIONS` and the operation succeeds
+- [ ] Add a unit test for the corrupt salt-file guard: write a `.salt` file with an invalid length (e.g., 10 bytes), run decrypt, verify `finished_signal` is emitted with `success=False` and an appropriate error message
+
+## Documentation
+
+- [ ] Update `README.md` to document the breaking change: `.salt` files written by this version are 20 bytes and are not readable by older versions of the application
+- [ ] Add a migration path section to `README.md` advising users to decrypt existing files with the current (legacy-aware) version and re-encrypt to adopt the stronger work factor
+- [ ] Add a note to the encryption feature section of `README.md` stating the new iteration count (600,000) and the OWASP 2023 source
+
+
+        ══ MANDATORY IMPLEMENTATION STEPS ══
+        Work through the following steps IN ORDER.  Do not skip any step.
+
+        STEP 1 — UNDERSTAND BEFORE TOUCHING
+          Read every file mentioned in proposal.md and tasks.md before editing
+          anything.  If the repo has a knowledge graph at graphify-out/graph.json
+          or .understand-anything/knowledge-graph.json, query it first to confirm
+          your understanding of the affected components.
+
+        STEP 2 — CAPTURE BASELINE TEST STATE
+          Run the full test suite ONCE before touching any code:
+              pytest / mvn test / gradle test / npm test / go test ./...
+          Record every failing test name/description (if any).  Call this set
+          BASELINE_FAILURES.
+          - If the test runner itself crashes or cannot be invoked at all (not just
+            failing tests), STOP and output:
+                BASELINE_BROKEN: <brief description>
+          - Otherwise continue — pre-existing failures are expected and handled
+            in STEP 5.  Do NOT abort because of pre-existing failures.
+
+        STEP 3 — TDD: WRITE TESTS FIRST (where tests exist in this project)
+          For every new behaviour described in the tasks, write the test(s) BEFORE
+          the implementation code.  The tests must be RED (failing) at this point.
+          Commit ONLY the new tests:
+              git add -A
+              git commit -m "test: add tests for issue #38 - Raise PBKDF2 iteration count to meet current OWASP"
+
+        STEP 4 — IMPLEMENT EACH TASK
+          Work through tasks.md in order.  After completing each task, run the
+          relevant test(s) to confirm they go GREEN.  Fix any regression before
+          moving to the next task.
+
+        STEP 5 — FULL TEST SUITE + PRE-EXISTING FAILURE TRIAGE
+          Run the full test suite one final time.
+          Categorise every failure:
+            a) NEW failure (not in BASELINE_FAILURES) — this is a REGRESSION.
+               Fix it before proceeding.  Do not proceed with regressions present.
+            b) PRE-EXISTING failure (was already in BASELINE_FAILURES and your
+               changes do not touch the file/module) — handle as follows:
+
+               For each pre-existing failure, open the relevant test/spec file and
+               add a clearly marked comment block directly above the failing
+               test/describe block.  The comment must follow this format:
+
+                 // [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #38
+                 // Failure: <exact error message or test name>
+                 // Suggested fix: <concrete recommendation, e.g. rename import,
+                 //   update API usage, install missing dep, etc.>
+
+               Use the language-appropriate comment style (// for JS/TS, # for
+               Python, /* */ for Java, etc.).  Do NOT modify the test logic itself —
+               only add the comment block.
+
+               After annotating, commit the annotation file(s):
+                   git add -A
+                   git commit -m "chore: annotate pre-existing test failures for issue #38"
+
+          All NEW tests from STEP 3 must be GREEN before proceeding.
+
+        STEP 6 — COMMIT IMPLEMENTATION
+          Stage and commit all implementation changes:
+              git add -A
+              git commit -m "fix: resolve issue #38 - Raise PBKDF2 iteration count to meet current OWASP minimums "
+
+        STEP 7 — ARCHIVE CHANGESET
+          Move the changeset directory out of the active openspec folder:
+              mv /home/dewald/Workspace/personal/github/py-tray-command-launcher/openspec/changes/issue-38-raise-pbkdf2-iteration-count-to-meet-current-owasp /home/dewald/Workspace/personal/github/py-tray-command-launcher/openspec/changes/archive/issue-38-raise-pbkdf2-iteration-count-to-meet-current-owasp
+          Then commit the archive move:
+              git add -A
+              git commit -m "chore: archive openspec changeset for issue #38"
+
+        ══ REQUIRED FINAL OUTPUT ══
+        After completing ALL steps above, output EXACTLY one of:
+
+            IMPLEMENTED: <comma-separated list of changed source files>
+            TESTS: PASS
+
+        OR (if pre-existing failures exist but NO regressions were introduced):
+
+            IMPLEMENTED: <comma-separated list of changed source files>
+            TESTS: FAIL-PREEXISTING <N> pre-existing failure(s) annotated in spec files
+
+        OR (if regressions remain after your best effort to fix them):
+
+            IMPLEMENTED: <comma-separated list of changed source files>
+            TESTS: FAIL <one-line reason — regressions only>
+
+        OR (if the test runner itself could not be invoked):
+
+            BASELINE_BROKEN: <one-line description>
+
+        Do not output anything after the final status line.
+        Do not raise a pull request — the orchestrator handles that.
