@@ -1,0 +1,81 @@
+You are a senior developer writing an openspec changeset for a GitHub issue.
+
+        REPOSITORY: DewaldOosthuizen/py-tray-command-launcher
+        REPO PATH: /home/dewald/Workspace/personal/github/py-tray-command-launcher
+
+This work item comes from GitHub Project [8] Py tray launcher project — Status: None
+
+        PROJECT CONVENTIONS (openspec/project.md):
+        ---
+        (no openspec/project.md)
+        ---
+
+        ISSUE #38: Raise PBKDF2 iteration count to meet current OWASP minimums in FileEncryptor
+        ---
+        ## Summary
+
+`FileEncryptor._derive_key` uses PBKDF2-HMAC-SHA256 with `iterations=100_000`. The OWASP Password Storage Cheat Sheet (updated 2023) recommends a **minimum of 600,000 iterations** for PBKDF2-HMAC-SHA256 to resist offline brute-force attacks on commodity hardware. At 100 k iterations an attacker with a modern GPU can test millions of candidate passwords per second, significantly reducing the work factor protecting encrypted user files.
+
+## Background
+
+The encryption feature is marketed as protecting sensitive files and folders on disk. Users who rely on this for actual data security (SSH keys, credential files, private documents) are exposed to a weaker-than-advertised protection level. The 16-byte random salt is correct and fine; only the iteration count needs to change.
+
+## Affected Areas
+
+- `src/modules/file_encryptor.py` — `EncryptionWorker._derive_key` (line 53: `iterations=100000`)
+
+## Recommended Fix
+
+```python
+# OWASP 2023 minimum for PBKDF2-HMAC-SHA256 is 600_000.
+# Use a named constant so future audits and upgrades are trivial.
+_PBKDF2_ITERATIONS = 600_000
+
+def _derive_key(self, password: str, salt: bytes) -> bytes:
+    """Derive encryption key from password using PBKDF2."""
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=_PBKDF2_ITERATIONS,
+    )
+    return base64.urlsafe_b64encode(kdf.derive(password.encode("utf-8")))
+```
+
+Note: files encrypted with the old iteration count will fail to decrypt with the new value. A migration strategy is required — either store the iteration count alongside the salt in the `.salt` file, or document that existing encrypted files must be decrypted and re-encrypted after upgrading.
+
+## Acceptance Criteria
+
+- [ ] `_PBKDF2_ITERATIONS` constant defined at module level, set to `600_000` or higher
+- [ ] Iteration count is written into the `.salt` file (or a separate metadata header) so decryption can use the value that was used at encrypt time
+- [ ] README / docs updated to note the breaking change and migration path
+- [ ] Unit tests verify key derivation still produces consistent output given the same password, salt, and iteration count
+
+## Priority
+
+High — this is a cryptographic weakness affecting user data at rest. The fix is a one-line constant change; the migration concern is the only complexity.
+
+---
+*Auto-identified by workspace issue-logger*  
+*Category: CVE / security vulnerability*  
+*Repository: DewaldOosthuizen/py-tray-command-launcher*
+        ---
+
+
+
+        Your task:
+        1. Read the codebase at /home/dewald/Workspace/personal/github/py-tray-command-launcher to understand what needs to change.
+        2. Write exactly THREE files into /home/dewald/Workspace/personal/github/py-tray-command-launcher/openspec/changes/issue-38-raise-pbkdf2-iteration-count-to-meet-current-owasp
+           (overwrite any existing versions completely):
+           a) .openspec.yaml  — schema: spec-driven, created: today's ISO date
+           b) proposal.md     — problem + solution with before/after code snippets,
+                                exact file paths and line numbers
+           c) tasks.md        — fine-grained checkable task list grouped by category
+
+        Rules:
+        - Do NOT implement any code. Spec only.
+        - Write the files directly to disk with file tools.
+        - If rewriting after feedback, address EVERY point in the feedback section above.
+
+        After writing, output exactly:
+            SPEC_WRITTEN: /home/dewald/Workspace/personal/github/py-tray-command-launcher/openspec/changes/issue-38-raise-pbkdf2-iteration-count-to-meet-current-owasp

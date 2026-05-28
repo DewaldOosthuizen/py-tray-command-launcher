@@ -37,7 +37,11 @@ class CommandExecutor:
         return process
 
     def execute_command_process_silently(self, app, command):
-        """Execute a command without showing the output."""
-        process = self.execute_command_process(app, command)
-        process.start()
+        """Execute a command without showing the output.
+
+        Delegates to execute_command_process, which starts the QProcess
+        internally.  Do NOT call process.start() here again.
+        """
+        self.execute_command_process(app, command)
+        # process.start() is already called inside execute_command_process.
         logger.debug("QProcess started silently for command: %s", command)

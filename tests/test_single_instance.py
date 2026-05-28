@@ -49,6 +49,17 @@ def _make_checker(key="test-key", pidfile=None):
 # is_pid_running
 # ---------------------------------------------------------------------------
 
+# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #37
+# Failure: AttributeError: type object 'MagicMock' has no attribute 'instance'
+#   pytest-qt's _process_events() hook fires around every test and calls
+#   QtWidgets.QApplication.instance(). The PyQt6 MagicMock stub in conftest
+#   does not satisfy pytestqt's expectation that QApplication is a real
+#   class-like object with a callable .instance class method.
+# Suggested fix: In conftest.py, after injecting the PyQt6 stub, patch
+#   pytestqt.plugin._process_events with a no-op lambda so the hook never
+#   tries to process Qt events:
+#     import pytestqt.plugin; pytestqt.plugin._process_events = lambda: None
+#   This is safe because no test in this file uses a real QApplication.
 class TestIsPidRunning:
     def test_own_pid_is_running(self):
         checker = _make_checker()
