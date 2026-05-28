@@ -42,6 +42,6 @@ class CommandExecutor:
         Delegates to execute_command_process, which starts the QProcess
         internally.  Do NOT call process.start() here again.
         """
-        process = self.execute_command_process(app, command)
+        self.execute_command_process(app, command)
         # process.start() is already called inside execute_command_process.
         logger.debug("QProcess started silently for command: %s", command)

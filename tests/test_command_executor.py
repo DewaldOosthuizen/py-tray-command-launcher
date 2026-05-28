@@ -100,9 +100,10 @@ class TestCommandExecutor(unittest.TestCase):
                 self.executor,
                 'execute_command_process',
                 wraps=self.executor.execute_command_process,
-            ):
+            ) as mock_execute_command_process:
                 self.executor.execute_command_process_silently(mock_app, "df -h")
 
+        mock_execute_command_process.assert_called_once_with(mock_app, "df -h")
         # The process must have been started exactly once regardless of call path.
         self.assertEqual(mock_process.start.call_count, 1,
                          "QProcess.start() must be called exactly once on the silent path")
