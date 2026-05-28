@@ -14,6 +14,31 @@ from unittest.mock import MagicMock
 
 import pytest
 
+# ---------------------------------------------------------------------------
+# PyQt6 stub — injected before any src module is imported so the test suite
+# can run headlessly without PyQt6 installed.
+# ---------------------------------------------------------------------------
+from unittest.mock import MagicMock as _MagicMock
+
+def _make_pyqt6_stub():
+    pyqt6 = _MagicMock()
+    pyqt6.QtCore = _MagicMock()
+    pyqt6.QtCore.QProcess = _MagicMock()
+    pyqt6.QtCore.Qt = _MagicMock()
+    # pytest-qt checks PYQT_VERSION as an integer — provide a real int so the
+    # comparison does not raise TypeError.
+    pyqt6.QtCore.PYQT_VERSION = 0x060100  # 6.1.0
+    pyqt6.QtWidgets = _MagicMock()
+    pyqt6.QtGui = _MagicMock()
+    return pyqt6
+
+if "PyQt6" not in sys.modules:
+    _stub = _make_pyqt6_stub()
+    sys.modules["PyQt6"] = _stub
+    sys.modules["PyQt6.QtCore"] = _stub.QtCore
+    sys.modules["PyQt6.QtWidgets"] = _stub.QtWidgets
+    sys.modules["PyQt6.QtGui"] = _stub.QtGui
+
 # Make src/ importable without installing the package
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
