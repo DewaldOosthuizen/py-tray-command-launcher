@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import logging
 import datetime
-from PyQt6.QtGui import QIcon, QAction
+import logging
+
+from PyQt6.QtGui import QAction
+
 from core.config_manager import config_manager
 
 logger = logging.getLogger(__name__)

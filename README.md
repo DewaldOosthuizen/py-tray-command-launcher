@@ -188,7 +188,7 @@ without verifying the file length (16 bytes = legacy, 20 bytes = current).
 
 ## Contributing
 
-Contributions are welcome! See [docs/contributing.md](docs/contributing.md) for setup instructions, code quality requirements, and documentation policy.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for linting setup, noqa suppression conventions, and development workflow. For broader setup instructions and documentation policy, see [docs/contributing.md](docs/contributing.md).
 
 ---
 

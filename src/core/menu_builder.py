@@ -11,8 +11,9 @@ testability.
 import logging
 import os
 from functools import partial
+
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QMenu
-from PyQt6.QtGui import QIcon, QAction
 
 from utils.dialogs import show_error_and_raise
 
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class MenuBuilder:
     """Encapsulates menu building logic for the tray application.
-    
+
     Responsibilities:
     - Build hierarchical menus from command configuration
     - Resolve command references
@@ -31,7 +32,7 @@ class MenuBuilder:
 
     def __init__(self, tray_app):
         """Initialize MenuBuilder with reference to parent TrayApp.
-        
+
         Args:
             tray_app: The parent TrayApp instance providing context and methods
         """
@@ -39,7 +40,7 @@ class MenuBuilder:
 
     def build(self, menu, command_menu):
         """Build the complete tray menu from command configuration.
-        
+
         Args:
             menu: The QMenu to add items to
             command_menu: Dictionary of commands from config
@@ -139,7 +140,7 @@ class MenuBuilder:
 
         # Add Create Schedule option
         tools_menu.addAction("Create Schedule", self.tray_app.schedule_creator.show_dialog)
-        
+
         # Add View Schedules option
         tools_menu.addAction("View Schedules", self.tray_app.schedule_viewer.show_dialog)
 
@@ -160,7 +161,7 @@ class MenuBuilder:
 
     def _add_menu_items(self, menu, items, parent_icon_path, group_name=""):
         """Recursively add items to the menu.
-        
+
         Args:
             menu: The QMenu to add items to
             items: Dictionary of menu items

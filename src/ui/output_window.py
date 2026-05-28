@@ -20,7 +20,7 @@ import logging
 import re
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QFont, QTextCharFormat, QTextCursor, QAction
+from PyQt6.QtGui import QAction, QColor, QFont, QTextCharFormat, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
     QFontDialog,

@@ -2,23 +2,23 @@
 
 import logging
 import os
-import sys
 import subprocess
+import sys
 import tempfile
+
+from PyQt6.QtCore import QTime
 from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
-    QComboBox,
-    QTimeEdit,
-    QPushButton,
     QMessageBox,
-    QCheckBox,
-    QGridLayout,
+    QPushButton,
+    QTimeEdit,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import QTime
-from core.config_manager import config_manager, ConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +182,7 @@ class ScheduleCreator:
         # Convert days to Windows format
         windows_days = {
             "Monday": "MON",
-            "Tuesday": "TUE", 
+            "Tuesday": "TUE",
             "Wednesday": "WED",
             "Thursday": "THU",
             "Friday": "FRI",
@@ -206,7 +206,7 @@ class ScheduleCreator:
         ]
 
         try:
-            result = subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
+            subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
             logger.info(
                 "Windows scheduled task '%s' created for command: %s at %s on %s",
                 task_name, command, time_string, days_string,

@@ -4,14 +4,13 @@
 
 import logging
 import os
-from typing import Optional
 
 LOG_LEVEL_ENV_VAR = "PY_TRAY_LOG_LEVEL"
 DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 
 
-def _parse_log_level(level_name: Optional[str]) -> int:
+def _parse_log_level(level_name: str | None) -> int:
     """Parse a textual log level into a logging module integer level."""
     if not level_name:
         return getattr(logging, DEFAULT_LOG_LEVEL, logging.INFO)
@@ -23,7 +22,7 @@ def _parse_log_level(level_name: Optional[str]) -> int:
     return getattr(logging, DEFAULT_LOG_LEVEL, logging.INFO)
 
 
-def resolve_log_level(config_level: Optional[str] = None) -> int:
+def resolve_log_level(config_level: str | None = None) -> int:
     """Resolve effective log level using config default and env override."""
     env_level = os.getenv(LOG_LEVEL_ENV_VAR)
     if env_level:
@@ -31,7 +30,7 @@ def resolve_log_level(config_level: Optional[str] = None) -> int:
     return _parse_log_level(config_level)
 
 
-def configure_logging(config_level: Optional[str] = None) -> int:
+def configure_logging(config_level: str | None = None) -> int:
     """Configure root logging once and return the resolved log level."""
     resolved_level = resolve_log_level(config_level)
     root_logger = logging.getLogger()

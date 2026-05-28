@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import atexit
 import argparse
+import atexit
 import getpass
 import logging
 import os
-from pathlib import Path
 import signal
 import sys
+from pathlib import Path
 
 from core.logging_config import configure_logging
 
@@ -18,8 +18,9 @@ logger = logging.getLogger(__name__)
 try:
     # Import QApplication for GUI, TrayApp for tray logic, and SingleInstanceChecker for instance control.
     from PyQt6.QtWidgets import QApplication
-    from core.tray_app import TrayApp
+
     from core.config_manager import config_manager
+    from core.tray_app import TrayApp
     from utils.single_instance import SingleInstanceChecker
 except ImportError as e:
     logger.error(
@@ -28,14 +29,14 @@ except ImportError as e:
     )
     # Try to show a GUI error dialog if possible.
     try:
-        from PyQt6.QtWidgets import QMessageBox, QApplication
+        from PyQt6.QtWidgets import QApplication, QMessageBox
         app = QApplication(sys.argv)
         QMessageBox.critical(
             None,
             "Missing Dependency",
             f"{e}\n\nPlease run:\n\npip install -r requirements.txt"
         )
-    except Exception:
+    except Exception:  # noqa: S110 — intentional: fallback GUI error dialog; swallowing is correct here
         # If even the error dialog fails, silently ignore.
         pass
     # Exit the program with error status.
@@ -44,7 +45,7 @@ except ImportError as e:
 if __name__ == "__main__":
     username = getpass.getuser()
     key = f"py-tray-command-launcher-single-instance-{username}"
-    pidfile = os.path.expanduser(f"/tmp/py-tray-command-launcher-{username}.pid")
+    pidfile = os.path.expanduser(f"/tmp/py-tray-command-launcher-{username}.pid")  # noqa: S108 — intentional: PID lock file in /tmp; username-scoped, no sensitive data
 
     # Parse CLI arguments before QApplication so Qt does not see them
     parser = argparse.ArgumentParser(

@@ -24,5 +24,11 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP"]
-ignore = ["E501"]
+select = ["E", "F", "W", "I", "UP", "B", "S"]
+ignore = [
+    "E501",   # line length — handled by formatter
+    "S602",   # subprocess with shell=True — intentional in CommandExecutor (user-authored commands only)
+    "S603",   # subprocess without shell — low-risk in this context (fixed args, no user string interpolation)
+    "S606",   # os.startfile — intentional launch of user-configured file path on Windows
+    "S607",   # partial executable path (open, xdg-open) — platform helpers, not user input
+]

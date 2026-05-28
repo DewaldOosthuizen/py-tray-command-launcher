@@ -1,17 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import os
 from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QComboBox,
-    QCheckBox,
-    QPushButton,
-    QFileDialog,
     QMessageBox,
+    QPushButton,
+    QVBoxLayout,
 )
 
 from core.config_manager import config_manager

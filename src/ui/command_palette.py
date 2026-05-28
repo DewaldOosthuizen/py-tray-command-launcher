@@ -31,7 +31,7 @@ import os
 import subprocess
 import sys
 
-from PyQt6.QtCore import Qt, QObject, QEvent, pyqtSignal, QSize, QTimer
+from PyQt6.QtCore import QEvent, QObject, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import (
     QApplication,
@@ -251,8 +251,9 @@ class _PaletteWindow(QWidget):
             self._cmd_list.setCurrentRow(0)
 
     def _populate_apps(self, query: str) -> None:
-        from modules.app_discovery import app_discovery
         from PyQt6.QtGui import QIcon as _QIcon
+
+        from modules.app_discovery import app_discovery
         self._app_list.clear()
         apps = app_discovery.search(query)
 
@@ -310,7 +311,7 @@ class _PaletteWindow(QWidget):
         # the shell resolve the shortcut target, file associations, and UAC.
         if AppDiscovery.is_windows_lnk_entry(entry):
             try:
-                os.startfile(entry.exec_cmd)  # noqa: S606 — intentional launch
+                os.startfile(entry.exec_cmd)  # noqa: S606 — intentional: Windows .lnk shortcuts require os.startfile; exec_cmd is user-configured, not external input
                 logger.info("Launched app (Windows): %s", entry.name)
             except OSError as exc:
                 logger.warning("Failed to launch %s: %s", entry.name, exc)
@@ -332,7 +333,7 @@ class _PaletteWindow(QWidget):
                 popen_kwargs["creationflags"] = (
                     subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
                 )
-            subprocess.Popen(args, **popen_kwargs)
+            subprocess.Popen(args, **popen_kwargs)  # noqa: S603 — intentional: fixed arg list built from user config, no string interpolation
             logger.info("Launched app: %s", entry.name)
         except OSError as exc:
             logger.warning("Failed to launch %s: %s", entry.name, exc)
@@ -488,6 +489,6 @@ class CommandPalette:
             return
         try:
             self._hotkey_listener.stop()
-        except Exception:
+        except Exception:  # noqa: S110 — intentional: hotkey listener stop is best-effort; failure is non-fatal
             pass
         self._hotkey_listener = None

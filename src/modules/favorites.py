@@ -2,10 +2,10 @@
 
 import logging
 import os
-import json
-from PyQt6.QtWidgets import QMenu, QMessageBox, QInputDialog
-from PyQt6.QtGui import QIcon, QCursor, QAction
+
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction, QCursor, QIcon
+from PyQt6.QtWidgets import QInputDialog, QMenu, QMessageBox
 
 from core.config_manager import config_manager
 
@@ -162,18 +162,18 @@ class Favorites:
             if isinstance(item, dict):
                 # Handle both direct commands and references
                 resolved_item = item
-                
+
                 # If this is a reference, resolve it to get the actual command data
                 if "ref" in item:
                     resolved_item = self.services.resolve_command_reference("Favorites", label, item)
-                
+
                 # Check if we have a valid command (either direct or resolved)
                 if "command" in resolved_item:
                     # Get icon from the resolved command, not from favorites
                     icon_path = None
                     if "icon" in resolved_item:
                         icon_path = self.services.resolve_icon_path(resolved_item.get("icon"))
-                    
+
                     # Fall back to default icon if no icon specified or resolution failed
                     if not icon_path or not os.path.isfile(icon_path):
                         icon_path = os.path.join(
