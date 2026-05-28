@@ -9,8 +9,9 @@ on the specific callables they actually need.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.config_manager import ConfigManager
@@ -20,8 +21,8 @@ if TYPE_CHECKING:
 class AppServices:
     """Thin service interface passed to all feature modules."""
 
-    config_manager: "ConfigManager"
-    execute: Callable[[str, str, bool, bool, Optional[str]], None]
+    config_manager: ConfigManager
+    execute: Callable[[str, str, bool, bool, str | None], None]
     reload_commands: Callable[..., None]
     show_output: Callable[[str, str], None]
     get_all_commands: Callable[[], list]

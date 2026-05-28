@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import logging
-import os
 import subprocess
+
 from PyQt6.QtCore import QProcess
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class CommandExecutor:
         point.  Do not pass untrusted external input here.
         """
         logger.info("Executing shell command: %s", command)
-        proc = subprocess.Popen(command, shell=True)
+        proc = subprocess.Popen(command, shell=True)  # noqa: S602 — intentional: user-authored command, see method docstring
         logger.debug("Process started (PID %d)", proc.pid)
 
     def execute_command_process(self, app, command):

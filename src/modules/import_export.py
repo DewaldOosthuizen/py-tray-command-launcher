@@ -2,11 +2,13 @@
 
 import logging
 import os
+
 from PyQt6.QtWidgets import (
     QFileDialog,
-    QMessageBox,
     QInputDialog,
+    QMessageBox,
 )
+
 from core.config_manager import config_manager
 
 logger = logging.getLogger(__name__)

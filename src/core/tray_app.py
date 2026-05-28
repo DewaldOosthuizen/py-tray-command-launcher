@@ -1,39 +1,37 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import datetime
 import logging
 import os
 import subprocess
 import sys
-import datetime
-import json
-import shutil
 import weakref
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QMessageBox, QInputDialog
-from PyQt6.QtGui import QIcon, QAction, QColor, QFont, QPainter, QPixmap
 
-from core.config_manager import config_manager, ConfigurationError
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
+from PyQt6.QtWidgets import QInputDialog, QMenu, QSystemTrayIcon
+
+from core.config_manager import ConfigurationError, config_manager
 from core.icon_resolver import IconResolver
+from core.menu_builder import MenuBuilder
 from core.services import AppServices
 from core.theme_manager import ThemeManager
-from core.menu_builder import MenuBuilder
-from utils.dialogs import confirm_execute, show_error_and_raise, confirm_exit
-from ui.output_window import RichOutputWindow
-from ui.settings_dialog import SettingsDialog
-from ui.command_manager import CommandManagerDialog
-from ui.command_palette import CommandPalette
-from ui.quick_launch_bar import QuickLaunchBar
-
-from modules.command_history import CommandHistory
+from modules.backup_restore import BackupRestore
 from modules.command_creator import CommandCreator
 from modules.command_executor import CommandExecutor
+from modules.command_history import CommandHistory
 from modules.command_search import CommandSearch
-from modules.backup_restore import BackupRestore
-from modules.import_export import ImportExport
 from modules.favorites import Favorites
 from modules.file_encryptor import FileEncryptor
+from modules.import_export import ImportExport
 from modules.schedule_creator import ScheduleCreator
 from modules.schedule_viewer import ScheduleViewer
+from ui.command_manager import CommandManagerDialog
+from ui.command_palette import CommandPalette
+from ui.output_window import RichOutputWindow
+from ui.quick_launch_bar import QuickLaunchBar
+from ui.settings_dialog import SettingsDialog
+from utils.dialogs import confirm_execute, confirm_exit, show_error_and_raise
 
 logger = logging.getLogger(__name__)
 
@@ -390,11 +388,11 @@ class TrayApp:
                     commands_file = legacy
 
             if sys.platform == "win32":
-                os.startfile(commands_file)
+                os.startfile(commands_file)  # noqa: S606 — intentional: Windows file open via shell association; path is from config, not user input
             elif sys.platform == "darwin":
-                subprocess.call(("open", str(commands_file)))
+                subprocess.call(("open", str(commands_file)))     # noqa: S603, S607 — platform file-open helper, fixed args
             else:
-                subprocess.call(("xdg-open", str(commands_file)))
+                subprocess.call(("xdg-open", str(commands_file))) # noqa: S603, S607 — platform file-open helper, fixed args
         except Exception as e:
             show_error_and_raise(f"Failed to open commands file: {e}")
 
@@ -517,7 +515,7 @@ class TrayApp:
         """Restart the application."""
         self.cleanup()
         python = sys.executable
-        os.execl(python, python, *sys.argv)
+        os.execl(python, python, *sys.argv)  # noqa: S606 — intentional: restart using the same interpreter; fixed args from sys.executable and sys.argv
 
     def confirm_exit(self):
         """Show confirmation dialog for exiting the application."""

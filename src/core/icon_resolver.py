@@ -152,7 +152,7 @@ class IconResolver:
             cache_dir = os.path.join(tempfile.gettempdir(), "py-tray-launcher-icons")
             os.makedirs(cache_dir, exist_ok=True)
 
-            url_hash = hashlib.md5(url.encode()).hexdigest()
+            url_hash = hashlib.md5(url.encode()).hexdigest()  # noqa: S324 — intentional: md5 used for cache key only, not cryptographic security
 
             # Determine file extension from URL path (before query string).
             url_lower = url.lower().split("?")[0]
@@ -175,7 +175,7 @@ class IconResolver:
                     return cached_file
 
             ctx = ssl.create_default_context()
-            with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
+            with urllib.request.urlopen(url, timeout=10, context=ctx) as response:  # noqa: S310 — intentional: URL is user-configured icon path, SSL context enforces TLS
                 content_type = (
                     response.headers.get("Content-Type", "").split(";")[0].strip().lower()
                 )
@@ -287,7 +287,7 @@ class IconResolver:
 
             cache_dir = os.path.join(tempfile.gettempdir(), "py-tray-launcher-icons")
             os.makedirs(cache_dir, exist_ok=True)
-            url_hash = hashlib.md5(icon_path.encode()).hexdigest()
+            url_hash = hashlib.md5(icon_path.encode()).hexdigest()  # noqa: S324 — intentional: md5 used for cache key only, not cryptographic security
             cached_file = os.path.join(cache_dir, f"{url_hash}.{ext}")
 
             if not os.path.exists(cached_file):

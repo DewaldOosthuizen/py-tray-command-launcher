@@ -67,7 +67,7 @@ class ThemeManager:
             return
 
         try:
-            with open(qss_path, "r", encoding="utf-8") as fh:
+            with open(qss_path, encoding="utf-8") as fh:
                 stylesheet = fh.read()
             QApplication.instance().setStyleSheet(stylesheet)
             logger.info("Applied theme '%s' from %s", theme, qss_path)
@@ -106,7 +106,7 @@ class ThemeManager:
         try:
             exe_dir = os.path.dirname(sys.executable)
             candidates.append(os.path.join(exe_dir, "resources", "themes", filename))
-        except Exception:
+        except Exception:  # noqa: S110 — intentional: os.path.dirname cannot raise, but guarded defensively; safe to swallow
             pass
 
         # Source run

@@ -20,6 +20,15 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #41
+# Failure: All 15 tests in this file ERROR at setup/teardown with
+#   AttributeError: type object 'MagicMock' has no attribute 'instance'
+# Root cause: pytest-qt plugin calls QApplication.instance() during setup/teardown.
+#   The PyQt6.QtWidgets stub installed here is a plain types.ModuleType with no
+#   QApplication attribute, so pytest-qt's _process_events() crashes.
+# Suggested fix: Add QApplication = MagicMock() to the PyQt6.QtWidgets stub below,
+#   or add 'qt_api = "pyqt6"' to pyproject.toml [tool.pytest.ini_options] and
+#   install a real PyQt6 (or use pytest -p no:qt for non-GUI test files).
 # Stub PyQt6 symbols that single_instance.py imports at module level.
 for _mod in ["PyQt6", "PyQt6.QtCore", "PyQt6.QtWidgets"]:
     if _mod not in sys.modules:

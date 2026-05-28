@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import os
+
 from PyQt6.QtWidgets import (
-    QMessageBox,
     QInputDialog,
+    QMessageBox,
 )
+
 from core.config_manager import config_manager
 
 

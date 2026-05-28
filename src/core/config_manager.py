@@ -8,15 +8,15 @@ including loading, saving, validating, and managing default configurations.
 It follows the singleton pattern to ensure only one instance manages the config.
 """
 
-import os
-import sys
-import json
 import copy
-import shutil
 import datetime
+import json
 import logging
+import os
+import shutil
+import sys
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Any
 
 APP_NAME = "py-tray-command-launcher"
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ class ConfigManager:
 
         # Optional override path set by --config CLI flag (takes priority over
         # the platform-resolved path for reads; writes still go to config_dir)
-        self._commands_override: Optional[Path] = None
+        self._commands_override: Path | None = None
         logger.info(
             "ConfigManager initialized (config dir: %s, commands file: %s)",
             self.config_dir,
@@ -99,7 +99,7 @@ class ConfigManager:
 
         # Migrate legacy command storage locations into canonical config location
         self._migrate_legacy_command_files()
-        
+
         # Migrate existing favorites if needed
         self.migrate_favorites_from_commands()
 
@@ -133,7 +133,7 @@ class ConfigManager:
         """Return the resolved commands file used by this runtime."""
         return self._get_commands_file_for_read()
 
-    def get_command_paths(self) -> Dict[str, str]:
+    def get_command_paths(self) -> dict[str, str]:
         """Expose command path diagnostics for startup/import/reload logging."""
         return {
             "config_dir": str(self.config_dir),
@@ -144,7 +144,7 @@ class ConfigManager:
         }
 
     # Backward-compatible defaults applied on top of whatever is in settings.json
-    _SETTINGS_DEFAULTS: Dict[str, Any] = {
+    _SETTINGS_DEFAULTS: dict[str, Any] = {
         "theme": "system",
         "hotkey": "ctrl+shift+space",
         "app_launcher_hotkey": "ctrl+alt+a",
@@ -155,7 +155,7 @@ class ConfigManager:
     }
 
     @staticmethod
-    def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
         """Recursively merge *override* into a copy of *base*.
 
         Nested dicts are merged rather than replaced, so partial user-supplied
@@ -204,12 +204,12 @@ class ConfigManager:
                 pass
             raise
 
-    def get_settings(self, refresh: bool = False) -> Dict[str, Any]:
+    def get_settings(self, refresh: bool = False) -> dict[str, Any]:
         """Get application settings from settings.json, deep-merged with defaults."""
         if self._settings_cache is None or refresh:
             try:
                 if self.settings_file.exists():
-                    with open(self.settings_file, "r", encoding="utf-8") as f:
+                    with open(self.settings_file, encoding="utf-8") as f:
                         settings = json.load(f)
                     if not isinstance(settings, dict):
                         logger.warning(
@@ -234,7 +234,7 @@ class ConfigManager:
 
         return self._settings_cache
 
-    def save_settings(self, settings: Dict[str, Any]) -> None:
+    def save_settings(self, settings: dict[str, Any]) -> None:
         """Save application settings to settings.json."""
         try:
             if not isinstance(settings, dict):
@@ -250,9 +250,9 @@ class ConfigManager:
         except Exception as e:
             error_msg = f"Failed to save settings: {str(e)}"
             logger.error(error_msg)
-            raise ConfigurationError(error_msg)
+            raise ConfigurationError(error_msg) from e
 
-    def get_configured_log_level(self) -> Optional[str]:
+    def get_configured_log_level(self) -> str | None:
         """Return optional configured logging level from settings."""
         settings = self.get_settings()
         logging_cfg = settings.get("logging", {})
@@ -294,7 +294,7 @@ class ConfigManager:
         """
         return self.get_active_commands_file()
 
-    def get_commands(self, refresh: bool = False) -> Dict[str, Dict[str, Any]]:
+    def get_commands(self, refresh: bool = False) -> dict[str, dict[str, Any]]:
         """
         Get command configuration data.
 
@@ -318,7 +318,7 @@ class ConfigManager:
                     )
                     self._create_default_commands(config_file)
 
-                with open(config_file, "r", encoding="utf-8") as f:
+                with open(config_file, encoding="utf-8") as f:
                     commands = json.load(f)
 
                 # Validate the configuration
@@ -330,15 +330,15 @@ class ConfigManager:
             except json.JSONDecodeError as e:
                 error_msg = f"Invalid JSON in {config_file}: {str(e)}"
                 logger.error(error_msg)
-                raise ConfigurationError(error_msg)
+                raise ConfigurationError(error_msg) from e
             except Exception as e:
                 error_msg = f"Failed to load commands from {config_file}: {str(e)}"
                 logger.error(error_msg)
-                raise ConfigurationError(error_msg)
+                raise ConfigurationError(error_msg) from e
 
         return self._commands_cache
 
-    def save_commands(self, commands: Dict[str, Dict[str, Any]]) -> None:
+    def save_commands(self, commands: dict[str, dict[str, Any]]) -> None:
         """
         Save command configuration to file.
 
@@ -369,9 +369,9 @@ class ConfigManager:
         except Exception as e:
             error_msg = f"Failed to save commands: {str(e)}"
             logger.error(error_msg)
-            raise ConfigurationError(error_msg)
+            raise ConfigurationError(error_msg) from e
 
-    def get_history(self, refresh: bool = False) -> List[Dict[str, Any]]:
+    def get_history(self, refresh: bool = False) -> list[dict[str, Any]]:
         """
         Get command history data.
 
@@ -384,7 +384,7 @@ class ConfigManager:
         if self._history_cache is None or refresh:
             try:
                 if self.history_file.exists():
-                    with open(self.history_file, "r", encoding="utf-8") as f:
+                    with open(self.history_file, encoding="utf-8") as f:
                         history = json.load(f)
                 else:
                     history = []
@@ -397,7 +397,7 @@ class ConfigManager:
 
         return self._history_cache
 
-    def save_history(self, history: List[Dict[str, Any]]) -> None:
+    def save_history(self, history: list[dict[str, Any]]) -> None:
         """
         Save command history to file.
 
@@ -413,7 +413,7 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"Failed to save history: {str(e)}")
 
-    def add_to_history(self, entry: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def add_to_history(self, entry: dict[str, Any]) -> list[dict[str, Any]]:
         """
         Add an entry to the command history.
 
@@ -443,7 +443,7 @@ class ConfigManager:
         self.save_history([])
         logger.info("Command history cleared")
 
-    def get_favorites(self, refresh: bool = False) -> Dict[str, Any]:
+    def get_favorites(self, refresh: bool = False) -> dict[str, Any]:
         """
         Get favorites data.
 
@@ -456,7 +456,7 @@ class ConfigManager:
         if self._favorites_cache is None or refresh:
             try:
                 if self.favorites_file.exists():
-                    with open(self.favorites_file, "r", encoding="utf-8") as f:
+                    with open(self.favorites_file, encoding="utf-8") as f:
                         favorites = json.load(f)
                 else:
                     # Default empty favorites structure (no icon stored)
@@ -470,7 +470,7 @@ class ConfigManager:
 
         return self._favorites_cache
 
-    def save_favorites(self, favorites: Dict[str, Any]) -> None:
+    def save_favorites(self, favorites: dict[str, Any]) -> None:
         """
         Save favorites to file.
 
@@ -514,7 +514,7 @@ class ConfigManager:
             logger.error(f"Failed to create backup: {str(e)}")
             return ""
 
-    def list_backups(self) -> List[Tuple[str, str]]:
+    def list_backups(self) -> list[tuple[str, str]]:
         """
         List all available backups.
 
@@ -596,7 +596,7 @@ class ConfigManager:
                 self.get_active_commands_file(),
             )
             # Read the import file
-            with open(import_file, "r", encoding="utf-8") as f:
+            with open(import_file, encoding="utf-8") as f:
                 import_data = json.load(f)
 
             if not isinstance(import_data, dict):
@@ -660,7 +660,7 @@ class ConfigManager:
             return False
 
     def add_to_favorites(
-        self, command_path: str, custom_label: Optional[str] = None
+        self, command_path: str, custom_label: str | None = None
     ) -> bool:
         """
         Add a command to favorites by reference instead of duplicating it.
@@ -757,52 +757,52 @@ class ConfigManager:
     def migrate_favorites_from_commands(self) -> bool:
         """
         Migrate existing favorites from commands.json to the separate favorites.json file.
-        
+
         This method is called during initialization to ensure existing favorites
         are moved to the new separate file structure.
-        
+
         Returns:
             True if migration was successful or not needed, False if failed
         """
         try:
             # Get current commands to check for existing favorites
             commands = self.get_commands()
-            
+
             # Check if there are favorites in the commands file
             if "Favorites" not in commands or len(commands["Favorites"]) <= 1:
                 # No favorites to migrate (only icon or empty)
                 return True
-                
+
             logger.info("Migrating existing favorites from commands.json to favorites.json")
-            
+
             # Extract favorites from commands (skip icon)
             favorites_to_migrate = {
-                k: v for k, v in commands["Favorites"].items() 
+                k: v for k, v in commands["Favorites"].items()
                 if k != "icon"
             }
-            
+
             # Get existing favorites (might be empty)
             existing_favorites = self.get_favorites()
-            
+
             # Merge with existing favorites (commands.json takes precedence for conflicts)
             for label, item in favorites_to_migrate.items():
                 existing_favorites[label] = item
-            
+
             # Save the merged favorites
             self.save_favorites(existing_favorites)
-            
+
             # Remove favorites from commands.json
             del commands["Favorites"]
             self.save_commands(commands)
-            
+
             logger.info("Successfully migrated favorites to separate file")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to migrate favorites: {str(e)}")
             return False
 
-    def _validate_commands(self, commands: Dict[str, Dict[str, Any]]) -> None:
+    def _validate_commands(self, commands: dict[str, dict[str, Any]]) -> None:
         """
         Validate command configuration structure.
 
@@ -848,7 +848,7 @@ class ConfigManager:
                             f"prompt in '{group_name}.{item_name}' must be a string"
                         )
 
-    def _validate_commands_schema(self, commands: Dict[str, Any]) -> None:
+    def _validate_commands_schema(self, commands: dict[str, Any]) -> None:
         """Validate *commands* against commands.schema.json if available and jsonschema is installed.
 
         Raises:
@@ -863,7 +863,7 @@ class ConfigManager:
             logger.debug("jsonschema not installed; skipping commands.json schema validation")
             return
         try:
-            with open(schema_path, "r", encoding="utf-8") as f:
+            with open(schema_path, encoding="utf-8") as f:
                 schema = json.load(f)
             jsonschema.validate(instance=commands, schema=schema)
         except jsonschema.ValidationError as exc:
@@ -942,9 +942,9 @@ class ConfigManager:
         base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
         return base / APP_NAME
 
-    def _legacy_config_dirs(self) -> List[Path]:
+    def _legacy_config_dirs(self) -> list[Path]:
         """Return legacy config directories that may still contain user data."""
-        candidates: List[Path] = []
+        candidates: list[Path] = []
 
         # Legacy writable location used by older local runs
         candidates.append(Path.home() / f".{APP_NAME}")
@@ -961,7 +961,7 @@ class ConfigManager:
         if appimage:
             candidates.append(Path(appimage).resolve().parent / "config")
 
-        unique_dirs: List[Path] = []
+        unique_dirs: list[Path] = []
         for path in candidates:
             if path == self.config_dir:
                 continue
@@ -971,18 +971,18 @@ class ConfigManager:
                 unique_dirs.append(path)
         return unique_dirs
 
-    def _load_commands_from_file(self, file_path: Path) -> Dict[str, Any]:
+    def _load_commands_from_file(self, file_path: Path) -> dict[str, Any]:
         """Safely load a commands JSON file as a dictionary."""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
             return data if isinstance(data, dict) else {}
         except Exception:
             return {}
 
     def _merge_commands_preserving_canonical(
-        self, canonical: Dict[str, Any], legacy: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, canonical: dict[str, Any], legacy: dict[str, Any]
+    ) -> dict[str, Any]:
         """Merge legacy groups into canonical without overwriting canonical values."""
         merged = copy.deepcopy(canonical)
         for group_name in sorted(legacy.keys()):
@@ -1062,9 +1062,9 @@ class ConfigManager:
                     json.dump(merged_data, f, indent=4)
                 logger.info("Merged legacy commands into canonical file %s", canonical_file)
 
-    def _legacy_files_for(self, canonical_file: Path) -> List[Path]:
+    def _legacy_files_for(self, canonical_file: Path) -> list[Path]:
         """Collect existing legacy files for a canonical filename."""
-        result: List[Path] = []
+        result: list[Path] = []
         for legacy_dir in self._legacy_config_dirs():
             legacy_file = legacy_dir / canonical_file.name
             if legacy_file.exists() and legacy_file != canonical_file:

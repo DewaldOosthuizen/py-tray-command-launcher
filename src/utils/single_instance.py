@@ -9,6 +9,7 @@ runs at a time using Qt's QSharedMemory mechanism.
 
 import logging
 import os
+
 from PyQt6.QtCore import QSharedMemory
 from PyQt6.QtWidgets import QMessageBox
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 class SingleInstanceChecker:
     """
     Utility class to check and prevent multiple instances of the application.
-    
+
     Uses QSharedMemory to create a unique shared memory segment that serves
     as a lock to detect if another instance is already running.
     """
@@ -62,11 +63,11 @@ class SingleInstanceChecker:
                 os.remove(self.pidfile)
             except OSError as exc:
                 logger.debug("Could not remove PID file %s during force_unlock: %s", self.pidfile, exc)
-    
+
     def is_another_instance_running(self):
         """
         Check if another instance of the application is already running.
-        
+
         Returns:
             bool: True if another instance is running, False otherwise
         """
@@ -75,21 +76,21 @@ class SingleInstanceChecker:
             # Another instance is already running, detach and return True
             self.shared_memory.detach()
             return True
-        
+
         # No existing shared memory found - no other instance running
         return False
-    
+
     def acquire_lock(self):
         """
         Acquire the single instance lock by creating shared memory.
-        
+
         Returns:
             bool: True if lock was acquired (first instance), False otherwise
         """
         # First check if another instance is running
         if self.is_another_instance_running():
             return False
-        
+
         # Try to create new shared memory segment
         if self.shared_memory.create(1):
             # Successfully created - we are the first instance
@@ -102,11 +103,11 @@ class SingleInstanceChecker:
             return True
         # Failed to create - another instance is running
         return False
-    
+
     def show_already_running_message(self):
         """
         Show a message dialog informing user that another instance is running.
-        
+
         Returns:
             bool: True if user clicked OK to close, False otherwise
         """
@@ -115,13 +116,13 @@ class SingleInstanceChecker:
         is_headless = qt_platform == 'offscreen' or (
             not os.environ.get('DISPLAY') and not os.environ.get('WAYLAND_DISPLAY')
         )
-        
+
         pid_info = ""
         stale_lock = False
         existing_pid = None
         if self.pidfile:
             try:
-                with open(self.pidfile, 'r') as f:
+                with open(self.pidfile) as f:
                     existing_pid = f.read().strip()
                 if existing_pid:
                     if self.is_pid_running(existing_pid):
@@ -129,7 +130,7 @@ class SingleInstanceChecker:
                     else:
                         pid_info = f" (stale lock, PID: {existing_pid})"
                         stale_lock = True
-            except Exception:
+            except Exception:  # noqa: S110 — intentional: PID file read is best-effort; failure falls back to no pid_info
                 pass
         message = f"Another instance of py-tray-command-launcher is already running{pid_info}."
         if is_headless:
@@ -138,7 +139,7 @@ class SingleInstanceChecker:
                 logger.warning("Stale lock detected. Run with --force-unlock to clear the lock.")
             logger.warning("Only one instance can run at a time. Exiting...")
             return True
-        
+
         try:
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Icon.Information)
@@ -169,11 +170,11 @@ class SingleInstanceChecker:
                 logger.warning("Stale lock detected. Run with --force-unlock to clear the lock.")
             logger.warning("Only one instance can run at a time. Exiting...")
             return True
-    
+
     def cleanup(self):
         """
         Clean up shared memory resources.
-        
+
         Note: QSharedMemory automatically handles cleanup when the process exits,
         but this method can be called for explicit cleanup if needed.
         """

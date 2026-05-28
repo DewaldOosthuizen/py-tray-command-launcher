@@ -2,27 +2,24 @@
 
 import logging
 import os
-import sys
 import subprocess
+import sys
 import tempfile
-from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QMessageBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QScrollArea,
-    QWidget,
-    QTextEdit,
-    QGroupBox,
-)
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-
+from PyQt6.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +205,7 @@ class ScheduleViewer:
                                 # Skip tasks we can't get details for
                                 continue
 
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             # No tasks found or error occurred
             pass
 
@@ -344,7 +341,7 @@ class ScheduleViewer:
     def _delete_windows_task(self, schedule):
         """Delete a Windows scheduled task."""
         task_name = schedule.get("name")
-        result = subprocess.run(
+        subprocess.run(
             ["schtasks", "/delete", "/tn", task_name, "/f"],
             capture_output=True,
             text=True,
@@ -357,7 +354,7 @@ class ScheduleViewer:
         current_crontab = result.stdout if result.returncode == 0 else ""
 
         comment_marker = f"# py-tray-command-launcher: {schedule.get('name')}"
-        cron_line = schedule.get("cron_line", "")
+        schedule.get("cron_line", "")
 
         # Remove the matching comment + cron line pair.
         # After finding the marker comment, always remove the very next

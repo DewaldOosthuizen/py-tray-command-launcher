@@ -22,7 +22,6 @@ import sys
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon, QPixmap
@@ -69,7 +68,7 @@ class AppEntry:
     name: str
     exec_cmd: str
     icon_name: str
-    categories: List[str] = field(default_factory=list)
+    categories: list[str] = field(default_factory=list)
     terminal: bool = False
 
     @property
@@ -81,11 +80,11 @@ class AppDiscovery:
     """Discovers installed applications via XDG .desktop files."""
 
     def __init__(self):
-        self._apps: Optional[List[AppEntry]] = None
+        self._apps: list[AppEntry] | None = None
         # icon_name → resolved absolute path; built once in a background thread
-        self._icon_path_index: Dict[str, str] = {}
+        self._icon_path_index: dict[str, str] = {}
         # cache_key → QPixmap; eliminates repeated disk I/O on every keystroke
-        self._pixmap_cache: Dict[str, QPixmap] = {}
+        self._pixmap_cache: dict[str, QPixmap] = {}
         if not IS_WINDOWS:
             threading.Thread(
                 target=self._build_icon_index, daemon=True, name="icon-index"
@@ -122,7 +121,7 @@ class AppDiscovery:
             if d.strip():
                 search_dirs.append(Path(d.strip()) / "applications")
 
-        apps: List[AppEntry] = []
+        apps: list[AppEntry] = []
         seen_names: set = set()
 
         for directory in search_dirs:
@@ -153,7 +152,7 @@ class AppDiscovery:
             Path(programdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
         )
 
-        apps: List[AppEntry] = []
+        apps: list[AppEntry] = []
         seen_names: set = set()
 
         for base_dir in search_dirs:
@@ -180,7 +179,7 @@ class AppDiscovery:
         self._apps = apps
         logger.info("AppDiscovery (Windows): loaded %d applications", len(apps))
 
-    def _parse_desktop_file(self, path: Path) -> Optional[AppEntry]:
+    def _parse_desktop_file(self, path: Path) -> AppEntry | None:
         """Parse a single .desktop file; returns None if the entry should be hidden."""
         parser = configparser.RawConfigParser(strict=False)
         parser.optionxform = str  # preserve case
@@ -234,13 +233,13 @@ class AppDiscovery:
     # Public API
     # ------------------------------------------------------------------
 
-    def get_all(self) -> List[AppEntry]:
+    def get_all(self) -> list[AppEntry]:
         """Return all discovered apps, loading on first call."""
         if self._apps is None:
             self.load()
         return self._apps
 
-    def search(self, query: str) -> List[AppEntry]:
+    def search(self, query: str) -> list[AppEntry]:
         """Return apps matching *query*, scored and sorted by relevance.
 
         When *query* is blank all apps are returned alphabetically.
@@ -285,7 +284,7 @@ class AppDiscovery:
             return px
         return self._fallback_pixmap(size)
 
-    def _find_pixmap(self, icon_name: str, size: int) -> Optional[QPixmap]:
+    def _find_pixmap(self, icon_name: str, size: int) -> QPixmap | None:
         """Return a QPixmap for *icon_name*, or ``None`` if not found.
 
         Resolution order:
@@ -350,7 +349,7 @@ class AppDiscovery:
         Uses first-wins strategy: hicolor at preferred sizes is scanned first
         so higher-quality icons take priority over lower-resolution variants.
         """
-        index: Dict[str, str] = {}
+        index: dict[str, str] = {}
 
         xdg_data_home = os.environ.get(
             "XDG_DATA_HOME", str(Path.home() / ".local" / "share")
@@ -417,7 +416,7 @@ class AppDiscovery:
         return re.sub(r'%[fFuUdDnNickv]', '', exec_cmd).strip()
 
     @staticmethod
-    def build_launch_args(entry: AppEntry) -> Optional[List[str]]:
+    def build_launch_args(entry: AppEntry) -> list[str] | None:
         """Build the argv list for launching *entry*.
 
         Handles ``Terminal=true`` by prepending a detected terminal emulator.
