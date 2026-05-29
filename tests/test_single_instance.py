@@ -1,14 +1,3 @@
-# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #48
-# Failure: AttributeError: type object 'MagicMock' has no attribute 'instance'
-#   in pytestqt/plugin.py when pytest-qt tries QApplication.instance() after
-#   the test because sys.modules["PyQt6"] is a MagicMock (set by this file's
-#   PyQt6 stub) and pytest-qt's teardown assumes a real QApplication.
-# Suggested fix: Use a more targeted stub that sets QApplication.instance()
-#   to return None (e.g. sys.modules["PyQt6"].QtWidgets.QApplication.instance.return_value = None)
-#   or configure pytest.ini with qt_api=pyqt5 so pytest-qt uses PyQt5 instead
-#   of the stubbed PyQt6. Alternatively add @pytest.mark.no_qt_log marker or
-#   use conftest.py to reconfigure the qt plugin for this module.
-
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for SingleInstanceChecker.
 
@@ -31,15 +20,6 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #41
-# Failure: All 15 tests in this file ERROR at setup/teardown with
-#   AttributeError: type object 'MagicMock' has no attribute 'instance'
-# Root cause: pytest-qt plugin calls QApplication.instance() during setup/teardown.
-#   The PyQt6.QtWidgets stub installed here is a plain types.ModuleType with no
-#   QApplication attribute, so pytest-qt's _process_events() crashes.
-# Suggested fix: Add QApplication = MagicMock() to the PyQt6.QtWidgets stub below,
-#   or add 'qt_api = "pyqt6"' to pyproject.toml [tool.pytest.ini_options] and
-#   install a real PyQt6 (or use pytest -p no:qt for non-GUI test files).
 # Stub PyQt6 symbols that single_instance.py imports at module level.
 for _mod in ["PyQt6", "PyQt6.QtCore", "PyQt6.QtWidgets"]:
     if _mod not in sys.modules:
@@ -69,17 +49,6 @@ def _make_checker(key="test-key", pidfile=None):
 # is_pid_running
 # ---------------------------------------------------------------------------
 
-# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #37
-# Failure: AttributeError: type object 'MagicMock' has no attribute 'instance'
-#   pytest-qt's _process_events() hook fires around every test and calls
-#   QtWidgets.QApplication.instance(). The PyQt6 MagicMock stub in conftest
-#   does not satisfy pytestqt's expectation that QApplication is a real
-#   class-like object with a callable .instance class method.
-# Suggested fix: In conftest.py, after injecting the PyQt6 stub, patch
-#   pytestqt.plugin._process_events with a no-op lambda so the hook never
-#   tries to process Qt events:
-#     import pytestqt.plugin; pytestqt.plugin._process_events = lambda: None
-#   This is safe because no test in this file uses a real QApplication.
 class TestIsPidRunning:
     def test_own_pid_is_running(self):
         checker = _make_checker()
