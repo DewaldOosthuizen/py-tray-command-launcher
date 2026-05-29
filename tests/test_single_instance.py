@@ -1,3 +1,14 @@
+# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #48
+# Failure: AttributeError: type object 'MagicMock' has no attribute 'instance'
+#   in pytestqt/plugin.py when pytest-qt tries QApplication.instance() after
+#   the test because sys.modules["PyQt6"] is a MagicMock (set by this file's
+#   PyQt6 stub) and pytest-qt's teardown assumes a real QApplication.
+# Suggested fix: Use a more targeted stub that sets QApplication.instance()
+#   to return None (e.g. sys.modules["PyQt6"].QtWidgets.QApplication.instance.return_value = None)
+#   or configure pytest.ini with qt_api=pyqt5 so pytest-qt uses PyQt5 instead
+#   of the stubbed PyQt6. Alternatively add @pytest.mark.no_qt_log marker or
+#   use conftest.py to reconfigure the qt plugin for this module.
+
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for SingleInstanceChecker.
 
