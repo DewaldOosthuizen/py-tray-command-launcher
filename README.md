@@ -192,7 +192,9 @@ without verifying the file length (16 bytes = legacy, 20 bytes = current).
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for linting setup, noqa suppression conventions, and development workflow. For broader setup instructions and documentation policy, see [docs/contributing.md](docs/contributing.md).
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full
+contribution guide: architecture overview, development setup, adding a new feature,
+test conventions, and PR guidelines.
 
 ---
 
