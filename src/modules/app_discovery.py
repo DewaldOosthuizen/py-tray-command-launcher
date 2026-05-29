@@ -13,6 +13,7 @@ Public API
 """
 
 import configparser
+import functools
 import logging
 import os
 import re
@@ -59,6 +60,20 @@ _TERMINAL_EMULATORS = [
     "alacritty",
     "kitty",
 ]
+
+
+@functools.lru_cache(maxsize=1)
+def _find_terminal_emulator() -> str | None:
+    """Return the path of the first available terminal emulator, or None.
+
+    Result is cached for the process lifetime. Call
+    ``_find_terminal_emulator.cache_clear()`` in tests to reset the cache
+    between cases.
+    """
+    return next(
+        (shutil.which(c) for c in _TERMINAL_EMULATORS if shutil.which(c)),
+        None,
+    )
 
 
 @dataclass
@@ -451,12 +466,7 @@ class AppDiscovery:
             return None
 
         if entry.terminal:
-            terminal = None
-            for candidate in _TERMINAL_EMULATORS:
-                found = shutil.which(candidate)
-                if found:
-                    terminal = found
-                    break
+            terminal = _find_terminal_emulator()
             if terminal is None:
                 logger.warning(
                     "No terminal emulator found for terminal app %s", entry.name
