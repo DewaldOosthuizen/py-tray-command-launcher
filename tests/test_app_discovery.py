@@ -1,15 +1,10 @@
 """Tests for AppDiscovery.clean_exec, build_launch_args, and is_windows_lnk_entry."""
 
-import sys
-from unittest.mock import MagicMock, patch
-
-# Stub PyQt6 before any src imports
-for mod in ["PyQt6", "PyQt6.QtWidgets", "PyQt6.QtCore", "PyQt6.QtGui", "PyQt6.QtNetwork", "PyQt6.Qsci"]:
-    sys.modules[mod] = MagicMock()
+from unittest.mock import patch
 
 import pytest
 
-from src.modules.app_discovery import AppDiscovery, AppEntry
+from modules.app_discovery import AppDiscovery, AppEntry
 
 
 # ---------------------------------------------------------------------------
@@ -66,14 +61,14 @@ def test_build_launch_args_terminal_with_emulator():
     def which_side_effect(candidate):
         return "/usr/bin/xterm" if candidate == "xterm" else None
 
-    with patch("src.modules.app_discovery.shutil.which", side_effect=which_side_effect):
+    with patch("modules.app_discovery.shutil.which", side_effect=which_side_effect):
         result = AppDiscovery.build_launch_args(entry)
     assert result == ["/usr/bin/xterm", "-e", "htop"]
 
 
 def test_build_launch_args_terminal_no_emulator():
     entry = AppEntry(name="Htop", exec_cmd="htop", terminal=True, icon_name="")
-    with patch("src.modules.app_discovery.shutil.which", return_value=None):
+    with patch("modules.app_discovery.shutil.which", return_value=None):
         result = AppDiscovery.build_launch_args(entry)
     assert result is None
 
@@ -87,7 +82,7 @@ def test_build_launch_args_terminal_second_emulator():
         candidates_tried.append(candidate)
         return "/usr/bin/konsole" if candidate == "konsole" else None
 
-    with patch("src.modules.app_discovery.shutil.which", side_effect=which_side_effect):
+    with patch("modules.app_discovery.shutil.which", side_effect=which_side_effect):
         result = AppDiscovery.build_launch_args(entry)
 
     assert result == ["/usr/bin/konsole", "-e", "htop"]
@@ -107,20 +102,20 @@ def test_build_launch_args_shlex_error_fallback():
 
 def test_is_windows_lnk_entry_lnk_path():
     entry = AppEntry(name="App", exec_cmd=r"C:\Users\user\AppData\Roaming\App.lnk", terminal=False, icon_name="")
-    with patch("src.modules.app_discovery.IS_WINDOWS", True):
+    with patch("modules.app_discovery.IS_WINDOWS", True):
         result = AppDiscovery.is_windows_lnk_entry(entry)
     assert result is True
 
 
 def test_is_windows_lnk_entry_non_lnk_path():
     entry = AppEntry(name="Firefox", exec_cmd="/usr/bin/firefox", terminal=False, icon_name="")
-    with patch("src.modules.app_discovery.IS_WINDOWS", True):
+    with patch("modules.app_discovery.IS_WINDOWS", True):
         result = AppDiscovery.is_windows_lnk_entry(entry)
     assert result is False
 
 
 def test_is_windows_lnk_entry_linux_always_false():
     entry = AppEntry(name="App", exec_cmd="some_app.lnk", terminal=False, icon_name="")
-    with patch("src.modules.app_discovery.IS_WINDOWS", False):
+    with patch("modules.app_discovery.IS_WINDOWS", False):
         result = AppDiscovery.is_windows_lnk_entry(entry)
     assert result is False
