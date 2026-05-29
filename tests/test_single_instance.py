@@ -38,8 +38,10 @@ _qc = sys.modules["PyQt6.QtCore"]
 _QSM = MagicMock(name="QSharedMemory")
 setattr(_qc, "QSharedMemory", _QSM)
 _qw = sys.modules["PyQt6.QtWidgets"]
-for _sym in ["QApplication", "QMessageBox", "QLabel", "QVBoxLayout",
-             "QHBoxLayout", "QPushButton", "QDialog", "QWidget"]:
+_qapp = MagicMock(name="QApplication")
+_qapp.instance = MagicMock(return_value=None)
+setattr(_qw, "QApplication", _qapp)
+for _sym in ["QMessageBox", "QLabel", "QVBoxLayout", "QHBoxLayout", "QPushButton", "QDialog", "QWidget"]:
     setattr(_qw, _sym, MagicMock)
 
 from utils.single_instance import SingleInstanceChecker
