@@ -7,18 +7,12 @@ explicitly requests the ``qt_app`` fixture).
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
+from unittest.mock import MagicMock as _MagicMock
 
 import pytest
-
-# ---------------------------------------------------------------------------
-# PyQt6 stub — injected before any src module is imported so the test suite
-# can run headlessly without PyQt6 installed.
-# ---------------------------------------------------------------------------
-from unittest.mock import MagicMock as _MagicMock
 
 def _make_pyqt6_stub():
     pyqt6 = _MagicMock()
@@ -67,6 +61,15 @@ def _make_pyqt6_stub():
         def __getattr__(cls, name):
             return _StubAttr()
 
+    class _QObject(metaclass=_StubMeta):  # noqa: N801
+        """Stub base class for QtCore QObject-derived types under test."""
+        def __init__(self, *args, **kwargs):
+            pass
+        def __getattr__(self, name):
+            attr = _StubAttr()
+            object.__setattr__(self, name, attr)
+            return attr
+
     class _QWidget(metaclass=_StubMeta):  # noqa: N801
         """Stub base class for all Qt widget types under test."""
         def __init__(self, *args, **kwargs):
@@ -75,6 +78,7 @@ def _make_pyqt6_stub():
             attr = _StubAttr()
             object.__setattr__(self, name, attr)
             return attr
+    pyqt6.QtCore.QObject = _QObject
     pyqt6.QtWidgets.QWidget = _QWidget
     pyqt6.QtWidgets.QMainWindow = _QWidget
     pyqt6.QtWidgets.QDialog = _QWidget
@@ -166,4 +170,5 @@ def mock_services() -> MagicMock:
     ]
     svc.resolve_icon_path.return_value = None
     svc.resolve_command_reference.side_effect = lambda group, label, item: item
+    svc.notify_user = MagicMock()
     return svc
