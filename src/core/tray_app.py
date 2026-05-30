@@ -272,7 +272,16 @@ class TrayApp:
             self._running_processes.pop(proc_id, None)
             self._update_tray_badge()
 
-        def _on_error(_error):
+        def _on_error(error):
+            logger.error(
+                "QProcess failed to start for command '%s': %s", command, error
+            )
+            win = output_win_ref()
+            if win is not None:
+                try:
+                    win.append_output(tab, f"\n[ERROR] Process failed to start: {error}\n")
+                except RuntimeError:
+                    pass
             self._running_processes.pop(proc_id, None)
             self._update_tray_badge()
 
