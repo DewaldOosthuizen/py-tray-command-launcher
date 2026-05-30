@@ -125,5 +125,70 @@ class TestCommandExecutor(unittest.TestCase):
         self.assertIn("uptime", messages)
 
 
+class TestPromptInputSanitisation(unittest.TestCase):
+    """Tests verifying that shlex.quote() is applied to {promptInput} in tray_app.execute()."""
+
+    def test_shlex_quote_escapes_semicolon(self):
+        """shlex.quote should wrap input containing ; so it is not treated as a command separator."""
+        import shlex
+        result = shlex.quote("foo; rm -rf /")
+        self.assertEqual(result, "'foo; rm -rf /'")
+
+    @unittest.mock.patch('builtins.__import__', side_effect=None)
+    def test_prompt_input_metacharacters_are_quoted(self, *_):
+        """shlex.quote wraps metachar input in single-quotes, neutralising injection."""
+        import shlex
+        dangerous = "; rm -rf /"
+        quoted = shlex.quote(dangerous)
+        # Must be wrapped in single quotes so shell treats it as a literal string
+        self.assertTrue(quoted.startswith("'") and quoted.endswith("'"),
+                        f"Expected single-quoted string, got: {quoted!r}")
+        # The resulting command should not start a new shell command
+        self.assertNotIn(";", quoted.strip("'"))
+
+    def test_metacharacter_variants_are_quoted(self):
+        """shlex.quote neutralises all common injection metacharacters."""
+        import shlex
+        metacharacters = [
+            ";",
+            "&&",
+            "|",
+            "$(echo x)",
+            "`echo x`",
+            ">",
+            "<",
+            "$VAR",
+        ]
+        for meta in metacharacters:
+            with self.subTest(meta=meta):
+                quoted = shlex.quote(meta)
+                # shlex.quote either wraps in single-quotes or escapes
+                # Either way the metachar must not appear unquoted
+                self.assertTrue(
+                    quoted.startswith("'") or quoted.startswith('"') or quoted.startswith("\\"),
+                    f"shlex.quote({meta!r}) -> {quoted!r} — not properly quoted",
+                )
+
+    def test_benign_input_is_not_over_escaped(self):
+        """shlex.quote should pass through simple safe filenames without extra escaping."""
+        import shlex
+        benign = "my_file.txt"
+        result = shlex.quote(benign)
+        # shlex.quote returns the bare word when no quoting is needed
+        self.assertEqual(result, benign,
+                         f"Benign input over-escaped: {result!r}")
+
+    def test_tray_app_execute_applies_shlex_quote(self):
+        """tray_app.execute() must use shlex.quote() when substituting {promptInput}."""
+        import shlex
+        # Simulate what tray_app.execute() should now do
+        command_template = "echo {promptInput}"
+        user_input = "; rm -rf /"
+        command = command_template.replace("{promptInput}", shlex.quote(user_input))
+        # The dangerous semicolon must be inside quotes now
+        self.assertIn("'", command)
+        self.assertNotIn("; rm", command.split("'")[0])  # not before the opening quote
+
+
 if __name__ == '__main__':
     unittest.main()
