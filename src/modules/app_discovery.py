@@ -419,7 +419,7 @@ class AppDiscovery:
     def build_launch_args(entry: "AppEntry") -> list[str] | None:
         """Build the argv list for launching *entry*.
 
-        Uses a two-level fallback strategy to parse the Exec= value:
+        Uses a three-level fallback strategy to parse the Exec= value:
 
         1. ``shlex.split`` — handles quoted arguments correctly.
         2. Whitespace split (``str.split()``) — used when ``shlex.split`` fails

@@ -138,6 +138,12 @@ class TestCommandExecutor(unittest.TestCase):
             self.executor.execute_command_process(mock_app, "ls")
 
         mock_process.errorOccurred.connect.assert_called_once()
+        # Verify ordering: errorOccurred.connect must appear before start()
+        call_names = [str(c) for c in mock_process.mock_calls]
+        connect_idx = next(i for i, c in enumerate(call_names) if 'errorOccurred.connect' in c)
+        start_idx = next(i for i, c in enumerate(call_names) if c == 'call.start()')
+        self.assertLess(connect_idx, start_idx,
+                        "errorOccurred.connect() must be called before start()")
 
     def test_execute_command_process_wires_finished_signal(self):
         """execute_command_process should connect finished before start()."""
@@ -148,6 +154,12 @@ class TestCommandExecutor(unittest.TestCase):
             self.executor.execute_command_process(mock_app, "ls")
 
         mock_process.finished.connect.assert_called_once()
+        # Verify ordering: finished.connect must appear before start()
+        call_names = [str(c) for c in mock_process.mock_calls]
+        connect_idx = next(i for i, c in enumerate(call_names) if 'finished.connect' in c)
+        start_idx = next(i for i, c in enumerate(call_names) if c == 'call.start()')
+        self.assertLess(connect_idx, start_idx,
+                        "finished.connect() must be called before start()")
 
     def test_execute_command_process_silently_wires_error_signal(self):
         """Silent path should also wire errorOccurred via execute_command_process."""
@@ -181,13 +193,13 @@ class TestCommandExecutor(unittest.TestCase):
         with patch('modules.command_executor.QProcess', return_value=mock_process):
             with patch('modules.command_executor.logger') as mock_logger:
                 self.executor.execute_command_process(mock_app, "true")
+                info_count_before = mock_logger.info.call_count
                 finished_cb = mock_process.finished.connect.call_args[0][0]
                 finished_cb(0, "NormalExit")
 
-        # logger.info is also called at start, so check it was called at least once
-        # but warning should NOT be called
         mock_logger.warning.assert_not_called()
-        mock_logger.info.assert_called()
+        self.assertGreater(mock_logger.info.call_count, info_count_before,
+                           "finished callback should call logger.info for zero exit code")
 
 
 if __name__ == '__main__':
