@@ -31,12 +31,11 @@ logger = logging.getLogger(__name__)
 
 try:
     from rapidfuzz import fuzz as _fuzz
+
     _FUZZY_AVAILABLE = True
 except ImportError:
     _FUZZY_AVAILABLE = False
-    logger.warning(
-        "rapidfuzz not available; falling back to substring search in CommandSearch"
-    )
+    logger.warning("rapidfuzz not available; falling back to substring search in CommandSearch")
 
 
 def _score(query: str, text: str) -> float:
@@ -109,11 +108,13 @@ class CommandSearch:
                 scored.sort(key=lambda x: x[0], reverse=True)
 
             for _s, cmd in scored:
-                item = QTreeWidgetItem([
-                    cmd["label"],
-                    cmd["group"],
-                    cmd.get("command", ""),
-                ])
+                item = QTreeWidgetItem(
+                    [
+                        cmd["label"],
+                        cmd["group"],
+                        cmd.get("command", ""),
+                    ]
+                )
                 item.setData(0, Qt.ItemDataRole.UserRole, cmd)
                 results_tree.addTopLevelItem(item)
 

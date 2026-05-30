@@ -43,22 +43,22 @@ logger = logging.getLogger(__name__)
 _ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\-_]|\x1B\[[^@-~]*[@-~]")
 
 _ANSI_COLORS_FG = {
-    30: "#4c4f69",   # black  (uses theme fg light/dark neutrals)
-    31: "#d20f39",   # red
-    32: "#40a02b",   # green
-    33: "#df8e1d",   # yellow
-    34: "#1e66f5",   # blue
-    35: "#ea76cb",   # magenta
-    36: "#04a5e5",   # cyan
-    37: "#cdd6f4",   # white
-    90: "#585b70",   # bright black
-    91: "#f38ba8",   # bright red
-    92: "#a6e3a1",   # bright green
-    93: "#f9e2af",   # bright yellow
-    94: "#89b4fa",   # bright blue
-    95: "#f5c2e7",   # bright magenta
-    96: "#89dceb",   # bright cyan
-    97: "#ffffff",   # bright white
+    30: "#4c4f69",  # black  (uses theme fg light/dark neutrals)
+    31: "#d20f39",  # red
+    32: "#40a02b",  # green
+    33: "#df8e1d",  # yellow
+    34: "#1e66f5",  # blue
+    35: "#ea76cb",  # magenta
+    36: "#04a5e5",  # cyan
+    37: "#cdd6f4",  # white
+    90: "#585b70",  # bright black
+    91: "#f38ba8",  # bright red
+    92: "#a6e3a1",  # bright green
+    93: "#f9e2af",  # bright yellow
+    94: "#89b4fa",  # bright blue
+    95: "#f5c2e7",  # bright magenta
+    96: "#89dceb",  # bright cyan
+    97: "#ffffff",  # bright white
 }
 
 _ANSI_COLORS_BG = {k + 10: v for k, v in _ANSI_COLORS_FG.items()}
@@ -99,6 +99,7 @@ def _parse_sgr(codes: list[int], fmt: QTextCharFormat) -> QTextCharFormat:
 # Per-tab output widget
 # ---------------------------------------------------------------------------
 
+
 class _OutputTab(QTextEdit):
     """A single read-only output tab with ANSI rendering support."""
 
@@ -116,7 +117,7 @@ class _OutputTab(QTextEdit):
         last_end = 0
         for match in _ANSI_ESC_RE.finditer(text):
             # Flush plain text up to the escape sequence
-            plain = text[last_end:match.start()]
+            plain = text[last_end : match.start()]
             if plain:
                 cursor.insertText(plain, self._fmt)
 
@@ -139,6 +140,7 @@ class _OutputTab(QTextEdit):
 # ---------------------------------------------------------------------------
 # RichOutputWindow
 # ---------------------------------------------------------------------------
+
 
 class RichOutputWindow(QMainWindow):
     """Tabbed, ANSI-aware output window."""
@@ -220,7 +222,9 @@ class RichOutputWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     @classmethod
-    def show_output(cls, title: str, output: str, parent: QWidget | None = None) -> "RichOutputWindow":
+    def show_output(
+        cls, title: str, output: str, parent: QWidget | None = None
+    ) -> "RichOutputWindow":
         """Create a stand-alone window showing *output* for *title*."""
         win = cls(parent)
         tab = win.open_process_tab(title)

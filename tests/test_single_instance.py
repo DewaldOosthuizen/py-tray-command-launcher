@@ -32,10 +32,22 @@ _qw = sys.modules["PyQt6.QtWidgets"]
 _qapp = MagicMock(name="QApplication")
 _qapp.instance = MagicMock(return_value=None)
 setattr(_qw, "QApplication", _qapp)
-for _sym in ["QMessageBox", "QLabel", "QVBoxLayout", "QHBoxLayout", "QPushButton", "QDialog", "QWidget"]:
+_syms_to_stub = ["QMessageBox", "QLabel", "QVBoxLayout", "QHBoxLayout", "QPushButton", "QDialog", "QWidget"]
+_saved_qw_attrs = {s: getattr(_qw, s, None) for s in _syms_to_stub}
+for _sym in _syms_to_stub:
     setattr(_qw, _sym, MagicMock)
 
 from utils.single_instance import SingleInstanceChecker
+
+# Restore widget stubs so subsequent UI tests still receive the conftest _QWidget stubs.
+for _sym, _val in _saved_qw_attrs.items():
+    if _val is not None:
+        setattr(_qw, _sym, _val)
+    else:
+        try:
+            delattr(_qw, _sym)
+        except AttributeError:
+            pass
 
 
 def _make_checker(key="test-key", pidfile=None):

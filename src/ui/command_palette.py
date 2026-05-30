@@ -52,25 +52,58 @@ logger = logging.getLogger(__name__)
 
 
 _PYNPUT_WRAP = {
-    'ctrl', 'shift', 'alt', 'altgr', 'cmd', 'win', 'super', 'meta',
-    'space', 'enter', 'return', 'tab', 'esc', 'escape',
-    'backspace', 'delete', 'insert', 'home', 'end',
-    'page_up', 'page_down', 'up', 'down', 'left', 'right',
-    'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
+    "ctrl",
+    "shift",
+    "alt",
+    "altgr",
+    "cmd",
+    "win",
+    "super",
+    "meta",
+    "space",
+    "enter",
+    "return",
+    "tab",
+    "esc",
+    "escape",
+    "backspace",
+    "delete",
+    "insert",
+    "home",
+    "end",
+    "page_up",
+    "page_down",
+    "up",
+    "down",
+    "left",
+    "right",
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "f5",
+    "f6",
+    "f7",
+    "f8",
+    "f9",
+    "f10",
+    "f11",
+    "f12",
 }
 
 
 def _to_pynput_str(hotkey: str) -> str:
     """Convert 'ctrl+shift+space' to '<ctrl>+<shift>+<space>' for pynput."""
     parts = []
-    for k in hotkey.lower().split('+'):
+    for k in hotkey.lower().split("+"):
         k = k.strip()
-        parts.append(f'<{k}>' if (k in _PYNPUT_WRAP or len(k) > 1) else k)
-    return '+'.join(parts)
+        parts.append(f"<{k}>" if (k in _PYNPUT_WRAP or len(k) > 1) else k)
+    return "+".join(parts)
 
 
 class _HotkeyTrigger(QObject):
     """Thread-safe bridge: emit named signals from any thread into the Qt main loop."""
+
     cmd_triggered = pyqtSignal()
     app_triggered = pyqtSignal()
 
@@ -82,6 +115,7 @@ _TAB_APPS = "apps"
 
 try:
     from rapidfuzz import fuzz as _fuzz
+
     _FUZZY_AVAILABLE = True
 except ImportError:
     _FUZZY_AVAILABLE = False
@@ -127,15 +161,11 @@ class _PaletteWindow(QWidget):
         self._cmd_tab_btn = QPushButton("Commands")
         self._cmd_tab_btn.setObjectName("PaletteTabActive")
         self._cmd_tab_btn.setFlat(True)
-        self._cmd_tab_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
+        self._cmd_tab_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self._app_tab_btn = QPushButton("Apps")
         self._app_tab_btn.setObjectName("PaletteTab")
         self._app_tab_btn.setFlat(True)
-        self._app_tab_btn.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
+        self._app_tab_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         tab_row.addWidget(self._cmd_tab_btn)
         tab_row.addWidget(self._app_tab_btn)
         layout.addLayout(tab_row)
@@ -254,6 +284,7 @@ class _PaletteWindow(QWidget):
         from PyQt6.QtGui import QIcon as _QIcon
 
         from modules.app_discovery import app_discovery
+
         self._app_list.clear()
         apps = app_discovery.search(query)
 
@@ -350,7 +381,11 @@ class _PaletteWindow(QWidget):
     # ------------------------------------------------------------------
 
     def eventFilter(self, obj, event):
-        if obj is self._search and isinstance(event, QKeyEvent) and event.type() == QEvent.Type.KeyPress:
+        if (
+            obj is self._search
+            and isinstance(event, QKeyEvent)
+            and event.type() == QEvent.Type.KeyPress
+        ):
             key = event.key()
             active = self._active_list()
             if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
@@ -426,7 +461,9 @@ class CommandPalette:
         self._app_hotkey: str = ""
         self._trigger = _HotkeyTrigger()
         self._trigger.cmd_triggered.connect(self.show_palette, Qt.ConnectionType.QueuedConnection)
-        self._trigger.app_triggered.connect(self.show_app_launcher, Qt.ConnectionType.QueuedConnection)
+        self._trigger.app_triggered.connect(
+            self.show_app_launcher, Qt.ConnectionType.QueuedConnection
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -468,6 +505,7 @@ class CommandPalette:
 
         try:
             from pynput import keyboard as _kb
+
             self._hotkey_listener = _kb.GlobalHotKeys(hotkey_map)
             self._hotkey_listener.start()
             logger.info(

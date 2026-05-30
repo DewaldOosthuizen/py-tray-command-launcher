@@ -28,9 +28,7 @@ class ImportExport:
         groups = list(commands.keys())
 
         if not groups:
-            QMessageBox.warning(
-                None, "Export Failed", "No command groups found to export."
-            )
+            QMessageBox.warning(None, "Export Failed", "No command groups found to export.")
             return
 
         # Let user select a group
@@ -91,8 +89,8 @@ class ImportExport:
             command_paths = config_manager.get_command_paths()
             logger.debug(
                 "Import using commands file: %s (config dir: %s)",
-                command_paths['active_commands_file'],
-                command_paths['config_dir'],
+                command_paths["active_commands_file"],
+                command_paths["config_dir"],
             )
             success = config_manager.import_command_group(file_path, overwrite)
 

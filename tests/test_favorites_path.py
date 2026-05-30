@@ -25,17 +25,49 @@ for _mod in [
 ]:
     if _mod not in sys.modules:
         sys.modules[_mod] = types.ModuleType(_mod)
-# Provide the specific symbols favorites.py imports at module level
+# Provide the specific symbols favorites.py imports at module level.
+# Save existing values so we can restore them after the import, preventing
+# pollution of the conftest stubs for later test modules.
 _qw = sys.modules["PyQt6.QtWidgets"]
-for _sym in ["QMenu", "QMessageBox", "QInputDialog"]:
+_qw_syms = ["QMenu", "QMessageBox", "QInputDialog"]
+_saved_qw = {s: getattr(_qw, s, None) for s in _qw_syms}
+for _sym in _qw_syms:
     setattr(_qw, _sym, MagicMock)
 _qg = sys.modules["PyQt6.QtGui"]
-for _sym in ["QIcon", "QCursor", "QAction"]:
+_qg_syms = ["QIcon", "QCursor", "QAction"]
+_saved_qg = {s: getattr(_qg, s, None) for s in _qg_syms}
+for _sym in _qg_syms:
     setattr(_qg, _sym, MagicMock)
 _qc = sys.modules["PyQt6.QtCore"]
+_saved_qt = getattr(_qc, "Qt", None)
 setattr(_qc, "Qt", MagicMock)
 
 from modules.favorites import _build_command_path
+
+# Restore originals so subsequent UI test modules get the conftest _QWidget stubs.
+for _sym, _val in _saved_qw.items():
+    if _val is not None:
+        setattr(_qw, _sym, _val)
+    else:
+        try:
+            delattr(_qw, _sym)
+        except AttributeError:
+            pass
+for _sym, _val in _saved_qg.items():
+    if _val is not None:
+        setattr(_qg, _sym, _val)
+    else:
+        try:
+            delattr(_qg, _sym)
+        except AttributeError:
+            pass
+if _saved_qt is not None:
+    setattr(_qc, "Qt", _saved_qt)
+else:
+    try:
+        delattr(_qc, "Qt")
+    except AttributeError:
+        pass
 
 
 class TestBuildCommandPath:
