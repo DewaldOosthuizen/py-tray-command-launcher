@@ -1,68 +1,149 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+"""Tests for AppDiscovery.clean_exec, build_launch_args, and is_windows_lnk_entry."""
 
-"""Tests for app_discovery module — build_launch_args fallback behaviour."""
+from unittest.mock import patch
 
-# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #49
-# Failure: All tests show ERROR when run via `pytest` (full suite) due to a
-#   pre-existing PyQt/pytest-qt plugin conflict that affects every test file in
-#   the project (baseline: 232 errors before any issue #49 changes). Tests pass
-#   correctly in isolation: `pytest tests/test_app_discovery.py` → 2 passed.
-# Suggested fix: Investigate pyproject.toml pytest configuration; the pytest-qt
-#   plugin likely conflicts with sys.modules PyQt6 stubs used across test files.
-#   Consider adding `qt_api = "pyqt5"` to [tool.pytest.ini_options] or disabling
-#   the qt plugin for unit-test runs.
+import pytest
 
-import sys
-from pathlib import Path
-import unittest
-from unittest.mock import MagicMock
-
-# Stub PyQt6 before importing any src modules
-_pyqt6_stub = MagicMock()
-sys.modules.setdefault("PyQt6", _pyqt6_stub)
-sys.modules.setdefault("PyQt6.QtCore", _pyqt6_stub.QtCore)
-sys.modules.setdefault("PyQt6.QtWidgets", _pyqt6_stub.QtWidgets)
-sys.modules.setdefault("PyQt6.QtGui", _pyqt6_stub.QtGui)
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = PROJECT_ROOT / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-from modules.app_discovery import AppDiscovery, AppEntry  # noqa: E402
+from modules.app_discovery import AppDiscovery, AppEntry, _find_terminal_emulator
 
 
-def _make_entry(exec_cmd: str, name: str = "TestApp", terminal: bool = False) -> AppEntry:
-    entry = AppEntry.__new__(AppEntry)
-    entry.name = name
-    entry.exec_cmd = exec_cmd
-    entry.icon_name = ""
-    entry.categories = []
-    entry.terminal = terminal
-    return entry
+@pytest.fixture(autouse=True)
+def _clear_terminal_emulator_cache():
+    _find_terminal_emulator.cache_clear()
+    yield
+    _find_terminal_emulator.cache_clear()
 
 
-class TestBuildLaunchArgsFallback(unittest.TestCase):
-    """Tests for two-level fallback in build_launch_args (issue #49)."""
+# ---------------------------------------------------------------------------
+# clean_exec
+# ---------------------------------------------------------------------------
 
-    def test_build_launch_args_unmatched_quote_falls_back_to_whitespace_split(self):
-        """Exec= with unmatched quote must fall back to whitespace split, not single token."""
-        entry = _make_entry("/usr/bin/app --flag 'bad")
+@pytest.mark.parametrize("placeholder", ["%f", "%F", "%u", "%U", "%i", "%c", "%k"])
+def test_clean_exec_placeholder_removal_individual(placeholder):
+    result = AppDiscovery.clean_exec(f"gedit {placeholder}")
+    assert placeholder not in result
+    assert "gedit" in result
+
+
+def test_clean_exec_multiple_placeholders():
+    result = AppDiscovery.clean_exec("gedit %F %U %i")
+    assert result == "gedit"
+
+
+def test_clean_exec_no_placeholders():
+    result = AppDiscovery.clean_exec("gedit /tmp/file.txt")
+    assert result == "gedit /tmp/file.txt"
+
+
+def test_clean_exec_only_placeholders_returns_empty():
+    result = AppDiscovery.clean_exec("%F %U")
+    assert result == ""
+
+
+# ---------------------------------------------------------------------------
+# build_launch_args
+# ---------------------------------------------------------------------------
+
+
+def test_build_launch_args_non_terminal():
+    entry = AppEntry(name="Gedit", exec_cmd="gedit %F", terminal=False, icon_name="")
+    result = AppDiscovery.build_launch_args(entry)
+    assert result == ["gedit"]
+
+
+def test_build_launch_args_empty_after_clean():
+    entry = AppEntry(name="Bad", exec_cmd="%F %U", terminal=False, icon_name="")
+    result = AppDiscovery.build_launch_args(entry)
+    assert result is None
+
+
+def test_build_launch_args_multi_token():
+    entry = AppEntry(name="Env", exec_cmd="env DISPLAY=:0 gedit", terminal=False, icon_name="")
+    result = AppDiscovery.build_launch_args(entry)
+    assert result == ["env", "DISPLAY=:0", "gedit"]
+
+
+def test_build_launch_args_terminal_with_emulator():
+    entry = AppEntry(name="Htop", exec_cmd="htop", terminal=True, icon_name="")
+
+    def which_side_effect(candidate):
+        return "/usr/bin/xterm" if candidate == "xterm" else None
+
+    with patch("modules.app_discovery.shutil.which", side_effect=which_side_effect):
         result = AppDiscovery.build_launch_args(entry)
-        self.assertIsNotNone(result)
-        self.assertIsInstance(result, list)
-        self.assertGreater(len(result), 1, "Expected multiple tokens, got single-token fallback")
-        self.assertEqual(result[0], "/usr/bin/app")
+    assert result == ["/usr/bin/xterm", "-e", "htop"]
 
-    def test_build_launch_args_empty_after_failed_shlex_returns_none(self):
-        """Exec= that becomes empty/whitespace after field-code stripping returns None."""
-        # Use an exec_cmd whose field codes strip to whitespace; shlex will also
-        # fail on unmatched quote so we combine both — but the simplest case is
-        # a purely whitespace exec_cmd after cleaning.
-        entry = _make_entry("   ")
+
+def test_build_launch_args_terminal_no_emulator():
+    entry = AppEntry(name="Htop", exec_cmd="htop", terminal=True, icon_name="")
+    with patch("modules.app_discovery.shutil.which", return_value=None):
         result = AppDiscovery.build_launch_args(entry)
-        self.assertIsNone(result)
+    assert result is None
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_build_launch_args_terminal_second_emulator():
+    entry = AppEntry(name="Htop", exec_cmd="htop", terminal=True, icon_name="")
+    # x-terminal-emulator first, gnome-terminal second — make konsole succeed
+    candidates_tried = []
+
+    def which_side_effect(candidate):
+        candidates_tried.append(candidate)
+        return "/usr/bin/konsole" if candidate == "konsole" else None
+
+    with patch("modules.app_discovery.shutil.which", side_effect=which_side_effect):
+        result = AppDiscovery.build_launch_args(entry)
+
+    assert result == ["/usr/bin/konsole", "-e", "htop"]
+    # konsole is not the first candidate, so first candidates should have returned None
+    assert candidates_tried.index("konsole") > 0
+
+
+def test_build_launch_args_shlex_error_fallback():
+    entry = AppEntry(name="Bad", exec_cmd="app 'unclosed", terminal=False, icon_name="")
+    result = AppDiscovery.build_launch_args(entry)
+    assert result == ["app", "'unclosed"]
+
+
+class TestFindTerminalEmulatorCache:
+    """Tests for issue #50 — cached terminal emulator lookup."""
+
+    def setup_method(self):
+        _find_terminal_emulator.cache_clear()
+
+    def teardown_method(self):
+        _find_terminal_emulator.cache_clear()
+
+    def test_shutil_which_called_only_once_across_multiple_build_launch_args(self):
+        entry = AppEntry(name="Htop", exec_cmd="htop", terminal=True, icon_name="")
+
+        with patch("modules.app_discovery.shutil.which", return_value="/usr/bin/xterm") as mock_which:
+            AppDiscovery.build_launch_args(entry)
+            AppDiscovery.build_launch_args(entry)
+
+        assert mock_which.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# is_windows_lnk_entry
+# ---------------------------------------------------------------------------
+
+
+def test_is_windows_lnk_entry_lnk_path():
+    entry = AppEntry(name="App", exec_cmd=r"C:\Users\user\AppData\Roaming\App.lnk", terminal=False, icon_name="")
+    with patch("modules.app_discovery.IS_WINDOWS", True):
+        result = AppDiscovery.is_windows_lnk_entry(entry)
+    assert result is True
+
+
+def test_is_windows_lnk_entry_non_lnk_path():
+    entry = AppEntry(name="Firefox", exec_cmd="/usr/bin/firefox", terminal=False, icon_name="")
+    with patch("modules.app_discovery.IS_WINDOWS", True):
+        result = AppDiscovery.is_windows_lnk_entry(entry)
+    assert result is False
+
+
+def test_is_windows_lnk_entry_linux_always_false():
+    entry = AppEntry(name="App", exec_cmd="some_app.lnk", terminal=False, icon_name="")
+    with patch("modules.app_discovery.IS_WINDOWS", False):
+        result = AppDiscovery.is_windows_lnk_entry(entry)
+    assert result is False

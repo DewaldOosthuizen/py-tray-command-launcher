@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-The source tree is organised into three layers:
+The source tree is organised into four top-level areas:
 
     src/
       core/          Orchestration and shared infrastructure
@@ -64,8 +64,19 @@ Widgets must not contain business logic.
 
 | File               | Responsibility                                              |
 |--------------------|-------------------------------------------------------------|
-| single_instance.py | Prevents multiple app instances (lock file / socket)        |
+| single_instance.py | Prevents multiple app instances via `QSharedMemory` and a PID-file fallback |
 | dialogs.py         | Shared QMessageBox/QInputDialog convenience wrappers        |
+
+## Dependency Convention
+
+`pyproject.toml` is the single source of truth for all runtime dependencies.
+The `requirements.txt` file is only a dev-install convenience shim:
+
+    -e ".[dev]"
+
+It must never declare standalone version pins. If you need to add, remove, or
+tighten a dependency (e.g. `PyQt6>=6.11.0`), edit `[project].dependencies` in
+`pyproject.toml` only.
 
 ## Development Setup
 
