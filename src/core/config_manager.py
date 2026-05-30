@@ -220,6 +220,8 @@ class ConfigManager:
                 else:
                     settings = {}
 
+                if not self._validate_settings_schema(settings):
+                    settings = {}
                 # Deep-merge so partial nested dicts (e.g. quick_launch_bar, output_font,
                 # logging) retain their default sub-keys when the user only overrides some.
                 self._settings_cache = self._deep_merge(self._SETTINGS_DEFAULTS, settings)
@@ -847,6 +849,38 @@ class ConfigManager:
                         raise ConfigurationError(
                             f"prompt in '{group_name}.{item_name}' must be a string"
                         )
+
+    def _validate_settings_schema(self, settings: dict[str, Any]) -> bool:
+        """Validate *settings* against settings.schema.json if available and jsonschema is installed.
+
+        Logs a warning on validation failure; never raises.
+        """
+        schema_path = self.defaults_dir / "settings.schema.json"
+        if not schema_path.exists():
+            return True
+        try:
+            import jsonschema  # optional dependency
+        except ImportError:
+            logger.debug("jsonschema not installed; skipping settings.json schema validation")
+            return True
+        try:
+            with open(schema_path, encoding="utf-8") as f:
+                schema = json.load(f)
+            jsonschema.validate(instance=settings, schema=schema)
+        except jsonschema.ValidationError as exc:
+            path = " → ".join(str(p) for p in exc.absolute_path) or "(root)"
+            logger.warning(
+                "settings.json validation error at %s: %s",
+                path,
+                exc.message,
+            )
+            return False
+        except jsonschema.SchemaError as exc:
+            logger.warning(
+                "settings.schema.json is invalid; skipping schema validation: %s",
+                exc.message,
+            )
+        return True
 
     def _validate_commands_schema(self, commands: dict[str, Any]) -> None:
         """Validate *commands* against commands.schema.json if available and jsonschema is installed.
