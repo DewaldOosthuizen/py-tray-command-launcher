@@ -79,6 +79,11 @@ pip install .
 pip install -e ".[dev]"
 ```
 
+> **Dependency convention:** `pyproject.toml` is the single source of truth for all
+> runtime dependencies (including the `PyQt6>=6.11.0` lower-bound constraint).
+> `requirements.txt` is a dev-install convenience shim (`-e ".[dev]"`) and must never
+> declare standalone version pins — add or change deps only in `pyproject.toml`.
+
 ---
 
 ## Configuration

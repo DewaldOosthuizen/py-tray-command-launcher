@@ -1,14 +1,21 @@
 # Contributing to py-tray-command-launcher
 
+## Dependency Convention
+
+`pyproject.toml` is the single source of truth for all runtime dependencies.
+The `requirements.txt` file is only a dev-install convenience shim:
+
+    -e ".[dev]"
+
+It must never declare standalone version pins. If you need to add, remove, or
+tighten a dependency (e.g. `PyQt6>=6.11.0`), edit `[project].dependencies` in
+`pyproject.toml` only.
+
 ## Development Setup
 
 Install the project and its linting tools:
 
     pip install ruff
-    pip install -e .
-
-Or, once dev extras are added to pyproject.toml:
-
     pip install -e ".[dev]"
 
 ## Linting
