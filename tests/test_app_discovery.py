@@ -35,7 +35,7 @@ def _make_entry(exec_cmd: str, name: str = "TestApp", terminal: bool = False) ->
 
 
 class TestBuildLaunchArgsFallback(unittest.TestCase):
-    """Tests for two-level fallback in build_launch_args (issue #49)."""
+    """Tests for two-level fallback in build_launch_args."""
 
     def test_build_launch_args_unmatched_quote_falls_back_to_whitespace_split(self):
         """Exec= with unmatched quote must fall back to whitespace split, not single token."""
