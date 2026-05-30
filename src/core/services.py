@@ -30,3 +30,4 @@ class AppServices:
     reload_history_commands: Callable[[], None]
     reload_favorites_commands: Callable[[], None]
     resolve_icon_path: Callable[[str], str]
+    notify_user: Callable[[str, str], None]

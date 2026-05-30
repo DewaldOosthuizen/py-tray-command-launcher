@@ -104,6 +104,21 @@ def test_build_launch_args_shlex_error_fallback():
     assert result == ["app", "'unclosed"]
 
 
+def test_build_launch_args_unmatched_quote_falls_back_to_whitespace_split():
+    entry = AppEntry(name="TestApp", exec_cmd="/usr/bin/app --flag 'bad", terminal=False, icon_name="")
+    result = AppDiscovery.build_launch_args(entry)
+    assert result is not None
+    assert isinstance(result, list)
+    assert len(result) > 1
+    assert result[0] == "/usr/bin/app"
+
+
+def test_build_launch_args_whitespace_exec_returns_none():
+    entry = AppEntry(name="TestApp", exec_cmd="   ", terminal=False, icon_name="")
+    result = AppDiscovery.build_launch_args(entry)
+    assert result is None
+
+
 class TestFindTerminalEmulatorCache:
     """Tests for issue #50 — cached terminal emulator lookup."""
 
