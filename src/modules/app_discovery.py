@@ -70,10 +70,11 @@ def _find_terminal_emulator() -> str | None:
     ``_find_terminal_emulator.cache_clear()`` in tests to reset the cache
     between cases.
     """
-    return next(
-        (shutil.which(c) for c in _TERMINAL_EMULATORS if shutil.which(c)),
-        None,
-    )
+    for candidate in _TERMINAL_EMULATORS:
+        found = shutil.which(candidate)
+        if found:
+            return found
+    return None
 
 
 @dataclass
