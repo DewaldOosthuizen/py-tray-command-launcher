@@ -35,25 +35,58 @@ logger = logging.getLogger(__name__)
 
 
 _PYNPUT_WRAP = {
-    'ctrl', 'shift', 'alt', 'altgr', 'cmd', 'win', 'super', 'meta',
-    'space', 'enter', 'return', 'tab', 'esc', 'escape',
-    'backspace', 'delete', 'insert', 'home', 'end',
-    'page_up', 'page_down', 'up', 'down', 'left', 'right',
-    'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
+    "ctrl",
+    "shift",
+    "alt",
+    "altgr",
+    "cmd",
+    "win",
+    "super",
+    "meta",
+    "space",
+    "enter",
+    "return",
+    "tab",
+    "esc",
+    "escape",
+    "backspace",
+    "delete",
+    "insert",
+    "home",
+    "end",
+    "page_up",
+    "page_down",
+    "up",
+    "down",
+    "left",
+    "right",
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "f5",
+    "f6",
+    "f7",
+    "f8",
+    "f9",
+    "f10",
+    "f11",
+    "f12",
 }
 
 
 def _to_pynput_str(hotkey: str) -> str:
     """Convert 'ctrl+shift+b' to '<ctrl>+<shift>+b' for pynput."""
     parts = []
-    for k in hotkey.lower().split('+'):
+    for k in hotkey.lower().split("+"):
         k = k.strip()
-        parts.append(f'<{k}>' if (k in _PYNPUT_WRAP or len(k) > 1) else k)
-    return '+'.join(parts)
+        parts.append(f"<{k}>" if (k in _PYNPUT_WRAP or len(k) > 1) else k)
+    return "+".join(parts)
 
 
 class _HotkeyTrigger(QObject):
     """Thread-safe bridge: emit triggered from any thread into the Qt main loop."""
+
     triggered = pyqtSignal()
 
 
@@ -105,10 +138,7 @@ class QuickLaunchBar(QWidget):
 
         settings = self.services.config_manager.get_settings()
         pinned = settings.get("quick_launch_bar", {}).get("pinned", [])
-        all_cmds = {
-            (c["group"], c["label"]): c
-            for c in self.services.get_all_commands()
-        }
+        all_cmds = {(c["group"], c["label"]): c for c in self.services.get_all_commands()}
 
         for pin in pinned:
             group = pin.get("group", "")
@@ -138,9 +168,9 @@ class QuickLaunchBar(QWidget):
 
         if not pinned:
             from PyQt6.QtWidgets import QLabel
+
             placeholder = QLabel(
-                "No pinned commands — add entries to "
-                "quick_launch_bar.pinned in settings.json",
+                "No pinned commands — add entries to quick_launch_bar.pinned in settings.json",
                 self,
             )
             placeholder.setObjectName("QLBPlaceholder")
@@ -245,10 +275,9 @@ class QuickLaunchBar(QWidget):
             return False
         try:
             from pynput import keyboard as _kb
+
             pynput_key = _to_pynput_str(hotkey)
-            self._hotkey_handle = _kb.GlobalHotKeys(
-                {pynput_key: self._trigger.triggered.emit}
-            )
+            self._hotkey_handle = _kb.GlobalHotKeys({pynput_key: self._trigger.triggered.emit})
             self._hotkey_handle.start()
             logger.info("Quick-Launch Bar hotkey registered: %s (%s)", hotkey, pynput_key)
             return True

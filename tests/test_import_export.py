@@ -7,6 +7,7 @@ sys.modules.setdefault("PyQt6.QtWidgets", _pyqt6.QtWidgets)
 sys.modules.setdefault("PyQt6.QtCore", _pyqt6.QtCore)
 sys.modules.setdefault("PyQt6.QtGui", _pyqt6.QtGui)
 
+_orig_cm = sys.modules.get("core.config_manager")
 _cm_mock = MagicMock()
 sys.modules["core.config_manager"] = _cm_mock
 
@@ -15,6 +16,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from modules.import_export import ImportExport
 import pytest
+
+# Restore the real module so subsequent test files get the real ConfigManager.
+if _orig_cm is None:
+    sys.modules.pop("core.config_manager", None)
+else:
+    sys.modules["core.config_manager"] = _orig_cm
 
 
 def _make_ie():

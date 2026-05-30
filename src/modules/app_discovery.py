@@ -33,6 +33,7 @@ IS_WINDOWS = sys.platform == "win32"
 
 try:
     from rapidfuzz import fuzz as _fuzz
+
     _FUZZY_AVAILABLE = True
 except ImportError:
     _FUZZY_AVAILABLE = False
@@ -102,9 +103,7 @@ class AppDiscovery:
         # cache_key → QPixmap; eliminates repeated disk I/O on every keystroke
         self._pixmap_cache: dict[str, QPixmap] = {}
         if not IS_WINDOWS:
-            threading.Thread(
-                target=self._build_icon_index, daemon=True, name="icon-index"
-            ).start()
+            threading.Thread(target=self._build_icon_index, daemon=True, name="icon-index").start()
 
     # ------------------------------------------------------------------
     # Loading
@@ -125,14 +124,10 @@ class AppDiscovery:
         """Scan XDG application directories (.desktop files)."""
         search_dirs = []
 
-        xdg_data_home = os.environ.get(
-            "XDG_DATA_HOME", str(Path.home() / ".local" / "share")
-        )
+        xdg_data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
         search_dirs.append(Path(xdg_data_home) / "applications")
 
-        xdg_data_dirs = os.environ.get(
-            "XDG_DATA_DIRS", "/usr/local/share:/usr/share"
-        )
+        xdg_data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
         for d in xdg_data_dirs.split(":"):
             if d.strip():
                 search_dirs.append(Path(d.strip()) / "applications")
@@ -159,14 +154,10 @@ class AppDiscovery:
 
         appdata = os.environ.get("APPDATA", "")
         if appdata:
-            search_dirs.append(
-                Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
-            )
+            search_dirs.append(Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs")
 
         programdata = os.environ.get("PROGRAMDATA", r"C:\ProgramData")
-        search_dirs.append(
-            Path(programdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
-        )
+        search_dirs.append(Path(programdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs")
 
         apps: list[AppEntry] = []
         seen_names: set = set()
@@ -183,13 +174,15 @@ class AppDiscovery:
                 categories = [p for p in rel.parts[:-1] if p]
                 seen_names.add(name)
                 lnk_path = str(lnk_file)
-                apps.append(AppEntry(
-                    name=name,
-                    exec_cmd=lnk_path,   # launched via os.startfile()
-                    icon_name=lnk_path,  # resolved via QFileIconProvider
-                    categories=categories,
-                    terminal=False,
-                ))
+                apps.append(
+                    AppEntry(
+                        name=name,
+                        exec_cmd=lnk_path,  # launched via os.startfile()
+                        icon_name=lnk_path,  # resolved via QFileIconProvider
+                        categories=categories,
+                        terminal=False,
+                    )
+                )
 
         apps.sort(key=lambda a: a.name.lower())
         self._apps = apps
@@ -233,9 +226,9 @@ class AppDiscovery:
         icon_name = get("Icon")
         terminal = getbool("Terminal")
         raw_categories = get("Categories")
-        categories = [
-            c.strip() for c in raw_categories.split(";") if c.strip()
-        ] if raw_categories else []
+        categories = (
+            [c.strip() for c in raw_categories.split(";") if c.strip()] if raw_categories else []
+        )
 
         return AppEntry(
             name=name,
@@ -317,6 +310,7 @@ class AppDiscovery:
             try:
                 from PyQt6.QtCore import QFileInfo
                 from PyQt6.QtWidgets import QFileIconProvider
+
                 provider = QFileIconProvider()
                 px = provider.icon(QFileInfo(icon_name)).pixmap(size, size)
                 if not px.isNull():
@@ -351,7 +345,8 @@ class AppDiscovery:
         """Scale *px* to *size*\u00d7*size* preserving aspect ratio."""
         if hasattr(Qt, "AspectRatioMode"):
             return px.scaled(
-                size, size,
+                size,
+                size,
                 aspectRatioMode=Qt.AspectRatioMode.KeepAspectRatio,
                 transformMode=Qt.TransformationMode.SmoothTransformation,
             )
@@ -367,14 +362,10 @@ class AppDiscovery:
         """
         index: dict[str, str] = {}
 
-        xdg_data_home = os.environ.get(
-            "XDG_DATA_HOME", str(Path.home() / ".local" / "share")
-        )
+        xdg_data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
         xdg_data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
         all_icon_bases = [Path(xdg_data_home) / "icons"] + [
-            Path(d.strip()) / "icons"
-            for d in xdg_data_dirs.split(":")
-            if d.strip()
+            Path(d.strip()) / "icons" for d in xdg_data_dirs.split(":") if d.strip()
         ]
 
         def _index_dir(directory: Path) -> None:
@@ -429,7 +420,7 @@ class AppDiscovery:
     @staticmethod
     def clean_exec(exec_cmd: str) -> str:
         """Strip .desktop field codes (%f, %u, etc.) from an Exec value."""
-        return re.sub(r'%[fFuUdDnNickv]', '', exec_cmd).strip()
+        return re.sub(r"%[fFuUdDnNickv]", "", exec_cmd).strip()
 
     @staticmethod
     def build_launch_args(entry: "AppEntry") -> list[str] | None:
@@ -469,9 +460,7 @@ class AppDiscovery:
         if entry.terminal:
             terminal = _find_terminal_emulator()
             if terminal is None:
-                logger.warning(
-                    "No terminal emulator found for terminal app %s", entry.name
-                )
+                logger.warning("No terminal emulator found for terminal app %s", entry.name)
                 return None
             args = [terminal, "-e"] + args
 

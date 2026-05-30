@@ -106,6 +106,7 @@ class ConfigManager:
     def get_config_dir(self) -> Path:
         """Return the canonical user config directory."""
         return self.config_dir
+
     def set_commands_override(self, path: "Path") -> None:
         """Override the commands file path used for reads.
 
@@ -128,7 +129,6 @@ class ConfigManager:
         self._commands_cache = None
         logger.info("Commands file overridden to %s via --config", path)
 
-
     def get_active_commands_file(self) -> Path:
         """Return the resolved commands file used by this runtime."""
         return self._get_commands_file_for_read()
@@ -150,7 +150,12 @@ class ConfigManager:
         "app_launcher_hotkey": "ctrl+alt+a",
         "history_limit": 50,
         "output_font": {"family": "monospace", "size": 10},
-        "quick_launch_bar": {"visible": False, "position": [100, 100], "pinned": [], "hotkey": "ctrl+shift+b"},
+        "quick_launch_bar": {
+            "visible": False,
+            "position": [100, 100],
+            "pinned": [],
+            "hotkey": "ctrl+shift+b",
+        },
         "icon_cache_ttl_days": 7,
     }
 
@@ -226,9 +231,7 @@ class ConfigManager:
                 # logging) retain their default sub-keys when the user only overrides some.
                 self._settings_cache = self._deep_merge(self._SETTINGS_DEFAULTS, settings)
             except json.JSONDecodeError as e:
-                logger.warning(
-                    "settings.json is corrupted (%s); falling back to defaults", str(e)
-                )
+                logger.warning("settings.json is corrupted (%s); falling back to defaults", str(e))
                 self._settings_cache = copy.deepcopy(self._SETTINGS_DEFAULTS)
             except OSError as e:
                 logger.warning("Failed to load settings (I/O error), using defaults: %s", e)
@@ -315,9 +318,7 @@ class ConfigManager:
                 logger.info("Loading commands from %s", config_file)
 
                 if not config_file.exists():
-                    logger.warning(
-                        f"Commands file {config_file} not found. Creating default."
-                    )
+                    logger.warning(f"Commands file {config_file} not found. Creating default.")
                     self._create_default_commands(config_file)
 
                 with open(config_file, encoding="utf-8") as f:
@@ -428,9 +429,7 @@ class ConfigManager:
         history = self.get_history()
 
         # Limit history to 10 items, excluding the current command
-        history = [
-            cmd for cmd in history if cmd.get("command") != entry.get("command")
-        ][:9]
+        history = [cmd for cmd in history if cmd.get("command") != entry.get("command")][:9]
 
         # Add the new entry to the beginning
         history.insert(0, entry)
@@ -661,9 +660,7 @@ class ConfigManager:
             logger.error("Failed to export command group: %s", e)
             return False
 
-    def add_to_favorites(
-        self, command_path: str, custom_label: str | None = None
-    ) -> bool:
+    def add_to_favorites(self, command_path: str, custom_label: str | None = None) -> bool:
         """
         Add a command to favorites by reference instead of duplicating it.
 
@@ -697,11 +694,7 @@ class ConfigManager:
                 command_name = path_parts[-1]
                 command_obj = current.get(command_name)
 
-            if (
-                not command_obj
-                or not isinstance(command_obj, dict)
-                or "command" not in command_obj
-            ):
+            if not command_obj or not isinstance(command_obj, dict) or "command" not in command_obj:
                 logger.error(f"Command not found: {command_path}")
                 return False
 
@@ -712,16 +705,12 @@ class ConfigManager:
             favorites = self.get_favorites()
 
             # Add a reference entry to favorites (only store ref, resolve dynamically)
-            favorites[label] = {
-                "ref": command_path
-            }
+            favorites[label] = {"ref": command_path}
 
             # Save the updated favorites
             self.save_favorites(favorites)
 
-            logger.info(
-                f"Added reference '{label}' to Favorites pointing to {command_path}"
-            )
+            logger.info(f"Added reference '{label}' to Favorites pointing to {command_path}")
             return True
         except (OSError, ConfigurationError, TypeError, ValueError) as e:
             logger.error("Failed to add to favorites: %s", e)
@@ -778,10 +767,7 @@ class ConfigManager:
             logger.info("Migrating existing favorites from commands.json to favorites.json")
 
             # Extract favorites from commands (skip icon)
-            favorites_to_migrate = {
-                k: v for k, v in commands["Favorites"].items()
-                if k != "icon"
-            }
+            favorites_to_migrate = {k: v for k, v in commands["Favorites"].items() if k != "icon"}
 
             # Get existing favorites (might be empty)
             existing_favorites = self.get_favorites()
@@ -833,9 +819,7 @@ class ConfigManager:
                         )
 
                     # Check optional fields have correct types
-                    if "showOutput" in item and not isinstance(
-                        item["showOutput"], bool
-                    ):
+                    if "showOutput" in item and not isinstance(item["showOutput"], bool):
                         raise ConfigurationError(
                             f"showOutput in '{group_name}.{item_name}' must be a boolean"
                         )

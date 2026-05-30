@@ -177,7 +177,7 @@ class ScheduleCreator:
 
     def _create_windows_task(self, command_info, hour, minute, selected_days):
         task_name = f"PyTrayLauncher_{command_info['label'].replace(' ', '_')}"
-        command = command_info['command']
+        command = command_info["command"]
 
         # Convert days to Windows format
         windows_days = {
@@ -187,7 +187,7 @@ class ScheduleCreator:
             "Thursday": "THU",
             "Friday": "FRI",
             "Saturday": "SAT",
-            "Sunday": "SUN"
+            "Sunday": "SUN",
         }
 
         days_string = ",".join([windows_days[day] for day in selected_days])
@@ -197,19 +197,27 @@ class ScheduleCreator:
         schtasks_cmd = [
             "schtasks",
             "/create",
-            "/tn", task_name,
-            "/tr", command,
-            "/sc", "weekly",
-            "/d", days_string,
-            "/st", time_string,
-            "/f"  # Force overwrite if exists
+            "/tn",
+            task_name,
+            "/tr",
+            command,
+            "/sc",
+            "weekly",
+            "/d",
+            days_string,
+            "/st",
+            time_string,
+            "/f",  # Force overwrite if exists
         ]
 
         try:
             subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
             logger.info(
                 "Windows scheduled task '%s' created for command: %s at %s on %s",
-                task_name, command, time_string, days_string,
+                task_name,
+                command,
+                time_string,
+                days_string,
             )
             QMessageBox.information(
                 None,
@@ -217,23 +225,19 @@ class ScheduleCreator:
                 f"Windows scheduled task '{task_name}' created successfully!\n\n"
                 f"Command: {command}\n"
                 f"Time: {time_string}\n"
-                f"Days: {', '.join(selected_days)}"
+                f"Days: {', '.join(selected_days)}",
             )
             return True
         except subprocess.CalledProcessError as e:
-            logger.error(
-                "Failed to create Windows scheduled task '%s': %s", task_name, e.stderr
-            )
+            logger.error("Failed to create Windows scheduled task '%s': %s", task_name, e.stderr)
             QMessageBox.critical(
-                None,
-                "Error",
-                f"Failed to create Windows scheduled task:\n{e.stderr}"
+                None, "Error", f"Failed to create Windows scheduled task:\n{e.stderr}"
             )
             return False
 
     def _create_linux_cron(self, command_info, hour, minute, selected_days):
         """Create a Linux cron job in the current user's crontab (never uses pkexec/sudo)."""
-        command = command_info['command']
+        command = command_info["command"]
 
         # Convert days to cron format (0=Sunday, 1=Monday, etc.)
         cron_days = {
@@ -281,7 +285,8 @@ class ScheduleCreator:
                     raise RuntimeError(install.stderr.strip() or "crontab install failed")
                 logger.info(
                     "Cron job installed for '%s': %s",
-                    command_info['label'], cron_entry,
+                    command_info["label"],
+                    cron_entry,
                 )
             finally:
                 os.unlink(temp_file)
@@ -299,7 +304,8 @@ class ScheduleCreator:
         except Exception as e:
             logger.error(
                 "Failed to create cron job for '%s': %s",
-                command_info.get('label', '?'), str(e),
+                command_info.get("label", "?"),
+                str(e),
             )
             QMessageBox.critical(
                 None,
@@ -313,8 +319,13 @@ class ScheduleCreator:
     def _human_cron(minute: int, hour: int, days: list) -> str:
         """Return a human-readable schedule description."""
         day_map = {
-            "Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed",
-            "Thursday": "Thu", "Friday": "Fri", "Saturday": "Sat", "Sunday": "Sun",
+            "Monday": "Mon",
+            "Tuesday": "Tue",
+            "Wednesday": "Wed",
+            "Thursday": "Thu",
+            "Friday": "Fri",
+            "Saturday": "Sat",
+            "Sunday": "Sun",
         }
         weekdays = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}
         weekend = {"Saturday", "Sunday"}

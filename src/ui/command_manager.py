@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 # Command form dialog (shared by Add and Edit)
 # ---------------------------------------------------------------------------
 
+
 class _CommandFormDialog(QDialog):
     """Simple form to create or edit a single command."""
 
@@ -135,6 +136,7 @@ class _CommandFormDialog(QDialog):
 # ---------------------------------------------------------------------------
 # CommandManagerDialog
 # ---------------------------------------------------------------------------
+
 
 class CommandManagerDialog(QDialog):
     """CRUD dialog for commands — no app restart required on save."""
@@ -234,24 +236,34 @@ class CommandManagerDialog(QDialog):
                     flags.append("confirm")
                 if item.get("prompt"):
                     flags.append("prompt")
-                child = QTreeWidgetItem([
-                    label,
-                    item.get("command", ""),
-                    ", ".join(flags),
-                ])
-                child.setData(0, Qt.ItemDataRole.UserRole, {
-                    "type": "command",
-                    "group": group_name,
-                    "label": label,
-                    "data": item,
-                })
+                child = QTreeWidgetItem(
+                    [
+                        label,
+                        item.get("command", ""),
+                        ", ".join(flags),
+                    ]
+                )
+                child.setData(
+                    0,
+                    Qt.ItemDataRole.UserRole,
+                    {
+                        "type": "command",
+                        "group": group_name,
+                        "label": label,
+                        "data": item,
+                    },
+                )
                 parent_item.addChild(child)
             elif isinstance(item, dict):
                 sub_item = QTreeWidgetItem([label, "", ""])
-                sub_item.setData(0, Qt.ItemDataRole.UserRole, {
-                    "type": "group",
-                    "name": f"{group_name}.{label}",
-                })
+                sub_item.setData(
+                    0,
+                    Qt.ItemDataRole.UserRole,
+                    {
+                        "type": "group",
+                        "name": f"{group_name}.{label}",
+                    },
+                )
                 parent_item.addChild(sub_item)
                 self._populate_group(sub_item, f"{group_name}.{label}", item)
 
