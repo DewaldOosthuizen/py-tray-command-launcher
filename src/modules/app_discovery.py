@@ -13,6 +13,7 @@ Public API
 """
 
 import configparser
+import functools
 import logging
 import os
 import re
@@ -59,6 +60,21 @@ _TERMINAL_EMULATORS = [
     "alacritty",
     "kitty",
 ]
+
+
+@functools.lru_cache(maxsize=1)
+def _find_terminal_emulator() -> str | None:
+    """Return the path of the first available terminal emulator, or None.
+
+    Result is cached for the process lifetime. Call
+    ``_find_terminal_emulator.cache_clear()`` in tests to reset the cache
+    between cases.
+    """
+    for candidate in _TERMINAL_EMULATORS:
+        found = shutil.which(candidate)
+        if found:
+            return found
+    return None
 
 
 @dataclass
@@ -416,8 +432,18 @@ class AppDiscovery:
         return re.sub(r'%[fFuUdDnNickv]', '', exec_cmd).strip()
 
     @staticmethod
-    def build_launch_args(entry: AppEntry) -> list[str] | None:
+    def build_launch_args(entry: "AppEntry") -> list[str] | None:
         """Build the argv list for launching *entry*.
+
+        Uses a two-level fallback strategy to parse the Exec= value:
+
+        1. ``shlex.split`` — handles quoted arguments correctly.
+        2. Whitespace split (``str.split()``) — used when ``shlex.split`` fails
+           due to unmatched quotes or other shell-syntax errors.  This is a
+           deliberate trade-off: we lose quote-grouping semantics but avoid
+           silently wrapping the entire command string as a single token.
+        3. ``None`` — returned when the cleaned Exec= string is empty or
+           produces no tokens after the fallback split.
 
         Handles ``Terminal=true`` by prepending a detected terminal emulator.
         Returns ``None`` if no terminal emulator can be found for terminal apps.
@@ -428,16 +454,20 @@ class AppDiscovery:
         try:
             args = shlex.split(cleaned)
         except ValueError as exc:
-            logger.warning("Failed to parse Exec for %s: %s", entry.name, exc)
-            args = [cleaned]
+            logger.warning(
+                "shlex.split failed for %s (%s); falling back to whitespace split",
+                entry.name,
+                exc,
+            )
+            # Deliberate trade-off: whitespace split loses quote-grouping but
+            # avoids silently treating the entire command string as one token,
+            # which would cause FileNotFoundError at Popen time.
+            args = cleaned.split()
+        if not args:
+            return None
 
         if entry.terminal:
-            terminal = None
-            for candidate in _TERMINAL_EMULATORS:
-                found = shutil.which(candidate)
-                if found:
-                    terminal = found
-                    break
+            terminal = _find_terminal_emulator()
             if terminal is None:
                 logger.warning(
                     "No terminal emulator found for terminal app %s", entry.name

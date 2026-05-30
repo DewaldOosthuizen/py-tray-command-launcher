@@ -4,7 +4,14 @@ from unittest.mock import patch
 
 import pytest
 
-from modules.app_discovery import AppDiscovery, AppEntry
+from modules.app_discovery import AppDiscovery, AppEntry, _find_terminal_emulator
+
+
+@pytest.fixture(autouse=True)
+def _clear_terminal_emulator_cache():
+    _find_terminal_emulator.cache_clear()
+    yield
+    _find_terminal_emulator.cache_clear()
 
 
 # ---------------------------------------------------------------------------
@@ -36,6 +43,7 @@ def test_clean_exec_only_placeholders_returns_empty():
 # ---------------------------------------------------------------------------
 # build_launch_args
 # ---------------------------------------------------------------------------
+
 
 def test_build_launch_args_non_terminal():
     entry = AppEntry(name="Gedit", exec_cmd="gedit %F", terminal=False, icon_name="")
@@ -93,12 +101,32 @@ def test_build_launch_args_terminal_second_emulator():
 def test_build_launch_args_shlex_error_fallback():
     entry = AppEntry(name="Bad", exec_cmd="app 'unclosed", terminal=False, icon_name="")
     result = AppDiscovery.build_launch_args(entry)
-    assert result == ["app 'unclosed"]
+    assert result == ["app", "'unclosed"]
+
+
+class TestFindTerminalEmulatorCache:
+    """Tests for issue #50 — cached terminal emulator lookup."""
+
+    def setup_method(self):
+        _find_terminal_emulator.cache_clear()
+
+    def teardown_method(self):
+        _find_terminal_emulator.cache_clear()
+
+    def test_shutil_which_called_only_once_across_multiple_build_launch_args(self):
+        entry = AppEntry(name="Htop", exec_cmd="htop", terminal=True, icon_name="")
+
+        with patch("modules.app_discovery.shutil.which", return_value="/usr/bin/xterm") as mock_which:
+            AppDiscovery.build_launch_args(entry)
+            AppDiscovery.build_launch_args(entry)
+
+        assert mock_which.call_count == 1
 
 
 # ---------------------------------------------------------------------------
 # is_windows_lnk_entry
 # ---------------------------------------------------------------------------
+
 
 def test_is_windows_lnk_entry_lnk_path():
     entry = AppEntry(name="App", exec_cmd=r"C:\Users\user\AppData\Roaming\App.lnk", terminal=False, icon_name="")
