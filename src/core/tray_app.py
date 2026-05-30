@@ -215,7 +215,13 @@ class TrayApp:
             input_value, ok = QInputDialog.getText(None, "Input Required", prompt)
             if not ok or not input_value:
                 return
-            command = command.replace("{promptInput}", shlex.quote(input_value))  # security: shlex.quote prevents shell injection via user-typed prompt input
+            # On Windows, shell=True routes through cmd.exe which does not
+            # recognise POSIX single-quoting; use Windows-native quoting there.
+            if os.name == "nt":
+                safe_input = subprocess.list2cmdline([input_value])
+            else:
+                safe_input = shlex.quote(input_value)
+            command = command.replace("{promptInput}", safe_input)  # security: quoting prevents shell injection via user-typed prompt input
 
         if show_output:
             self.show_command_output(title, command)

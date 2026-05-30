@@ -134,17 +134,17 @@ class TestPromptInputSanitisation(unittest.TestCase):
         result = shlex.quote("foo; rm -rf /")
         self.assertEqual(result, "'foo; rm -rf /'")
 
-    @unittest.mock.patch('builtins.__import__', side_effect=None)
-    def test_prompt_input_metacharacters_are_quoted(self, *_):
+    def test_prompt_input_metacharacters_are_quoted(self):
         """shlex.quote wraps metachar input in single-quotes, neutralising injection."""
         import shlex
         dangerous = "; rm -rf /"
         quoted = shlex.quote(dangerous)
-        # Must be wrapped in single quotes so shell treats it as a literal string
+        # Must be wrapped in single quotes so shell treats it as a single literal token
         self.assertTrue(quoted.startswith("'") and quoted.endswith("'"),
                         f"Expected single-quoted string, got: {quoted!r}")
-        # The resulting command should not start a new shell command
-        self.assertNotIn(";", quoted.strip("'"))
+        # The quoted result must be a single shell word (no unquoted whitespace)
+        self.assertEqual(quoted.count("'"), 2,
+                         f"Expected exactly one pair of single quotes, got: {quoted!r}")
 
     def test_metacharacter_variants_are_quoted(self):
         """shlex.quote neutralises all common injection metacharacters."""
@@ -179,15 +179,34 @@ class TestPromptInputSanitisation(unittest.TestCase):
                          f"Benign input over-escaped: {result!r}")
 
     def test_tray_app_execute_applies_shlex_quote(self):
-        """tray_app.execute() must use shlex.quote() when substituting {promptInput}."""
+        """TrayApp.execute() must pass shlex-quoted prompt input to execute_command."""
         import shlex
-        # Simulate what tray_app.execute() should now do
-        command_template = "echo {promptInput}"
-        user_input = "; rm -rf /"
-        command = command_template.replace("{promptInput}", shlex.quote(user_input))
-        # The dangerous semicolon must be inside quotes now
-        self.assertIn("'", command)
-        self.assertNotIn("; rm", command.split("'")[0])  # not before the opening quote
+        from core.tray_app import TrayApp
+
+        # Build a minimal TrayApp instance without running __init__
+        tray_app = object.__new__(TrayApp)
+        mock_executor = MagicMock()
+        tray_app.executor = mock_executor
+        tray_app.reload_history_commands = MagicMock()
+        tray_app.reload_favorites_commands = MagicMock()
+
+        dangerous_input = "; rm -rf /"
+
+        with patch('core.tray_app.config_manager'), \
+             patch('core.tray_app.QInputDialog') as mock_dialog:
+            mock_dialog.getText.return_value = (dangerous_input, True)
+            tray_app.execute(
+                title="Test",
+                command="echo {promptInput}",
+                confirm=False,
+                show_output=False,
+                prompt="Enter value",
+            )
+
+        mock_executor.execute_command.assert_called_once()
+        actual_command = mock_executor.execute_command.call_args[0][0]
+        # The dangerous input must arrive as a quoted shell token
+        self.assertIn(shlex.quote(dangerous_input), actual_command)
 
 
 if __name__ == '__main__':
