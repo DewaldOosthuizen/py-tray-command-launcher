@@ -49,7 +49,7 @@ on the command data model. Modules must not import from ui/ or from each other.
 
 ### ui/ — PyQt6 Widgets
 
-UI components present data and delegate all logic to modules via AppServices.
+UI components present data and should prefer delegating logic via AppServices.
 Widgets must not contain business logic.
 
 | File               | Responsibility                                              |
@@ -108,7 +108,8 @@ Follow these steps to add a new capability to the launcher:
    - Call `services.<your_field>` from the action's triggered slot.
 
 4. **Add a widget** (optional) in `src/ui/my_feature_dialog.py`.
-   - Import nothing from `modules/` directly — receive data via AppServices callables.
+   - Prefer receiving data via AppServices callables instead of importing from
+     `modules/` directly.
 
 5. **Write tests** in `tests/test_my_feature.py`.
    - Use the `mock_services` fixture from `conftest.py` to provide a fake AppServices.
