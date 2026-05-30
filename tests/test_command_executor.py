@@ -125,5 +125,70 @@ class TestCommandExecutor(unittest.TestCase):
         self.assertIn("uptime", messages)
 
 
+    # ------------------------------------------------------------------
+    # Signal wiring tests (issue #60)
+    # ------------------------------------------------------------------
+
+    def test_execute_command_process_wires_error_signal(self):
+        """execute_command_process should connect errorOccurred before start()."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch('modules.command_executor.QProcess', return_value=mock_process):
+            self.executor.execute_command_process(mock_app, "ls")
+
+        mock_process.errorOccurred.connect.assert_called_once()
+
+    def test_execute_command_process_wires_finished_signal(self):
+        """execute_command_process should connect finished before start()."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch('modules.command_executor.QProcess', return_value=mock_process):
+            self.executor.execute_command_process(mock_app, "ls")
+
+        mock_process.finished.connect.assert_called_once()
+
+    def test_execute_command_process_silently_wires_error_signal(self):
+        """Silent path should also wire errorOccurred via execute_command_process."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch('modules.command_executor.QProcess', return_value=mock_process):
+            self.executor.execute_command_process_silently(mock_app, "uptime")
+
+        mock_process.errorOccurred.connect.assert_called_once()
+
+    def test_execute_command_process_finished_logs_warning_on_nonzero_exit(self):
+        """finished lambda should call logger.warning when exit code != 0."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch('modules.command_executor.QProcess', return_value=mock_process):
+            with patch('modules.command_executor.logger') as mock_logger:
+                self.executor.execute_command_process(mock_app, "false")
+                # Extract and invoke the finished lambda
+                finished_cb = mock_process.finished.connect.call_args[0][0]
+                finished_cb(1, "NormalExit")
+
+        mock_logger.warning.assert_called_once()
+
+    def test_execute_command_process_finished_logs_info_on_zero_exit(self):
+        """finished lambda should call logger.info when exit code == 0."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch('modules.command_executor.QProcess', return_value=mock_process):
+            with patch('modules.command_executor.logger') as mock_logger:
+                self.executor.execute_command_process(mock_app, "true")
+                finished_cb = mock_process.finished.connect.call_args[0][0]
+                finished_cb(0, "NormalExit")
+
+        # logger.info is also called at start, so check it was called at least once
+        # but warning should NOT be called
+        mock_logger.warning.assert_not_called()
+        mock_logger.info.assert_called()
+
+
 if __name__ == '__main__':
     unittest.main()
