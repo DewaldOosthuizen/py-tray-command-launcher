@@ -3,6 +3,7 @@
 import datetime
 import logging
 import os
+import shlex
 import subprocess
 import sys
 import weakref
@@ -214,7 +215,7 @@ class TrayApp:
             input_value, ok = QInputDialog.getText(None, "Input Required", prompt)
             if not ok or not input_value:
                 return
-            command = command.replace("{promptInput}", input_value)
+            command = command.replace("{promptInput}", shlex.quote(input_value))  # security: shlex.quote prevents shell injection via user-typed prompt input
 
         if show_output:
             self.show_command_output(title, command)
