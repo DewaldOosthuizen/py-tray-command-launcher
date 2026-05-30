@@ -338,13 +338,12 @@ class _PaletteWindow(QWidget):
         except OSError as exc:
             logger.warning("Failed to launch %s: %s", entry.name, exc)
             try:
-                tray = self._palette._services.tray_icon
-                tray.showMessage(
+                self._palette._services.notify_user(
                     "Launch failed",
                     f"Could not start {entry.name}: {exc}",
                 )
             except Exception:  # noqa: BLE001 — best-effort notification
-                pass
+                logger.debug("Failed to show launch failure notification", exc_info=True)
 
     # ------------------------------------------------------------------
     # Keyboard navigation

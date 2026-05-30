@@ -13,6 +13,7 @@ Public API
 """
 
 import configparser
+import functools
 import logging
 import os
 import re
@@ -59,6 +60,21 @@ _TERMINAL_EMULATORS = [
     "alacritty",
     "kitty",
 ]
+
+
+@functools.lru_cache(maxsize=1)
+def _find_terminal_emulator() -> str | None:
+    """Return the path of the first available terminal emulator, or None.
+
+    Result is cached for the process lifetime. Call
+    ``_find_terminal_emulator.cache_clear()`` in tests to reset the cache
+    between cases.
+    """
+    for candidate in _TERMINAL_EMULATORS:
+        found = shutil.which(candidate)
+        if found:
+            return found
+    return None
 
 
 @dataclass
@@ -419,7 +435,7 @@ class AppDiscovery:
     def build_launch_args(entry: "AppEntry") -> list[str] | None:
         """Build the argv list for launching *entry*.
 
-        Uses a two-level fallback strategy to parse the Exec= value:
+        Uses a three-level fallback strategy to parse the Exec= value:
 
         1. ``shlex.split`` — handles quoted arguments correctly.
         2. Whitespace split (``str.split()``) — used when ``shlex.split`` fails
@@ -451,12 +467,7 @@ class AppDiscovery:
             return None
 
         if entry.terminal:
-            terminal = None
-            for candidate in _TERMINAL_EMULATORS:
-                found = shutil.which(candidate)
-                if found:
-                    terminal = found
-                    break
+            terminal = _find_terminal_emulator()
             if terminal is None:
                 logger.warning(
                     "No terminal emulator found for terminal app %s", entry.name

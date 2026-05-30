@@ -126,6 +126,7 @@ class TrayApp:
             reload_history_commands=self.reload_history_commands,
             reload_favorites_commands=self.reload_favorites_commands,
             resolve_icon_path=self._resolve_icon_path,
+            notify_user=self.notify_user,
         )
 
     def _build_modules(self) -> None:
@@ -224,6 +225,10 @@ class TrayApp:
         self.reload_history_commands()
         self.reload_favorites_commands()
 
+    def notify_user(self, title: str, message: str) -> None:
+        """Show a tray notification."""
+        self.tray_icon.showMessage(title, message)
+
     def show_command_output(self, title, command):
         """Execute a command, show output in RichOutputWindow, and update badge."""
         import uuid
@@ -272,7 +277,16 @@ class TrayApp:
             self._running_processes.pop(proc_id, None)
             self._update_tray_badge()
 
-        def _on_error(_error):
+        def _on_error(error):
+            logger.error(
+                "QProcess error for command '%s': %s", command, error
+            )
+            win = output_win_ref()
+            if win is not None:
+                try:
+                    win.append_output(tab, f"\n[ERROR] Process error: {error}\n")
+                except RuntimeError:
+                    pass
             self._running_processes.pop(proc_id, None)
             self._update_tray_badge()
 

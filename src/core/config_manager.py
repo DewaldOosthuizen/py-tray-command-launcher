@@ -196,7 +196,7 @@ class ConfigManager:
                 with open(tmp_path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4)
             os.replace(tmp_path, file_path)
-        except Exception:
+        except (OSError, TypeError, ValueError):
             try:
                 if tmp_path.exists():
                     tmp_path.unlink()
@@ -230,8 +230,8 @@ class ConfigManager:
                     "settings.json is corrupted (%s); falling back to defaults", str(e)
                 )
                 self._settings_cache = copy.deepcopy(self._SETTINGS_DEFAULTS)
-            except Exception as e:
-                logger.warning("Failed to load settings, using defaults: %s", str(e))
+            except OSError as e:
+                logger.warning("Failed to load settings (I/O error), using defaults: %s", e)
                 self._settings_cache = copy.deepcopy(self._SETTINGS_DEFAULTS)
 
         return self._settings_cache
@@ -249,8 +249,8 @@ class ConfigManager:
             logger.info("Settings saved successfully to %s", self.settings_file)
         except ConfigurationError:
             raise
-        except Exception as e:
-            error_msg = f"Failed to save settings: {str(e)}"
+        except (OSError, TypeError, ValueError) as e:
+            error_msg = f"Failed to save settings: {e}"
             logger.error(error_msg)
             raise ConfigurationError(error_msg) from e
 
@@ -333,8 +333,8 @@ class ConfigManager:
                 error_msg = f"Invalid JSON in {config_file}: {str(e)}"
                 logger.error(error_msg)
                 raise ConfigurationError(error_msg) from e
-            except Exception as e:
-                error_msg = f"Failed to load commands from {config_file}: {str(e)}"
+            except (OSError, ConfigurationError) as e:
+                error_msg = f"Failed to load commands from {config_file}: {e}"
                 logger.error(error_msg)
                 raise ConfigurationError(error_msg) from e
 
@@ -368,8 +368,8 @@ class ConfigManager:
             logger.info(f"Commands saved successfully to {config_file}")
         except ConfigurationError:
             raise
-        except Exception as e:
-            error_msg = f"Failed to save commands: {str(e)}"
+        except (OSError, TypeError, ValueError) as e:
+            error_msg = f"Failed to save commands: {e}"
             logger.error(error_msg)
             raise ConfigurationError(error_msg) from e
 
@@ -393,8 +393,8 @@ class ConfigManager:
 
                 self._history_cache = history
                 logger.debug(f"History loaded successfully from {self.history_file}")
-            except Exception as e:
-                logger.warning(f"Failed to load history, using empty history: {str(e)}")
+            except (OSError, json.JSONDecodeError, ValueError) as e:
+                logger.warning("Failed to load history, using empty history: %s", e)
                 self._history_cache = []
 
         return self._history_cache
@@ -412,8 +412,8 @@ class ConfigManager:
             # Update the cache
             self._history_cache = history
             logger.debug(f"History saved successfully to {self.history_file}")
-        except Exception as e:
-            logger.error(f"Failed to save history: {str(e)}")
+        except (OSError, TypeError, ValueError) as e:
+            logger.error("Failed to save history: %s", e)
 
     def add_to_history(self, entry: dict[str, Any]) -> list[dict[str, Any]]:
         """
@@ -466,8 +466,8 @@ class ConfigManager:
 
                 self._favorites_cache = favorites
                 logger.debug(f"Favorites loaded successfully from {self.favorites_file}")
-            except Exception as e:
-                logger.warning(f"Failed to load favorites, using empty favorites: {str(e)}")
+            except (OSError, json.JSONDecodeError, ValueError) as e:
+                logger.warning("Failed to load favorites, using empty favorites: %s", e)
                 self._favorites_cache = {}
 
         return self._favorites_cache
@@ -485,8 +485,8 @@ class ConfigManager:
             # Update the cache
             self._favorites_cache = favorites
             logger.debug(f"Favorites saved successfully to {self.favorites_file}")
-        except Exception as e:
-            logger.error(f"Failed to save favorites: {str(e)}")
+        except (OSError, TypeError, ValueError) as e:
+            logger.error("Failed to save favorites: %s", e)
 
     def backup_commands(self) -> str:
         """
@@ -512,8 +512,8 @@ class ConfigManager:
             logger.info(f"Created backup at {backup_file}")
 
             return str(backup_file)
-        except Exception as e:
-            logger.error(f"Failed to create backup: {str(e)}")
+        except OSError as e:
+            logger.error("Failed to create backup: %s", e)
             return ""
 
     def list_backups(self) -> list[tuple[str, str]]:
@@ -547,8 +547,8 @@ class ConfigManager:
                 backups.append((str(self.backup_dir / file), formatted_date))
 
             return backups
-        except Exception as e:
-            logger.error(f"Failed to list backups: {str(e)}")
+        except OSError as e:
+            logger.error("Failed to list backups: %s", e)
             return []
 
     def restore_from_backup(self, backup_file: str) -> bool:
@@ -576,8 +576,8 @@ class ConfigManager:
 
             logger.info(f"Successfully restored from {backup_file} to {config_file}")
             return True
-        except Exception as e:
-            logger.error(f"Failed to restore from backup: {str(e)}")
+        except OSError as e:
+            logger.error("Failed to restore from backup: %s", e)
             return False
 
     def import_command_group(self, import_file: str, overwrite: bool = False) -> bool:
@@ -627,8 +627,8 @@ class ConfigManager:
 
             logger.info(f"Successfully imported command groups from {import_file}")
             return True
-        except Exception as e:
-            logger.error(f"Failed to import command group: {str(e)}")
+        except (OSError, json.JSONDecodeError, ConfigurationError) as e:
+            logger.error("Failed to import command group: %s", e)
             return False
 
     def export_command_group(self, group_name: str, export_file: str) -> bool:
@@ -657,8 +657,8 @@ class ConfigManager:
 
             logger.info(f"Successfully exported group '{group_name}' to {export_file}")
             return True
-        except Exception as e:
-            logger.error(f"Failed to export command group: {str(e)}")
+        except (OSError, TypeError, ConfigurationError) as e:
+            logger.error("Failed to export command group: %s", e)
             return False
 
     def add_to_favorites(
@@ -723,8 +723,8 @@ class ConfigManager:
                 f"Added reference '{label}' to Favorites pointing to {command_path}"
             )
             return True
-        except Exception as e:
-            logger.error(f"Failed to add to favorites: {str(e)}")
+        except (OSError, ConfigurationError, TypeError, ValueError) as e:
+            logger.error("Failed to add to favorites: %s", e)
             return False
 
     def remove_from_favorites(self, label: str) -> bool:
@@ -752,8 +752,8 @@ class ConfigManager:
                 return True
 
             return False
-        except Exception as e:
-            logger.error(f"Failed to remove from favorites: {str(e)}")
+        except (OSError, ConfigurationError) as e:
+            logger.error("Failed to remove from favorites: %s", e)
             return False
 
     def migrate_favorites_from_commands(self) -> bool:
@@ -800,8 +800,8 @@ class ConfigManager:
             logger.info("Successfully migrated favorites to separate file")
             return True
 
-        except Exception as e:
-            logger.error(f"Failed to migrate favorites: {str(e)}")
+        except (OSError, json.JSONDecodeError, ConfigurationError) as e:
+            logger.error("Failed to migrate favorites: %s", e)
             return False
 
     def _validate_commands(self, commands: dict[str, dict[str, Any]]) -> None:
@@ -954,8 +954,8 @@ class ConfigManager:
 
             self._write_json_atomic(config_file, default_commands)
             logger.info(f"Created default commands file at {config_file}")
-        except Exception as e:
-            logger.error(f"Failed to create default commands file: {str(e)}")
+        except (OSError, TypeError, ValueError) as e:
+            logger.error("Failed to create default commands file: %s", e)
 
     def get_base_dir(self) -> str:
         """Return the application base directory as a string.
@@ -1011,7 +1011,7 @@ class ConfigManager:
             with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
             return data if isinstance(data, dict) else {}
-        except Exception:
+        except (OSError, json.JSONDecodeError, ValueError):
             return {}
 
     def _merge_commands_preserving_canonical(
