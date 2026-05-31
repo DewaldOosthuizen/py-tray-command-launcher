@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "py-tray-command-launcher"
@@ -13,13 +13,14 @@ dependencies = [
     "cryptography>=48.0.0",
     "rapidfuzz>=3.14.5",
     "pynput>=1.8.2",
-    "jsonschema>=4.0",
+    "jsonschema>=4.23.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
     "pytest-qt>=4.4",
+    "pytest-cov>=5.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -27,7 +28,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v"
+addopts = "-v --cov=src --cov-report=term-missing --cov-fail-under=75"
 
 [tool.ruff]
 line-length = 100

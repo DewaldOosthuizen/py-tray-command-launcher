@@ -27,9 +27,7 @@ class BackupRestore:
                 f"Commands backup created successfully at:\n{backup_file}",
             )
         else:
-            QMessageBox.warning(
-                None, "Backup Failed", "Failed to create commands backup."
-            )
+            QMessageBox.warning(None, "Backup Failed", "Failed to create commands backup.")
 
     def restore_commands(self):
         """Restore commands from a backup."""

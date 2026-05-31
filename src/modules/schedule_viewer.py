@@ -71,7 +71,9 @@ class ScheduleViewer:
             table = QTableWidget()
             table.setRowCount(len(schedules))
             table.setColumnCount(6)
-            table.setHorizontalHeaderLabels(["Task Name", "Command", "Schedule", "Source", "Status", "Actions"])
+            table.setHorizontalHeaderLabels(
+                ["Task Name", "Command", "Schedule", "Source", "Status", "Actions"]
+            )
 
             # Configure table
             header = table.horizontalHeader()
@@ -165,14 +167,14 @@ class ScheduleViewer:
                 ["schtasks", "/query", "/fo", "csv", "/v"],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
 
-            lines = result.stdout.split('\n')
+            lines = result.stdout.split("\n")
             if len(lines) > 1:  # Skip header
                 for line in lines[1:]:
                     if line.strip() and "PyTrayLauncher_" in line:
-                        parts = line.split(',')
+                        parts = line.split(",")
                         if len(parts) >= 8:
                             task_name = parts[0].strip('"')
                             status = parts[2].strip('"')
@@ -184,23 +186,25 @@ class ScheduleViewer:
                                     ["schtasks", "/query", "/tn", task_name, "/fo", "list", "/v"],
                                     capture_output=True,
                                     text=True,
-                                    check=True
+                                    check=True,
                                 )
 
                                 # Parse command from detailed output
                                 command = ""
-                                for detail_line in detail_result.stdout.split('\n'):
+                                for detail_line in detail_result.stdout.split("\n"):
                                     if "Task To Run:" in detail_line:
                                         command = detail_line.split("Task To Run:", 1)[1].strip()
                                         break
 
-                                schedules.append({
-                                    "name": task_name,
-                                    "command": command,
-                                    "schedule": schedule,
-                                    "status": status,
-                                    "type": "windows_task"
-                                })
+                                schedules.append(
+                                    {
+                                        "name": task_name,
+                                        "command": command,
+                                        "schedule": schedule,
+                                        "status": status,
+                                        "type": "windows_task",
+                                    }
+                                )
                             except subprocess.CalledProcessError:
                                 # Skip tasks we can't get details for
                                 continue
@@ -248,15 +252,17 @@ class ScheduleViewer:
                     else:
                         schedule_text += " daily"
 
-                    schedules.append({
-                        "name": current_name,
-                        "command": command,
-                        "schedule": schedule_text,
-                        "status": "Active",
-                        "source": "User",
-                        "type": "cron_job",
-                        "cron_line": stripped,
-                    })
+                    schedules.append(
+                        {
+                            "name": current_name,
+                            "command": command,
+                            "schedule": schedule_text,
+                            "status": "Active",
+                            "source": "User",
+                            "type": "cron_job",
+                            "cron_line": stripped,
+                        }
+                    )
                 current_name = None
             else:
                 current_name = None
@@ -266,8 +272,14 @@ class ScheduleViewer:
     def _convert_cron_days_to_text(self, day_week):
         """Convert cron day numbers to readable text."""
         day_map = {
-            "0": "Sunday", "1": "Monday", "2": "Tuesday", "3": "Wednesday",
-            "4": "Thursday", "5": "Friday", "6": "Saturday", "7": "Sunday"
+            "0": "Sunday",
+            "1": "Monday",
+            "2": "Tuesday",
+            "3": "Wednesday",
+            "4": "Thursday",
+            "5": "Friday",
+            "6": "Saturday",
+            "7": "Sunday",
         }
 
         if "," in day_week:
@@ -280,6 +292,7 @@ class ScheduleViewer:
     def edit_schedule(self, schedule, parent_dialog):
         """Edit an existing cron schedule — delete old entry and re-create via ScheduleCreator."""
         from modules.schedule_creator import ScheduleCreator
+
         name = schedule.get("name", "")
         reply = QMessageBox.question(
             parent_dialog,
@@ -312,7 +325,7 @@ class ScheduleViewer:
             f"Command: {schedule.get('command', 'Unknown')}\n"
             f"Schedule: {schedule.get('schedule', 'Unknown')}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -323,9 +336,7 @@ class ScheduleViewer:
                     self._delete_linux_cron_job(schedule)
 
                 QMessageBox.information(
-                    parent_dialog,
-                    "Success",
-                    f"Scheduled task '{task_name}' deleted successfully."
+                    parent_dialog, "Success", f"Scheduled task '{task_name}' deleted successfully."
                 )
 
                 # Refresh the dialog
@@ -333,9 +344,7 @@ class ScheduleViewer:
 
             except Exception as e:
                 QMessageBox.critical(
-                    parent_dialog,
-                    "Error",
-                    f"Failed to delete scheduled task: {str(e)}"
+                    parent_dialog, "Error", f"Failed to delete scheduled task: {str(e)}"
                 )
 
     def _delete_windows_task(self, schedule):
@@ -345,7 +354,7 @@ class ScheduleViewer:
             ["schtasks", "/delete", "/tn", task_name, "/f"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
 
     def _delete_linux_cron_job(self, schedule):
@@ -383,9 +392,7 @@ class ScheduleViewer:
             temp_file = f.name
 
         try:
-            install = subprocess.run(
-                ["crontab", temp_file], capture_output=True, text=True
-            )
+            install = subprocess.run(["crontab", temp_file], capture_output=True, text=True)
             if install.returncode != 0:
                 raise RuntimeError(install.stderr.strip() or "crontab install failed")
         finally:

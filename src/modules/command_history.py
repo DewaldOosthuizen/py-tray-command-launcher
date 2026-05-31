@@ -53,12 +53,9 @@ class CommandHistory:
 
             action = QAction(title, menu)
             action.triggered.connect(
-                lambda checked,
-                t=title,
-                c=command,
-                cf=confirm,
-                so=show_output,
-                p=prompt: self.services.execute(t, c, cf, so, p)
+                lambda checked, t=title, c=command, cf=confirm, so=show_output, p=prompt: (
+                    self.services.execute(t, c, cf, so, p)
+                )
             )
             menu.addAction(action)
 

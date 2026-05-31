@@ -59,9 +59,7 @@ class ThemeManager:
 
         qss_path = self._resolve_qss_path(theme)
         if not qss_path:
-            logger.warning(
-                "QSS file for theme '%s' not found; falling back to system theme", theme
-            )
+            logger.warning("QSS file for theme '%s' not found; falling back to system theme", theme)
             QApplication.instance().setStyleSheet("")
             self._current_theme = "system"
             return

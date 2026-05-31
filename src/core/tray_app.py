@@ -3,6 +3,7 @@
 import datetime
 import logging
 import os
+import shlex
 import subprocess
 import sys
 import weakref
@@ -75,9 +76,7 @@ class TrayApp:
 
         tray_icon_path = self.icon_resolver.resolve_tray_icon()
         if not tray_icon_path:
-            tray_icon_path = os.path.join(
-                self.base_dir, "resources", "icons", "icon.png"
-            )
+            tray_icon_path = os.path.join(self.base_dir, "resources", "icons", "icon.png")
         self.icon_file = tray_icon_path
 
         logger.info("Base directory resolved to %s", self.base_dir)
@@ -126,6 +125,7 @@ class TrayApp:
             reload_history_commands=self.reload_history_commands,
             reload_favorites_commands=self.reload_favorites_commands,
             resolve_icon_path=self._resolve_icon_path,
+            notify_user=self.notify_user,
         )
 
     def _build_modules(self) -> None:
@@ -170,6 +170,7 @@ class TrayApp:
     def _resolve_icon_path(self, icon_path: str) -> str:
         """Resolve an icon path using IconResolver with self.icon_file as fallback."""
         return self.icon_resolver.resolve_icon_path(icon_path, self.icon_file)
+
     # ------------------------------------------------------------------ #
     # Tray tooltip                                                         #
     # ------------------------------------------------------------------ #
@@ -178,12 +179,9 @@ class TrayApp:
         """Set the tray tooltip to show the app name and the number of loaded commands."""
         try:
             count = len(self.get_all_commands())
-            self.tray_icon.setToolTip(
-                f"py-tray-command-launcher — {count} command(s) loaded"
-            )
+            self.tray_icon.setToolTip(f"py-tray-command-launcher — {count} command(s) loaded")
         except Exception:
             self.tray_icon.setToolTip("py-tray-command-launcher")
-
 
     # ------------------------------------------------------------------ #
     # Command execution                                                    #
@@ -214,7 +212,15 @@ class TrayApp:
             input_value, ok = QInputDialog.getText(None, "Input Required", prompt)
             if not ok or not input_value:
                 return
-            command = command.replace("{promptInput}", input_value)
+            # On Windows, shell=True routes through cmd.exe which does not
+            # recognise POSIX single-quoting; use Windows-native quoting there.
+            if os.name == "nt":
+                safe_input = subprocess.list2cmdline([input_value])
+            else:
+                safe_input = shlex.quote(input_value)
+            command = command.replace(
+                "{promptInput}", safe_input
+            )  # security: quoting prevents shell injection via user-typed prompt input
 
         if show_output:
             self.show_command_output(title, command)
@@ -224,9 +230,14 @@ class TrayApp:
         self.reload_history_commands()
         self.reload_favorites_commands()
 
+    def notify_user(self, title: str, message: str) -> None:
+        """Show a tray notification."""
+        self.tray_icon.showMessage(title, message)
+
     def show_command_output(self, title, command):
         """Execute a command, show output in RichOutputWindow, and update badge."""
         import uuid
+
         proc_id = str(uuid.uuid4())
 
         process = self.executor.execute_command_process(self.app, command)
@@ -234,9 +245,7 @@ class TrayApp:
         output_win = RichOutputWindow(self.app.activeWindow())
         tab = output_win.open_process_tab(title)
         self.output_windows.append(output_win)
-        output_win.destroyed.connect(
-            lambda _, w=output_win: self._on_output_window_closed(w)
-        )
+        output_win.destroyed.connect(lambda _, w=output_win: self._on_output_window_closed(w))
 
         output_win_ref = weakref.ref(output_win)
 
@@ -272,7 +281,16 @@ class TrayApp:
             self._running_processes.pop(proc_id, None)
             self._update_tray_badge()
 
-        def _on_error(_error):
+        def _on_error(error):
+            logger.error(
+                "QProcess error for command '%s': %s", command, error
+            )
+            win = output_win_ref()
+            if win is not None:
+                try:
+                    win.append_output(tab, f"\n[ERROR] Process error: {error}\n")
+                except RuntimeError:
+                    pass
             self._running_processes.pop(proc_id, None)
             self._update_tray_badge()
 
@@ -321,10 +339,7 @@ class TrayApp:
         font.setBold(True)
         painter.setFont(font)
         painter.setPen(QColor("white"))
-        painter.drawText(
-            bx, by, badge_size, badge_size,
-            Qt.AlignmentFlag.AlignCenter, str(count)
-        )
+        painter.drawText(bx, by, badge_size, badge_size, Qt.AlignmentFlag.AlignCenter, str(count))
         painter.end()
 
         self.tray_icon.setIcon(QIcon(base))
@@ -359,11 +374,7 @@ class TrayApp:
                                 "prompt": item.get("prompt"),
                             }
                         )
-                    elif (
-                        isinstance(item, dict)
-                        and "command" not in item
-                        and label != "icon"
-                    ):
+                    elif isinstance(item, dict) and "command" not in item and label != "icon":
                         new_group = f"{group_name} → {label}"
                         process_items(new_group, item)
 
@@ -390,9 +401,9 @@ class TrayApp:
             if sys.platform == "win32":
                 os.startfile(commands_file)  # noqa: S606 — intentional: Windows file open via shell association; path is from config, not user input
             elif sys.platform == "darwin":
-                subprocess.call(("open", str(commands_file)))     # noqa: S603, S607 — platform file-open helper, fixed args
+                subprocess.call(("open", str(commands_file)))  # noqa: S603, S607 — platform file-open helper, fixed args
             else:
-                subprocess.call(("xdg-open", str(commands_file))) # noqa: S603, S607 — platform file-open helper, fixed args
+                subprocess.call(("xdg-open", str(commands_file)))  # noqa: S603, S607 — platform file-open helper, fixed args
         except Exception as e:
             show_error_and_raise(f"Failed to open commands file: {e}")
 
@@ -492,9 +503,7 @@ class TrayApp:
             self.palette.update_app_launcher_hotkey(hotkey)
             logger.info("App Launcher hotkey re-registered: %s", hotkey)
         except Exception as exc:
-            logger.warning(
-                "Failed to re-register app launcher hotkey '%s': %s", hotkey, exc
-            )
+            logger.warning("Failed to re-register app launcher hotkey '%s': %s", hotkey, exc)
 
     def _reregister_bar_hotkey(self, hotkey: str) -> None:
         """Unregister the current bar hotkey and register the new one."""
@@ -503,9 +512,7 @@ class TrayApp:
             self.quick_launch_bar.register_hotkey(hotkey)
             logger.info("Bar hotkey re-registered: %s", hotkey)
         except Exception as exc:
-            logger.warning(
-                "Failed to re-register bar hotkey '%s': %s", hotkey, exc
-            )
+            logger.warning("Failed to re-register bar hotkey '%s': %s", hotkey, exc)
 
     # ------------------------------------------------------------------ #
     # Lifecycle                                                            #

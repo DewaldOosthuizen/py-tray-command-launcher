@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "py-tray-command-launcher/settings.schema.json",
+  "title": "py-tray-command-launcher settings.json",
+  "description": "Schema for the settings.json configuration file",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "theme": {
+      "type": "string",
+      "enum": ["system", "light", "dark"],
+      "description": "UI theme"
+    },
+    "hotkey": {
+      "type": "string",
+      "description": "Global hotkey to open the launcher"
+    },
+    "app_launcher_hotkey": {
+      "type": "string",
+      "description": "Global hotkey to open the app launcher"
+    },
+    "history_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum number of history entries to keep"
+    },
+    "output_font": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "family": { "type": "string" },
+        "size": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "quick_launch_bar": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "visible": { "type": "boolean" },
+        "position": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "pinned": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "hotkey": { "type": "string" }
+      }
+    },
+    "icon_cache_ttl_days": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of days to cache icons (0 = no cache)"
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "level": { "type": "string" }
+      }
+    }
+  }
+}

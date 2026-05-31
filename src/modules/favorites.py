@@ -44,9 +44,7 @@ class Favorites:
         all_commands = self.services.get_all_commands()
 
         if not all_commands:
-            QMessageBox.warning(
-                None, "No Commands", "No commands available to add to favorites."
-            )
+            QMessageBox.warning(None, "No Commands", "No commands available to add to favorites.")
             return
 
         # Create a list of command options
@@ -91,9 +89,7 @@ class Favorites:
                     )
                     self.services.reload_favorites_commands()
                 else:
-                    QMessageBox.warning(
-                        None, "Failed", "Failed to add command to Favorites."
-                    )
+                    QMessageBox.warning(None, "Failed", "Failed to add command to Favorites.")
 
     def add_to_favorites_directly(self, group, label):
         """Add a command to favorites directly when selected from context menu."""
@@ -122,9 +118,7 @@ class Favorites:
             )
             self.services.reload_favorites_commands()
         else:
-            QMessageBox.warning(
-                None, "Failed", f"Failed to remove '{label}' from Favorites."
-            )
+            QMessageBox.warning(None, "Failed", f"Failed to remove '{label}' from Favorites.")
 
     def create_context_menu(self, cmd_info, action):
         """Create a context menu for a command to add it to favorites."""
@@ -134,9 +128,7 @@ class Favorites:
         context_menu.addAction(add_to_fav_action)
 
         action.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        action.customContextMenuRequested.connect(
-            lambda pos: context_menu.exec(QCursor.pos())
-        )
+        action.customContextMenuRequested.connect(lambda pos: context_menu.exec(QCursor.pos()))
 
         return action
 
@@ -150,9 +142,7 @@ class Favorites:
             action.setEnabled(False)
             menu.addAction(action)
 
-            help_action = QAction(
-                "Right-click on any command and select 'Add to Favorites'", menu
-            )
+            help_action = QAction("Right-click on any command and select 'Add to Favorites'", menu)
             help_action.setEnabled(False)
             menu.addAction(help_action)
             return
@@ -165,7 +155,9 @@ class Favorites:
 
                 # If this is a reference, resolve it to get the actual command data
                 if "ref" in item:
-                    resolved_item = self.services.resolve_command_reference("Favorites", label, item)
+                    resolved_item = self.services.resolve_command_reference(
+                        "Favorites", label, item
+                    )
 
                 # Check if we have a valid command (either direct or resolved)
                 if "command" in resolved_item:
@@ -188,12 +180,9 @@ class Favorites:
                     prompt = resolved_item.get("prompt", None)
 
                     action.triggered.connect(
-                        lambda checked=False,
-                        cmd=command,
-                        lbl=label,
-                        conf=confirm,
-                        show=show_output,
-                        prmpt=prompt: self.services.execute(lbl, cmd, conf, show, prmpt)
+                        lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: (
+                            self.services.execute(lbl, cmd, conf, show, prmpt)
+                        )
                     )
 
                     menu.addAction(action)
