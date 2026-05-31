@@ -179,51 +179,34 @@ class TestQuickLaunchBarButtonLogic(unittest.TestCase):
         _repair_qtwidgets_stub()
 
     def test_one_button_per_pinned_item(self):
-        """One command dict is resolved per valid pinned entry."""
+        """_build_buttons creates one button per valid pinned entry."""
         services = _make_services(pinned=[
             {"group": "System", "label": "Terminal"},
             {"group": "System", "label": "Editor"},
         ])
-        all_cmds = {
-            (c["group"], c["label"]): c
-            for c in services.get_all_commands()
-        }
-        pinned = services.config_manager.get_settings()["quick_launch_bar"]["pinned"]
-        resolved = [all_cmds[(p["group"], p["label"])] for p in pinned
-                    if (p["group"], p["label"]) in all_cmds]
-        assert len(resolved) == 2
+        bar = QuickLaunchBar(services)
+        bar._layout.addWidget.reset_mock()
+        bar._build_buttons()
+        assert bar._layout.addWidget.call_count == 2
 
     def test_missing_pinned_command_skipped(self):
-        """Pinned item not in commands is silently skipped."""
+        """_build_buttons skips pinned commands that cannot be resolved."""
         services = _make_services(pinned=[{"group": "Nonexistent", "label": "Ghost"}])
-        all_cmds = {
-            (c["group"], c["label"]): c
-            for c in services.get_all_commands()
-        }
-        pinned = services.config_manager.get_settings()["quick_launch_bar"]["pinned"]
-        resolved = [all_cmds[(p["group"], p["label"])] for p in pinned
-                    if (p["group"], p["label"]) in all_cmds]
-        assert len(resolved) == 0
+        bar = QuickLaunchBar(services)
+        bar._layout.addWidget.reset_mock()
+        bar._build_buttons()
+        assert bar._layout.addWidget.call_count == 0
 
     def test_clicking_button_triggers_command(self):
-        """Button click lambda calls services.execute with correct args."""
+        """Generated button click handler executes the command."""
         services = _make_services(pinned=[{"group": "System", "label": "Terminal"}])
-        all_cmds = {
-            (c["group"], c["label"]): c
-            for c in services.get_all_commands()
-        }
-        pinned = services.config_manager.get_settings()["quick_launch_bar"]["pinned"]
-        # Simulate the button click lambda
-        for pin in pinned:
-            cmd = all_cmds.get((pin["group"], pin["label"]))
-            if cmd:
-                services.execute(
-                    cmd["label"],
-                    cmd["command"],
-                    cmd.get("confirm", False),
-                    cmd.get("showOutput", False),
-                    cmd.get("prompt"),
-                )
+        bar = QuickLaunchBar(services)
+        import ui.quick_launch_bar as qlb
+
+        qlb.QToolButton.reset_mock()
+        bar._build_buttons()
+        callback = qlb.QToolButton.return_value.clicked.connect.call_args[0][0]
+        callback()
         services.execute.assert_called_once_with(
             "Terminal", "xterm", False, False, None
         )

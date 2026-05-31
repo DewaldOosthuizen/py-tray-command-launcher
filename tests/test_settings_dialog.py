@@ -67,13 +67,20 @@ def _install_real_pyqt6_stub():
         pass
 
     # Avoid SyntaxError: use type() for signal-like attrs
-    _dbb = type("QDialogButtonBox", (_QWidget,), {
-        "Ok": 1024,
-        "Cancel": 4194304,
-        "accepted": property(lambda self: MagicMock()()),
-        "rejected": property(lambda self: MagicMock()()),
-        "button": lambda self, *a: MagicMock()(),
-    })
+    class _QDialogButtonBox(_QWidget):
+        class StandardButton:
+            Save = 1
+            Cancel = 2
+
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            self.accepted = MagicMock()
+            self.accepted.connect = MagicMock()
+            self.rejected = MagicMock()
+            self.rejected.connect = MagicMock()
+
+        def button(self, *a):
+            return MagicMock()
 
     # QLabel needs a real class — function-level `from PyQt6.QtWidgets import QLabel`
     # calls in other modules re-fetch from sys.modules at test-run time; a MagicMock
@@ -97,20 +104,19 @@ def _install_real_pyqt6_stub():
     QtWidgets.QFormLayout = _Layout
     QtWidgets.QHBoxLayout = _Layout
     QtWidgets.QGroupBox = _QGroupBox
-    QtWidgets.QDialogButtonBox = _dbb
+    QtWidgets.QDialogButtonBox = _QDialogButtonBox
 
     # Widgets that are just used for value access — MagicMock instances are fine
     class _QComboBox(_Base):
         def __init__(self, *a, **kw):
             self._items = []
             self._idx = 0
+            self.currentTextChanged = MagicMock()
+            self.currentTextChanged.connect = MagicMock()
         def addItems(self, items): self._items = list(items)
         def findText(self, text): return self._items.index(text) if text in self._items else -1
         def setCurrentIndex(self, i): self._idx = i
         def currentText(self): return self._items[self._idx] if self._items else ""
-        def currentTextChanged(self): return MagicMock()
-        # signal-connect stub
-        currentTextChanged = MagicMock()
 
     class _QLineEdit(_Base):
         def __init__(self, text="", *a, **kw):
@@ -193,51 +199,23 @@ _DEFAULT_SETTINGS = {
 
 
 def _build_dialog_direct(settings_override=None):
-    """Build a minimal SettingsDialog with all Qt and config parts mocked.
-
-    We bypass __init__ entirely (the full Qt UI build is untestable without a
-    real display) and instead construct a bare SettingsDialog instance via
-    object.__new__, then attach only the attributes that _preview_theme,
-    _save, and _cancel actually rely on.
-    """
+    """Build a SettingsDialog using __init__ with stubbed Qt/config objects."""
     settings = dict(_DEFAULT_SETTINGS)
     if settings_override:
-        settings.update(settings_override)
+        for key, value in settings_override.items():
+            if isinstance(value, dict) and isinstance(settings.get(key), dict):
+                merged = dict(settings[key])
+                merged.update(value)
+                settings[key] = merged
+            else:
+                settings[key] = value
 
     mock_cm = MagicMock()
     mock_cm.get_settings.return_value = dict(settings)
     mock_theme_mgr = MagicMock()
 
-    from ui.settings_dialog import SettingsDialog  # imported at module level; this re-uses cached
-    dlg = object.__new__(SettingsDialog)
-
-    # Inject testable attributes onto the MagicMock result
-    dlg._theme_manager = mock_theme_mgr
-    dlg._hotkey_callback = None
-    dlg._bar_hotkey_callback = None
-    dlg._app_launcher_hotkey_callback = None
-    dlg._original_theme = settings["theme"]
-
-    # Widget stubs
-    dlg._theme_combo = MagicMock()
-    dlg._theme_combo.currentText.return_value = settings["theme"]
-    dlg._hotkey_edit = MagicMock()
-    dlg._hotkey_edit.text.return_value = settings["hotkey"]
-    dlg._app_launcher_hotkey_edit = MagicMock()
-    dlg._app_launcher_hotkey_edit.text.return_value = settings["app_launcher_hotkey"]
-    dlg._history_spin = MagicMock()
-    dlg._history_spin.value.return_value = settings["history_limit"]
-    dlg._font_family_edit = MagicMock()
-    dlg._font_family_edit.text.return_value = settings["output_font"]["family"]
-    dlg._font_size_spin = MagicMock()
-    dlg._font_size_spin.value.return_value = settings["output_font"]["size"]
-    dlg._qlb_visible_check = MagicMock()
-    dlg._qlb_visible_check.isChecked.return_value = settings["quick_launch_bar"]["visible"]
-    dlg._qlb_hotkey_edit = MagicMock()
-    dlg._qlb_hotkey_edit.text.return_value = settings["quick_launch_bar"]["hotkey"]
-    dlg._log_level_combo = MagicMock()
-    dlg._log_level_combo.currentText.return_value = settings["logging"]["level"]
-
+    with patch("ui.settings_dialog.config_manager", mock_cm):
+        dlg = SettingsDialog(mock_theme_mgr)
     dlg.accept = MagicMock()
     dlg.reject = MagicMock()
 
@@ -305,7 +283,7 @@ class TestSettingsDialogSave(unittest.TestCase):
     def test_save_writes_theme_from_combo(self):
         """_save stores the selected theme in saved settings."""
         dlg, cm, theme_mgr = _build_dialog_direct()
-        dlg._theme_combo.currentText.return_value = "light"
+        dlg._theme_combo.setCurrentIndex(dlg._theme_combo.findText("light"))
         mock_cm = MagicMock()
         mock_cm.get_settings.return_value = {
             "theme": "dark",
@@ -322,7 +300,7 @@ class TestSettingsDialogSave(unittest.TestCase):
     def test_save_writes_hotkey_from_edit(self):
         """_save stores the hotkey text in saved settings."""
         dlg, cm, theme_mgr = _build_dialog_direct()
-        dlg._hotkey_edit.text.return_value = "ctrl+shift+x"
+        dlg._hotkey_edit._text = "ctrl+shift+x"
         mock_cm = MagicMock()
         mock_cm.get_settings.return_value = {
             "theme": "dark",
@@ -339,7 +317,6 @@ class TestSettingsDialogSave(unittest.TestCase):
     def test_dialog_prepopulates_theme_from_config(self):
         """Config theme value 'dark' should be reflected in dlg._theme_combo."""
         dlg, cm, theme_mgr = _build_dialog_direct({"theme": "dark"})
-        # The combo's currentText returns what we set up — simulating prepopulation
         assert dlg._theme_combo.currentText() == "dark"
 
     def test_dialog_prepopulates_hotkey_from_config(self):

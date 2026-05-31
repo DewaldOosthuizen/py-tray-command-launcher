@@ -243,55 +243,71 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         assert p._window is mock_win
 
     def test_empty_query_all_commands_shown(self):
-        """Logic check: empty query scores all commands at 100."""
-        p, svc = self._make_palette()
-        all_cmds = svc.get_all_commands()
-        query = ""
-        scored = [(100, cmd) for cmd in all_cmds] if not query.strip() else []
-        assert len(scored) == len(all_cmds)
-        assert all(s == 100 for s, _ in scored)
-
-    def test_fuzzy_query_filters_commands(self):
-        """Logic check: 'terminal' matches 'System Terminal'."""
-        p, svc = self._make_palette()
-        all_cmds = svc.get_all_commands()
-        query = "terminal"
-        scored = []
-        for cmd in all_cmds:
-            text = f"{cmd['group']} {cmd['label']}"
-            s = _score(query, text)
-            if s > 30 or query.lower() in text.lower():
-                scored.append((s, cmd))
-        labels = [c["label"] for _, c in scored]
-        assert "Terminal" in labels
-
-    def test_enter_key_triggers_execute(self):
-        """_execute is triggered on Enter (tested via direct call)."""
+        """_populate_commands shows all commands when query is empty."""
         p, svc = self._make_palette()
         win = _PaletteWindow(p)
-        # In mock env, _cmd_list and _active_list are mocks
-        # Just verify _execute can be called without error
+        win._cmd_list.count.return_value = 0
+        win._populate_commands("")
+        assert win._cmd_list.addItem.call_count == len(svc.get_all_commands())
+
+    def test_fuzzy_query_filters_commands(self):
+        """_populate_commands filters commands by fuzzy query."""
+        p, svc = self._make_palette()
+        win = _PaletteWindow(p)
+        win._cmd_list.count.return_value = 0
+        win._populate_commands("terminal")
+        assert win._cmd_list.addItem.call_count >= 1
+
+    def test_enter_key_triggers_execute(self):
+        """eventFilter triggers _execute on Enter."""
+        p, svc = self._make_palette()
+        win = _PaletteWindow(p)
         win._execute = MagicMock()
-        win._execute()
+        import ui.command_palette as cp
+
+        class _FakeKeyEvent:
+            def __init__(self, key):
+                self._key = key
+
+            def type(self):
+                return cp.QEvent.Type.KeyPress
+
+            def key(self):
+                return self._key
+
+        cp.QKeyEvent = _FakeKeyEvent
+        event = _FakeKeyEvent(cp.Qt.Key.Key_Return)
+        assert win.eventFilter(win._search, event) is True
         win._execute.assert_called_once()
 
     def test_escape_key_hides_window(self):
-        """hide() is called when escape logic is triggered."""
+        """eventFilter hides the window on Escape."""
         p, svc = self._make_palette()
         win = _PaletteWindow(p)
         win.hide = MagicMock()
-        # Directly simulate the escape branch from eventFilter
-        win.hide()
+        import ui.command_palette as cp
+
+        class _FakeKeyEvent:
+            def __init__(self, key):
+                self._key = key
+
+            def type(self):
+                return cp.QEvent.Type.KeyPress
+
+            def key(self):
+                return self._key
+
+        cp.QKeyEvent = _FakeKeyEvent
+        event = _FakeKeyEvent(cp.Qt.Key.Key_Escape)
+        assert win.eventFilter(win._search, event) is True
         win.hide.assert_called_once()
 
     def test_apps_tab_populates_list(self):
-        """_switch_tab('apps') switches stack index."""
+        """_switch_tab('apps') switches stack index and repopulates."""
         p, svc = self._make_palette()
         win = _PaletteWindow(p)
-        # _switch_tab is available; call it
-        try:
-            win._switch_tab("apps")
-        except Exception:
-            pass  # mock environment; just ensure no unexpected crash type
-        # Test passes — apps tab logic reachable
-        assert True
+        win._populate = MagicMock()
+        win._search.text.return_value = "calc"
+        win._switch_tab("apps")
+        win._stack.setCurrentIndex.assert_called_with(1)
+        win._populate.assert_called_once_with("calc")
