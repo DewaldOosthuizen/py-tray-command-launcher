@@ -29,17 +29,25 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from modules.app_discovery import AppDiscovery, AppEntry  # noqa: E402
+from types import SimpleNamespace
+
+from modules.app_discovery import AppDiscovery  # noqa: E402
 
 
-def _make_entry(exec_cmd: str, name: str = "TestApp", terminal: bool = False) -> AppEntry:
-    entry = AppEntry.__new__(AppEntry)
-    entry.name = name
-    entry.exec_cmd = exec_cmd
-    entry.icon_name = ""
-    entry.categories = []
-    entry.terminal = terminal
-    return entry
+def _make_entry(exec_cmd: str, name: str = "TestApp", terminal: bool = False) -> SimpleNamespace:
+    """Build a minimal AppEntry-compatible object without relying on the real dataclass.
+
+    This avoids the TypeError that occurs when PyQt6 is stubbed via sys.modules before
+    app_discovery is imported, which causes AppEntry to resolve to a MagicMock attribute
+    rather than the real dataclass, making AppEntry.__new__(AppEntry) fail.
+    """
+    return SimpleNamespace(
+        name=name,
+        exec_cmd=exec_cmd,
+        icon_name="",
+        categories=[],
+        terminal=terminal,
+    )
 
 
 class TestBuildLaunchArgsFallback(unittest.TestCase):
