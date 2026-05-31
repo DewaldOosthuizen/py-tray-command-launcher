@@ -16,6 +16,14 @@ from unittest.mock import MagicMock, patch
 
 def _install_real_pyqt6_stub():
     """Replace the MagicMock PyQt6 stub with one that has real base classes."""
+    # Capture the existing QWidget stub *before* clearing the modules so that
+    # instances of our custom _QWidget are still isinstance-compatible with
+    # qt_api.QtWidgets.QWidget (which pytest-qt captures during pytest_configure
+    # from the conftest stub and never updates afterwards).
+    _qw_mod = sys.modules.get("PyQt6.QtWidgets")
+    _existing_QWidget = getattr(_qw_mod, "QWidget", None) if _qw_mod else None
+    _QWidget_base = _existing_QWidget if isinstance(_existing_QWidget, type) else object
+
     for key in list(sys.modules.keys()):
         if key.startswith("PyQt6") or key in ("ui.settings_dialog",):
             del sys.modules[key]
@@ -24,7 +32,7 @@ def _install_real_pyqt6_stub():
         def __init__(self, *a, **kw):
             pass
 
-    class _QWidget(_Base):
+    class _QWidget(_QWidget_base):
         def show(self): pass
         def hide(self): pass
         def isVisible(self): return False
@@ -53,7 +61,10 @@ def _install_real_pyqt6_stub():
 
     # QVBoxLayout / QFormLayout / QGroupBox instances must be real enough to
     # support addRow/addWidget calls. A simple no-op _Layout class covers this.
-    class _Layout(_Base):
+    # Inheriting from _QWidget_base gives us __getattr__ for any method not
+    # explicitly listed (e.g. addStretch, addLayout).
+    class _Layout(_QWidget_base):
+        def __init__(self, *a, **kw): pass
         def addRow(self, *a): pass
         def addWidget(self, *a): pass
         def setContentsMargins(self, *a): pass
@@ -69,6 +80,7 @@ def _install_real_pyqt6_stub():
     # Avoid SyntaxError: use type() for signal-like attrs
     class _QDialogButtonBox(_QWidget):
         class StandardButton:
+            Ok = 1
             Save = 1
             Cancel = 2
 
@@ -106,8 +118,10 @@ def _install_real_pyqt6_stub():
     QtWidgets.QGroupBox = _QGroupBox
     QtWidgets.QDialogButtonBox = _QDialogButtonBox
 
-    # Widgets that are just used for value access — MagicMock instances are fine
-    class _QComboBox(_Base):
+    # Widgets that are just used for value access. Inherit from _QWidget_base so
+    # that any method not explicitly listed (e.g. setEditable, setEnabled,
+    # toggled.connect) is handled by _QWidget_base.__getattr__ without raising.
+    class _QComboBox(_QWidget_base):
         def __init__(self, *a, **kw):
             self._items = []
             self._idx = 0
@@ -118,20 +132,20 @@ def _install_real_pyqt6_stub():
         def setCurrentIndex(self, i): self._idx = i
         def currentText(self): return self._items[self._idx] if self._items else ""
 
-    class _QLineEdit(_Base):
+    class _QLineEdit(_QWidget_base):
         def __init__(self, text="", *a, **kw):
             self._text = text
         def text(self): return self._text
         def setPlaceholderText(self, t): pass
 
-    class _QSpinBox(_Base):
+    class _QSpinBox(_QWidget_base):
         def __init__(self, *a, **kw):
             self._val = 0
         def setRange(self, lo, hi): pass
         def setValue(self, v): self._val = v
         def value(self): return self._val
 
-    class _QCheckBox(_Base):
+    class _QCheckBox(_QWidget_base):
         def __init__(self, *a, **kw):
             self._checked = False
         def setChecked(self, v): self._checked = v
@@ -164,6 +178,18 @@ def _install_real_pyqt6_stub():
     QtCore.qVersion = lambda: "6.1.0"
 
     QtGui.QIcon = _mm()
+
+    # Fallback: any attribute not explicitly listed returns a _QWidget_base
+    # subclass-compatible stub so that:
+    #   • `from PyQt6.QtWidgets import UnknownClass` works without ImportError
+    #   • `class Foo(UnknownClass):` creates a real Python class (not a broken
+    #     MagicMock wrapper) that is isinstance-compatible with qt_api.QtWidgets.QWidget
+    def _fallback(name):
+        return _QWidget_base
+
+    QtWidgets.__getattr__ = _fallback
+    QtCore.__getattr__ = _fallback
+    QtGui.__getattr__ = _fallback
 
     pyqt6.QtWidgets = QtWidgets
     pyqt6.QtCore = QtCore

@@ -19,6 +19,14 @@ from unittest.mock import MagicMock, patch
 
 def _install_real_pyqt6_stub():
     """Replace the MagicMock PyQt6 stub with one that has real base classes."""
+    # Capture the existing QWidget stub *before* clearing the modules so that
+    # instances of our custom _QWidget are still isinstance-compatible with
+    # qt_api.QtWidgets.QWidget (which pytest-qt captures during pytest_configure
+    # from the conftest stub and never updates afterwards).
+    _qw_mod = sys.modules.get("PyQt6.QtWidgets")
+    _existing_QWidget = getattr(_qw_mod, "QWidget", None) if _qw_mod else None
+    _QWidget_base = _existing_QWidget if isinstance(_existing_QWidget, type) else object
+
     # Remove existing stub so we can replace key entries
     for key in list(sys.modules.keys()):
         if key.startswith("PyQt6"):
@@ -31,7 +39,7 @@ def _install_real_pyqt6_stub():
     class _QObject(_Base):
         pass
 
-    class _QWidget(_Base):
+    class _QWidget(_QWidget_base):
         def show(self): pass
         def hide(self): pass
         def isVisible(self): return False
@@ -122,6 +130,18 @@ def _install_real_pyqt6_stub():
 
     QtGui.QIcon = _mm()
     QtGui.QKeyEvent = _mm()
+
+    # Fallback: any attribute not explicitly listed returns a _QWidget_base
+    # subclass-compatible stub so that:
+    #   • `from PyQt6.QtWidgets import UnknownClass` works without ImportError
+    #   • `class Foo(UnknownClass):` creates a real Python class (not a broken
+    #     MagicMock wrapper) that is isinstance-compatible with qt_api.QtWidgets.QWidget
+    def _fallback(name):
+        return _QWidget_base
+
+    QtWidgets.__getattr__ = _fallback
+    QtCore.__getattr__ = _fallback
+    QtGui.__getattr__ = _fallback
 
     pyqt6.QtWidgets = QtWidgets
     pyqt6.QtCore = QtCore
