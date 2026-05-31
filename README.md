@@ -194,6 +194,14 @@ without verifying the file length (16 bytes = legacy, 20 bytes = current).
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for linting setup, noqa suppression conventions, and development workflow. For broader setup instructions and documentation policy, see [docs/contributing.md](docs/contributing.md).
 
+### Dependency updates
+
+Dependency version updates are managed automatically by Dependabot (`.github/dependabot.yml`),
+which opens pull requests for outdated pip packages every Monday.
+A `pip-audit` step in the lint workflow scans all installed packages for known CVEs on every
+push and pull request. When merging a Dependabot PR, confirm the audit step passes before
+approving.
+
 ---
 
 ## License
