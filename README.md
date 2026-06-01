@@ -227,6 +227,14 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full
 contribution guide: architecture overview, development setup, adding a new feature,
 test conventions, and PR guidelines.
 
+### Dependency updates
+
+Dependency version updates are managed automatically by Dependabot (`.github/dependabot.yml`),
+which opens pull requests for outdated pip packages every Monday.
+A `pip-audit` step in the lint workflow scans all installed packages for known CVEs on every
+push and pull request. When merging a Dependabot PR, confirm the audit step passes before
+approving.
+
 ---
 
 ## License
