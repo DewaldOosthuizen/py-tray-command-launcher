@@ -218,5 +218,157 @@ class TestCorruptSaltFile(unittest.TestCase):
             self.assertIn("corrupt", results.get("message", "").lower())
 
 
+class TestLegacyDetectedSignal(unittest.TestCase):
+    """EncryptionWorker must emit legacy_detected when a 16-byte salt is found."""
+
+    def _run_worker_decrypt(self, enc_file, password):
+        worker = EncryptionWorker("decrypt", enc_file, password)
+        worker.finished_signal = MagicMock()
+        worker.progress_updated = MagicMock()
+        worker.status_updated = MagicMock()
+        worker.legacy_detected = MagicMock()
+
+        results = {}
+
+        def on_finished(success, message):
+            results["success"] = success
+            results["message"] = message
+
+        worker.finished_signal.emit.side_effect = on_finished
+        worker.run()
+        return worker, results
+
+    def _encrypt_with_legacy(self, plain_file, password):
+        """Encrypt a file using legacy 100 000 iterations and 16-byte salt."""
+        import base64
+        from cryptography.fernet import Fernet
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+        salt = os.urandom(16)
+        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=_LEGACY_ITERATIONS)
+        key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+        fernet = Fernet(key)
+        plaintext = Path(plain_file).read_bytes()
+        encrypted = fernet.encrypt(plaintext)
+
+        enc_file = plain_file + ".enc"
+        salt_file = plain_file + ".salt"
+        Path(enc_file).write_bytes(encrypted)
+        Path(salt_file).write_bytes(salt)  # 16-byte legacy format
+        return enc_file
+
+    def test_legacy_detected_emitted_for_16_byte_salt(self):
+        """Worker must emit legacy_detected with decrypted path when salt is 16 bytes."""
+        with tempfile.TemporaryDirectory() as tmp:
+            plain_file = os.path.join(tmp, "doc.txt")
+            Path(plain_file).write_bytes(b"legacy content")
+            enc_file = self._encrypt_with_legacy(plain_file, "pw")
+            # Remove the original so decrypt can write it back
+            os.remove(plain_file)
+
+            worker, results = self._run_worker_decrypt(enc_file, "pw")
+
+            self.assertTrue(results.get("success"), results.get("message"))
+            worker.legacy_detected.emit.assert_called_once()
+            emitted_path = worker.legacy_detected.emit.call_args[0][0]
+            self.assertEqual(emitted_path, plain_file)
+
+    def test_legacy_detected_not_emitted_for_20_byte_salt(self):
+        """Worker must NOT emit legacy_detected when salt file is 20 bytes (current format)."""
+        original_content = b"current content"
+        with tempfile.TemporaryDirectory() as tmp:
+            plain_file = os.path.join(tmp, "doc.txt")
+            Path(plain_file).write_bytes(original_content)
+
+            # Encrypt with current format
+            enc_worker = EncryptionWorker("encrypt", plain_file, "pw")
+            enc_worker.finished_signal = MagicMock()
+            enc_worker.progress_updated = MagicMock()
+            enc_worker.status_updated = MagicMock()
+            enc_worker.run()
+
+            enc_file = plain_file + ".enc"
+            worker, results = self._run_worker_decrypt(enc_file, "pw")
+
+            self.assertTrue(results.get("success"), results.get("message"))
+            worker.legacy_detected.emit.assert_not_called()
+
+
+class TestReencryptToCurrentStandard(unittest.TestCase):
+    """Tests for FileEncryptor._reencrypt_to_current_standard."""
+
+    def _make_encryptor(self):
+        from modules.file_encryptor import FileEncryptor
+        services = MagicMock()
+        enc = FileEncryptor.__new__(FileEncryptor)
+        enc.services = services
+        return enc
+
+    def test_reencrypt_produces_20_byte_salt_and_enc_file(self):
+        """_reencrypt_to_current_standard must produce a 20-byte .salt and .enc file."""
+        from modules.file_encryptor import ENC_FILE_SUFFIX, SALT_FILE_SUFFIX, FileEncryptor
+        import modules.file_encryptor as fe_mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            plain_file = os.path.join(tmp, "plain.txt")
+            Path(plain_file).write_bytes(b"secret data")
+
+            enc = self._make_encryptor()
+
+            mock_dialog = MagicMock()
+            mock_dialog.exec.return_value = MagicMock()  # will compare to QDialog.DialogCode.Accepted
+            mock_dialog.get_password.return_value = "newpassword"
+
+            with patch.object(fe_mod, "PasswordDialog", return_value=mock_dialog) as _pd, \
+                 patch.object(fe_mod.QDialog.DialogCode, "Accepted", mock_dialog.exec.return_value):
+                enc._reencrypt_to_current_standard(plain_file)
+
+            salt_file = plain_file + SALT_FILE_SUFFIX
+            enc_file = plain_file + ENC_FILE_SUFFIX
+
+            self.assertTrue(os.path.exists(salt_file), "Salt file must exist after re-encryption")
+            self.assertTrue(os.path.exists(enc_file), "Enc file must exist after re-encryption")
+            self.assertEqual(os.path.getsize(salt_file), 20, "Salt file must be 20 bytes")
+            self.assertFalse(os.path.exists(plain_file), "Plaintext must be removed")
+
+    def test_reencrypt_atomic_cleanup_on_rename_failure(self):
+        """If rename fails after writing temp enc file, original plaintext is preserved."""
+        from modules.file_encryptor import FileEncryptor
+        import modules.file_encryptor as fe_mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            plain_file = os.path.join(tmp, "plain.txt")
+            Path(plain_file).write_bytes(b"must survive")
+
+            enc = self._make_encryptor()
+
+            mock_dialog = MagicMock()
+            mock_dialog.get_password.return_value = "pw"
+            mock_dialog.exec.return_value = MagicMock()
+
+            replace_call_count = [0]
+            real_replace = os.replace
+
+            def fake_replace(src, dst):
+                replace_call_count[0] += 1
+                if replace_call_count[0] == 1:
+                    raise OSError("simulated rename failure")
+                return real_replace(src, dst)
+
+            with patch.object(fe_mod, "PasswordDialog", return_value=mock_dialog), \
+                 patch.object(fe_mod.QDialog.DialogCode, "Accepted", mock_dialog.exec.return_value), \
+                 patch("os.replace", side_effect=fake_replace), \
+                 patch.object(fe_mod.QMessageBox, "warning"):
+                enc._reencrypt_to_current_standard(plain_file)
+
+            # Original plaintext must still exist
+            self.assertTrue(os.path.exists(plain_file), "Plaintext must be preserved on failure")
+            self.assertEqual(Path(plain_file).read_bytes(), b"must survive")
+            # No leftover .enc.tmp files
+            tmp_files = [f for f in os.listdir(tmp) if f.endswith(".enc.tmp") or f.endswith(".salt.tmp")]
+            self.assertEqual(tmp_files, [], f"Temp files not cleaned up: {tmp_files}")
+
+
 if __name__ == "__main__":
     unittest.main()
