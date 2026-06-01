@@ -220,7 +220,9 @@ class TrayApp:
                 safe_input = shlex.quote(input_value)
             command = command.replace(
                 "{promptInput}", safe_input
-            )  # security: quoting prevents shell injection via user-typed prompt input
+            )  # security: shlex.quote (POSIX) / list2cmdline (Windows) prevent
+               #   shell injection via user-typed prompt input — S602 accepted on
+               #   execute_command; input is sanitised before it arrives there
 
         if show_output:
             self.show_command_output(title, command)

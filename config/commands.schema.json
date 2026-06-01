@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "py-tray-command-launcher/commands.schema.json",
+  "$id": "https://py-tray-command-launcher/commands.schema.json",
   "title": "py-tray-command-launcher commands.json",
   "description": "Schema for the commands.json configuration file",
   "type": "object",
