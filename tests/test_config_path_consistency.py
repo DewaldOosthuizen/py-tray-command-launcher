@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import importlib
 import json
 import os
 import sys
@@ -45,22 +44,19 @@ class ConfigPathConsistencyTests(unittest.TestCase):
             },
             clear=False,
         ):
-            with patch(
-                "utils.utils.get_base_dir",
-                return_value=str(base_dir),
+            # Reset the singleton and patch the base-dir helper used by
+            # ConfigManager during initialization.
+            config_module.ConfigManager._instance = None
+            with patch.object(
+                config_module,
+                "_get_base_dir",
+                return_value=base_dir,
             ) as mock_get_base_dir:
-                # Reset the singleton then reload the module so that the
-                # module-level `config_manager = ConfigManager()` at the
-                # bottom of config_manager.py runs inside these patches,
-                # preventing the real user config dir from being touched.
-                config_module.ConfigManager._instance = None
-                importlib.reload(config_module)
                 manager = config_module.ConfigManager()
-                # Verify that the reloaded ConfigManager used the patched base_dir.
                 self.assertTrue(
                     mock_get_base_dir.called,
-                    "ConfigManager should call utils.utils.get_base_dir "
-                    "when created after module reload with patched base_dir.",
+                    "ConfigManager should call core.config_manager._get_base_dir "
+                    "when created with a patched base_dir.",
                 )
                 return manager
 

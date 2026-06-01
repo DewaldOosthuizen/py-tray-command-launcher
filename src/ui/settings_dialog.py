@@ -35,8 +35,14 @@ logger = logging.getLogger(__name__)
 class SettingsDialog(QDialog):
     """Settings dialog covering theme, hotkey, logging, history, and output font."""
 
-    def __init__(self, theme_manager, parent=None, hotkey_callback=None,
-                 bar_hotkey_callback=None, app_launcher_hotkey_callback=None):
+    def __init__(
+        self,
+        theme_manager,
+        parent=None,
+        hotkey_callback=None,
+        bar_hotkey_callback=None,
+        app_launcher_hotkey_callback=None,
+    ):
         super().__init__(parent)
         self._theme_manager = theme_manager
         self._hotkey_callback = hotkey_callback

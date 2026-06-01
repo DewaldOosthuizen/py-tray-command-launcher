@@ -62,7 +62,9 @@ class SingleInstanceChecker:
             try:
                 os.remove(self.pidfile)
             except OSError as exc:
-                logger.debug("Could not remove PID file %s during force_unlock: %s", self.pidfile, exc)
+                logger.debug(
+                    "Could not remove PID file %s during force_unlock: %s", self.pidfile, exc
+                )
 
     def is_another_instance_running(self):
         """
@@ -96,7 +98,7 @@ class SingleInstanceChecker:
             # Successfully created - we are the first instance
             if self.pidfile:
                 try:
-                    with open(self.pidfile, 'w') as f:
+                    with open(self.pidfile, "w") as f:
                         f.write(str(os.getpid()))
                 except OSError as exc:
                     logger.warning("Could not write PID file %s: %s", self.pidfile, exc)
@@ -112,9 +114,9 @@ class SingleInstanceChecker:
             bool: True if user clicked OK to close, False otherwise
         """
         # Check if running in headless mode
-        qt_platform = os.environ.get('QT_QPA_PLATFORM', '').lower()
-        is_headless = qt_platform == 'offscreen' or (
-            not os.environ.get('DISPLAY') and not os.environ.get('WAYLAND_DISPLAY')
+        qt_platform = os.environ.get("QT_QPA_PLATFORM", "").lower()
+        is_headless = qt_platform == "offscreen" or (
+            not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY")
         )
 
         pid_info = ""
@@ -146,8 +148,12 @@ class SingleInstanceChecker:
             msg_box.setWindowTitle("Application Already Running")
             msg_box.setText(message)
             if stale_lock:
-                msg_box.setInformativeText("A stale lock was detected. Click 'Force Unlock' to clear the lock and start a new instance, or 'OK' to exit.")
-                msg_box.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Retry)
+                msg_box.setInformativeText(
+                    "A stale lock was detected. Click 'Force Unlock' to clear the lock and start a new instance, or 'OK' to exit."
+                )
+                msg_box.setStandardButtons(
+                    QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Retry
+                )
                 msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
                 # Set button text for Retry (Force Unlock)
                 retry_button = msg_box.button(QMessageBox.StandardButton.Retry)
@@ -159,7 +165,9 @@ class SingleInstanceChecker:
                     return False  # Indicate to caller to retry instance check
                 return True
             else:
-                msg_box.setInformativeText("Only one instance of the application can run at a time.")
+                msg_box.setInformativeText(
+                    "Only one instance of the application can run at a time."
+                )
                 msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
                 msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
                 result = msg_box.exec()
