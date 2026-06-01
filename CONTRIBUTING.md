@@ -223,3 +223,62 @@ Reference the issue in the body:
 - [ ] `python3 -m pytest tests/` — all tests pass
 - [ ] New feature includes at least one test
 - [ ] Issue number referenced in the PR description
+
+---
+
+## Releasing a New Version
+
+Releases are fully automated via `.github/workflows/release.yml`. There is no manual
+build step — pushing a version tag is the entire release process.
+
+### Steps
+
+1. Merge all intended changes to `main` and push:
+
+   ```bash
+   git push origin main
+   ```
+
+2. Pick a version following [Semantic Versioning](https://semver.org):
+
+   | Change type                  | Example bump        |
+   |------------------------------|---------------------|
+   | Bug fixes only               | v1.0.0 → v1.0.1     |
+   | Backward-compatible feature  | v1.0.0 → v1.1.0     |
+   | Breaking change              | v1.0.0 → v2.0.0     |
+
+3. Create an annotated tag and push it:
+
+   ```bash
+   git tag v1.2.0 -m "Release v1.2.0"
+   git push origin v1.2.0
+   ```
+
+4. The workflow runs automatically on GitHub Actions:
+   - Builds the Linux executable with PyInstaller
+   - Assembles the AppImage
+   - Creates a GitHub Release with auto-generated release notes
+   - Attaches `py-tray-command-launcher-v1.2.0-x86_64.AppImage` as a release asset
+
+5. Verify the release on the repository's **Releases** page.
+
+### Pre-releases
+
+Tags with a hyphen suffix are marked as pre-releases automatically:
+
+```bash
+git tag v1.2.0-beta.1 -m "Beta release v1.2.0-beta.1"
+git push origin v1.2.0-beta.1
+```
+
+### Re-building a release
+
+If you need to redo a release (e.g. after a broken tag), delete the release on GitHub
+first, then force-push the tag:
+
+```bash
+git tag -f v1.2.0 -m "Re-release v1.2.0"
+git push origin v1.2.0 --force
+```
+
+See [docs/packaging.md](docs/packaging.md#automated-releases-cicd) for full CI/CD details.
