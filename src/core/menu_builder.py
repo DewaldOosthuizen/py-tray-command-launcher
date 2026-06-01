@@ -60,9 +60,7 @@ class MenuBuilder:
                 )
 
             # Resolve the icon path correctly
-            icon_path = self._get_item_icon_path(
-                items.get("icon"), self.tray_app.icon_file
-            )
+            icon_path = self._get_item_icon_path(items.get("icon"), self.tray_app.icon_file)
 
             # Create a submenu for each group
             submenu = QMenu(group, menu)
@@ -176,9 +174,7 @@ class MenuBuilder:
             # Handle submenu case (nested dictionaries without command and not a reference)
             if isinstance(item, dict) and "command" not in item and "ref" not in item:
                 # Create submenu for nested dictionaries
-                icon_path = self._get_item_icon_path(
-                    item.get("icon"), parent_icon_path
-                )
+                icon_path = self._get_item_icon_path(item.get("icon"), parent_icon_path)
 
                 submenu = QMenu(label, menu)
                 submenu.setIcon(QIcon(icon_path))
@@ -189,9 +185,7 @@ class MenuBuilder:
             # Handle command case (direct commands or references)
             elif isinstance(item, dict) and ("command" in item or "ref" in item):
                 # Add command item to menu
-                self._add_command_to_menu(
-                    menu, label, item, parent_icon_path, group_name
-                )
+                self._add_command_to_menu(menu, label, item, parent_icon_path, group_name)
 
     def _resolve_command_reference(self, group, label, item):
         """Resolve a command reference to get the actual command data.
@@ -267,9 +261,7 @@ class MenuBuilder:
                 # Use the resolved item but keep track of the reference
                 command = resolved_item.get("command", "")
                 # If the resolved item has an icon, use it; otherwise inherit from parent
-                icon_path = self._get_item_icon_path(
-                    resolved_item.get("icon"), parent_icon_path
-                )
+                icon_path = self._get_item_icon_path(resolved_item.get("icon"), parent_icon_path)
                 show_output = resolved_item.get("showOutput", False)
                 confirm = resolved_item.get("confirm", False)
                 prompt = resolved_item.get("prompt", None)
@@ -279,16 +271,21 @@ class MenuBuilder:
 
                 # Connect the action to execute command
                 action.triggered.connect(
-                    lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: self.tray_app.execute(
-                        lbl, cmd, conf, show, prmpt
+                    lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: (
+                        self.tray_app.execute(lbl, cmd, conf, show, prmpt)
                     )
                 )
 
                 menu.addAction(action)
                 self._attach_pin_context_menu(
                     action,
-                    {"label": label, "command": command, "confirm": confirm,
-                     "showOutput": show_output, "prompt": prompt},
+                    {
+                        "label": label,
+                        "command": command,
+                        "confirm": confirm,
+                        "showOutput": show_output,
+                        "prompt": prompt,
+                    },
                 )
                 return action
 
@@ -311,16 +308,21 @@ class MenuBuilder:
 
         # Connect the action to execute command
         action.triggered.connect(
-            lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: self.tray_app.execute(
-                lbl, cmd, conf, show, prmpt
+            lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: (
+                self.tray_app.execute(lbl, cmd, conf, show, prmpt)
             )
         )
 
         menu.addAction(action)
         self._attach_pin_context_menu(
             action,
-            {"label": label, "command": command, "confirm": confirm,
-             "showOutput": show_output, "prompt": prompt},
+            {
+                "label": label,
+                "command": command,
+                "confirm": confirm,
+                "showOutput": show_output,
+                "prompt": prompt,
+            },
         )
         return action
 
@@ -328,9 +330,7 @@ class MenuBuilder:
         """Attach a right-click context menu with 'Pin to Quick-Launch Bar' to *action*."""
         context_menu = QMenu()
         pin_action = QAction("Pin to Quick-Launch Bar", context_menu)
-        pin_action.triggered.connect(
-            partial(self.tray_app._pin_to_quick_launch, cmd_info)
-        )
+        pin_action.triggered.connect(partial(self.tray_app._pin_to_quick_launch, cmd_info))
         context_menu.addAction(pin_action)
         action.setMenu(context_menu)
 

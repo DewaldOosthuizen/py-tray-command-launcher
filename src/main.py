@@ -30,11 +30,10 @@ except ImportError as e:
     # Try to show a GUI error dialog if possible.
     try:
         from PyQt6.QtWidgets import QApplication, QMessageBox
+
         app = QApplication(sys.argv)
         QMessageBox.critical(
-            None,
-            "Missing Dependency",
-            f"{e}\n\nPlease run:\n\npip install -r requirements.txt"
+            None, "Missing Dependency", f"{e}\n\nPlease run:\n\npip install -r requirements.txt"
         )
     except Exception:  # noqa: S110 — intentional: fallback GUI error dialog; swallowing is correct here
         # If even the error dialog fails, silently ignore.

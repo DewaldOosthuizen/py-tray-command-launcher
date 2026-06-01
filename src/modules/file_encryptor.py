@@ -32,6 +32,7 @@ _PBKDF2_ITERATIONS = 600_000
 # Iteration count used by all files encrypted before this change.
 _LEGACY_ITERATIONS = 100_000
 
+
 class EncryptionWorker(QThread):
     """Worker thread for encryption/decryption operations."""
 
@@ -46,8 +47,9 @@ class EncryptionWorker(QThread):
         self.password = password
         self.is_folder = is_folder
 
-    def _derive_key(self, password: str, salt: bytes,
-                    iterations: int = _PBKDF2_ITERATIONS) -> bytes:
+    def _derive_key(
+        self, password: str, salt: bytes, iterations: int = _PBKDF2_ITERATIONS
+    ) -> bytes:
         """Derive encryption key from password using PBKDF2-HMAC-SHA256.
 
         Args:
@@ -68,7 +70,7 @@ class EncryptionWorker(QThread):
     def _encrypt_file(self, file_path: str, key: bytes) -> bool:
         """Encrypt a single file."""
         try:
-            with open(file_path, 'rb') as file:
+            with open(file_path, "rb") as file:
                 file_data = file.read()
 
             fernet = Fernet(key)
@@ -76,7 +78,7 @@ class EncryptionWorker(QThread):
 
             # Write encrypted data to .enc file
             encrypted_file_path = file_path + ENC_FILE_SUFFIX
-            with open(encrypted_file_path, 'wb') as file:
+            with open(encrypted_file_path, "wb") as file:
                 file.write(encrypted_data)
 
             # Remove original file
@@ -89,15 +91,15 @@ class EncryptionWorker(QThread):
     def _decrypt_file(self, file_path: str, key: bytes) -> bool:
         """Decrypt a single file."""
         try:
-            with open(file_path, 'rb') as file:
+            with open(file_path, "rb") as file:
                 encrypted_data = file.read()
 
             fernet = Fernet(key)
             decrypted_data = fernet.decrypt(encrypted_data)
 
             # Write decrypted data to original file (remove .enc extension)
-            original_file_path = file_path[:-len(ENC_FILE_SUFFIX)]  # Remove .enc extension
-            with open(original_file_path, 'wb') as file:
+            original_file_path = file_path[: -len(ENC_FILE_SUFFIX)]  # Remove .enc extension
+            with open(original_file_path, "wb") as file:
                 file.write(decrypted_data)
 
             # Remove encrypted file
@@ -117,40 +119,30 @@ class EncryptionWorker(QThread):
         files = []
         resolved_root = Path(path).resolve()
         if resolved_root.is_file():
-            if operation == 'encrypt' or (
-                operation == 'decrypt' and path.endswith(ENC_FILE_SUFFIX)
+            if operation == "encrypt" or (
+                operation == "decrypt" and path.endswith(ENC_FILE_SUFFIX)
             ):
                 files.append(str(resolved_root))
         else:
             # It's a directory — walk without following symlinks
-            for root, _dirs, filenames in os.walk(
-                str(resolved_root), followlinks=False
-            ):
+            for root, _dirs, filenames in os.walk(str(resolved_root), followlinks=False):
                 for filename in filenames:
                     file_path = os.path.join(root, filename)
                     # Reject any path that escapes the intended root
                     try:
                         Path(file_path).resolve().relative_to(resolved_root)
                     except ValueError:
-                        logger.warning(
-                            "Skipping file outside target directory: %s", file_path
-                        )
+                        logger.warning("Skipping file outside target directory: %s", file_path)
                         continue
-                    if (
-                        operation == 'encrypt'
-                        and not filename.endswith(ENC_FILE_SUFFIX)
-                    ) or (
-                        operation == 'decrypt'
-                        and filename.endswith(ENC_FILE_SUFFIX)
+                    if (operation == "encrypt" and not filename.endswith(ENC_FILE_SUFFIX)) or (
+                        operation == "decrypt" and filename.endswith(ENC_FILE_SUFFIX)
                     ):
                         files.append(file_path)
         return files
 
     def run(self):
         """Run the encryption/decryption operation."""
-        logger.info(
-            "Starting %s operation on: %s", self.operation, self.file_path
-        )
+        logger.info("Starting %s operation on: %s", self.operation, self.file_path)
         try:
             # Generate salt
             salt = os.urandom(16)
@@ -160,7 +152,7 @@ class EncryptionWorker(QThread):
             files_to_process = self._get_all_files(self.file_path, self.operation)
 
             if not files_to_process:
-                if self.operation == 'encrypt':
+                if self.operation == "encrypt":
                     message = "No files found to encrypt."
                 else:
                     message = "No encrypted files (.enc) found to decrypt."
@@ -171,31 +163,31 @@ class EncryptionWorker(QThread):
             successful_operations = 0
 
             # Store salt in a .salt file for the entire operation
-            if self.operation == 'encrypt':
+            if self.operation == "encrypt":
                 if self.is_folder:
-                    salt_file = os.path.join(self.file_path, '.encryption_salt')
+                    salt_file = os.path.join(self.file_path, ".encryption_salt")
                 else:
                     # For single files, store salt next to the original file location
                     salt_file = self.file_path + SALT_FILE_SUFFIX
-                with open(salt_file, 'wb') as f:
+                with open(salt_file, "wb") as f:
                     # 4-byte big-endian uint32 iteration count + 16-byte salt = 20 bytes total
                     f.write(struct.pack(">I", _PBKDF2_ITERATIONS))
                     f.write(salt)
             else:  # decrypt
                 # Read salt
                 if self.is_folder:
-                    salt_file = os.path.join(self.file_path, '.encryption_salt')
+                    salt_file = os.path.join(self.file_path, ".encryption_salt")
                 else:
                     # For single files, the salt file should be next to the original file
                     # If we're decrypting /path/file.txt.enc, salt should be at /path/file.txt.salt
                     if self.file_path.endswith(ENC_FILE_SUFFIX):
-                        original_file_path = self.file_path[:-len(ENC_FILE_SUFFIX)]  # Remove .enc
+                        original_file_path = self.file_path[: -len(ENC_FILE_SUFFIX)]  # Remove .enc
                         salt_file = original_file_path + SALT_FILE_SUFFIX
                     else:
                         salt_file = self.file_path + SALT_FILE_SUFFIX
 
                 if os.path.exists(salt_file):
-                    with open(salt_file, 'rb') as f:
+                    with open(salt_file, "rb") as f:
                         raw = f.read()
                     if len(raw) == 20:
                         # New format: 4-byte big-endian uint32 + 16-byte salt
@@ -207,19 +199,20 @@ class EncryptionWorker(QThread):
                         salt = raw
                     else:
                         self.finished_signal.emit(
-                            False,
-                            "Salt file is corrupt or unrecognised format. Cannot decrypt."
+                            False, "Salt file is corrupt or unrecognised format. Cannot decrypt."
                         )
                         return
                     key = self._derive_key(self.password, salt, iterations=stored_iterations)
                 else:
-                    self.finished_signal.emit(False, "Salt file not found. Cannot decrypt without the original salt.")
+                    self.finished_signal.emit(
+                        False, "Salt file not found. Cannot decrypt without the original salt."
+                    )
                     return
 
             for i, file_path in enumerate(files_to_process):
                 self.status_updated.emit(f"Processing: {os.path.basename(file_path)}")
 
-                if self.operation == 'encrypt':
+                if self.operation == "encrypt":
                     success = self._encrypt_file(file_path, key)
                 else:
                     success = self._decrypt_file(file_path, key)
@@ -232,23 +225,27 @@ class EncryptionWorker(QThread):
                 self.progress_updated.emit(progress)
 
             # Clean up salt file after decryption
-            if self.operation == 'decrypt' and os.path.exists(salt_file):
+            if self.operation == "decrypt" and os.path.exists(salt_file):
                 os.remove(salt_file)
 
             if successful_operations == total_files:
-                operation_name = "encrypted" if self.operation == 'encrypt' else "decrypted"
+                operation_name = "encrypted" if self.operation == "encrypt" else "decrypted"
                 message = f"Successfully {operation_name} {successful_operations} file(s)."
                 logger.info(
                     "%s completed: %d/%d files processed",
-                    self.operation, successful_operations, total_files,
+                    self.operation,
+                    successful_operations,
+                    total_files,
                 )
                 self.finished_signal.emit(True, message)
             else:
-                operation_name = "encryption" if self.operation == 'encrypt' else "decryption"
+                operation_name = "encryption" if self.operation == "encrypt" else "decryption"
                 message = f"Completed with issues: {successful_operations}/{total_files} files processed successfully."
                 logger.warning(
                     "%s completed with issues: %d/%d files processed",
-                    self.operation, successful_operations, total_files,
+                    self.operation,
+                    successful_operations,
+                    total_files,
                 )
                 self.finished_signal.emit(False, message)
 
@@ -315,7 +312,7 @@ class PasswordDialog(QDialog):
         """Toggle password visibility."""
         mode = QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
         self.password_edit.setEchoMode(mode)
-        if hasattr(self, 'confirm_password_edit'):
+        if hasattr(self, "confirm_password_edit"):
             self.confirm_password_edit.setEchoMode(mode)
 
     def validate_and_accept(self):
@@ -420,18 +417,12 @@ class FileEncryptor:
 
     def encrypt_file_or_folder(self):
         """Show dialog to encrypt a file or folder."""
-        file_path = QFileDialog.getExistingDirectory(
-            None,
-            "Select folder to encrypt"
-        )
+        file_path = QFileDialog.getExistingDirectory(None, "Select folder to encrypt")
 
         if not file_path:
             # Try file selection if no folder selected
             file_path, _ = QFileDialog.getOpenFileName(
-                None,
-                "Select file to encrypt",
-                "",
-                "All Files (*)"
+                None, "Select file to encrypt", "", "All Files (*)"
             )
 
         if not file_path:
@@ -450,10 +441,7 @@ class FileEncryptor:
 
     def decrypt_file_or_folder(self):
         """Show dialog to decrypt a file or folder."""
-        file_path = QFileDialog.getExistingDirectory(
-            None,
-            "Select folder to decrypt"
-        )
+        file_path = QFileDialog.getExistingDirectory(None, "Select folder to decrypt")
 
         if not file_path:
             # Try file selection if no folder selected
@@ -461,7 +449,7 @@ class FileEncryptor:
                 None,
                 "Select encrypted file to decrypt",
                 "",
-                f"Encrypted Files (*{ENC_FILE_SUFFIX});;All Files (*)"
+                f"Encrypted Files (*{ENC_FILE_SUFFIX});;All Files (*)",
             )
 
         if not file_path:
@@ -486,7 +474,9 @@ class FileEncryptor:
         self.worker = EncryptionWorker(operation, file_path, password, is_folder)
         self.worker.progress_updated.connect(progress_dialog.update_progress)
         self.worker.status_updated.connect(progress_dialog.update_status)
-        self.worker.finished_signal.connect(lambda success, message: self._on_operation_finished(progress_dialog, success, message))
+        self.worker.finished_signal.connect(
+            lambda success, message: self._on_operation_finished(progress_dialog, success, message)
+        )
 
         # Start operation
         self.worker.start()
