@@ -286,5 +286,39 @@ class TestPromptInputSanitisation(unittest.TestCase):
         self.assertIn(shlex.quote(dangerous_input), actual_command)
 
 
+    def test_semicolon_injection_does_not_spawn_second_process(self):
+        """Injecting '; id' must not cause Popen to be called more than once."""
+        import shlex
+        from core.tray_app import TrayApp
+
+        tray_app = object.__new__(TrayApp)
+        tray_app.executor = CommandExecutor.__new__(CommandExecutor)
+        tray_app.reload_history_commands = MagicMock()
+        tray_app.reload_favorites_commands = MagicMock()
+
+        dangerous_input = "; id"
+
+        with patch("subprocess.Popen") as mock_popen, \
+             patch("core.tray_app.config_manager"), \
+             patch("core.tray_app.QInputDialog") as mock_dialog:
+            mock_popen.return_value.pid = 12345
+            mock_dialog.getText.return_value = (dangerous_input, True)
+            tray_app.execute(
+                title="Test",
+                command="echo {promptInput}",
+                confirm=False,
+                show_output=False,
+                prompt="Enter value",
+            )
+
+        # The shell must only have been invoked once — echo only, not echo + id
+        mock_popen.assert_called_once()
+        actual_command = mock_popen.call_args[0][0]
+        # The quoted payload must appear verbatim in the command string
+        self.assertIn(shlex.quote(dangerous_input), actual_command)
+        # The raw injection metacharacter must NOT appear as a bare token
+        self.assertNotIn("; id", actual_command.replace(shlex.quote(dangerous_input), ""))
+
+
 if __name__ == '__main__':
     unittest.main()
