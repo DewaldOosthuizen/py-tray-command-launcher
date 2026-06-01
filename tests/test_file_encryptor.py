@@ -2,12 +2,12 @@
 """Tests for file_encryptor — PBKDF2 iteration count and salt-file format."""
 
 import os
-import struct
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 
 # Stub PyQt6 so the module can be imported without a display server.
 # QThread must be a real Python class so EncryptionWorker can subclass it
@@ -140,6 +140,7 @@ class TestLegacySaltFallback(unittest.TestCase):
     def test_legacy_16_byte_salt_decrypts_correctly(self):
         """Files encrypted with the old 100 000 iteration scheme must still decrypt."""
         import base64
+
         from cryptography.fernet import Fernet
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -241,6 +242,7 @@ class TestLegacyDetectedSignal(unittest.TestCase):
     def _encrypt_with_legacy(self, plain_file, password):
         """Encrypt a file using legacy 100 000 iterations and 16-byte salt."""
         import base64
+
         from cryptography.fernet import Fernet
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -307,8 +309,8 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
 
     def test_reencrypt_produces_20_byte_salt_and_enc_file(self):
         """_reencrypt_to_current_standard must produce a 20-byte .salt and .enc file."""
-        from modules.file_encryptor import ENC_FILE_SUFFIX, SALT_FILE_SUFFIX, FileEncryptor
         import modules.file_encryptor as fe_mod
+        from modules.file_encryptor import ENC_FILE_SUFFIX, SALT_FILE_SUFFIX
 
         with tempfile.TemporaryDirectory() as tmp:
             plain_file = os.path.join(tmp, "plain.txt")
@@ -316,12 +318,17 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
 
             enc = self._make_encryptor()
 
+            accepted_sentinel = object()
             mock_dialog = MagicMock()
-            mock_dialog.exec.return_value = MagicMock()  # will compare to QDialog.DialogCode.Accepted
+            mock_dialog.exec.return_value = accepted_sentinel
             mock_dialog.get_password.return_value = "newpassword"
 
-            with patch.object(fe_mod, "PasswordDialog", return_value=mock_dialog) as _pd, \
-                 patch.object(fe_mod.QDialog.DialogCode, "Accepted", mock_dialog.exec.return_value):
+            mock_qdialog = MagicMock()
+            mock_qdialog.DialogCode.Accepted = accepted_sentinel
+
+            with patch.object(fe_mod, "PasswordDialog", return_value=mock_dialog), \
+                 patch.object(fe_mod, "QDialog", mock_qdialog), \
+                 patch.object(fe_mod.QMessageBox, "information"):
                 enc._reencrypt_to_current_standard(plain_file)
 
             salt_file = plain_file + SALT_FILE_SUFFIX
@@ -334,7 +341,6 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
 
     def test_reencrypt_atomic_cleanup_on_rename_failure(self):
         """If rename fails after writing temp enc file, original plaintext is preserved."""
-        from modules.file_encryptor import FileEncryptor
         import modules.file_encryptor as fe_mod
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -343,9 +349,13 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
 
             enc = self._make_encryptor()
 
+            accepted_sentinel = object()
             mock_dialog = MagicMock()
             mock_dialog.get_password.return_value = "pw"
-            mock_dialog.exec.return_value = MagicMock()
+            mock_dialog.exec.return_value = accepted_sentinel
+
+            mock_qdialog = MagicMock()
+            mock_qdialog.DialogCode.Accepted = accepted_sentinel
 
             replace_call_count = [0]
             real_replace = os.replace
@@ -357,7 +367,7 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
                 return real_replace(src, dst)
 
             with patch.object(fe_mod, "PasswordDialog", return_value=mock_dialog), \
-                 patch.object(fe_mod.QDialog.DialogCode, "Accepted", mock_dialog.exec.return_value), \
+                 patch.object(fe_mod, "QDialog", mock_qdialog), \
                  patch("os.replace", side_effect=fake_replace), \
                  patch.object(fe_mod.QMessageBox, "warning"):
                 enc._reencrypt_to_current_standard(plain_file)

@@ -117,6 +117,16 @@ Encrypt and decrypt files or entire folders using a password-derived key (PBKDF2
 
 Encryption runs in a background thread so the UI stays responsive on large files or directories. Progress is shown via a progress bar.
 
+### Salt Format and Migration
+
+Each encrypted file is accompanied by a `.salt` file that stores the parameters needed for decryption.
+
+**Current format (20 bytes):** a 4-byte big-endian `uint32` holding the PBKDF2 iteration count (currently 600 000) followed by 16 bytes of random salt.
+
+**Legacy format (16 bytes):** files encrypted before the iteration-count upgrade contain only the 16-byte salt. The application automatically recognises this format and uses the original 100 000 iteration count for decryption.
+
+**In-app upgrade path:** after successfully decrypting a legacy file, the application offers to re-encrypt it using the current standard (600 000 iterations). Accepting the prompt opens a password dialog; the re-encryption is performed atomically — new encrypted and salt files are written to temporary files first, then renamed into place, so the original plaintext is never removed unless both writes succeed.
+
 ---
 
 ## Command Scheduling

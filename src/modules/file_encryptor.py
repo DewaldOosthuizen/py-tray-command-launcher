@@ -39,6 +39,7 @@ class EncryptionWorker(QThread):
     progress_updated = pyqtSignal(int)
     status_updated = pyqtSignal(str)
     finished_signal = pyqtSignal(bool, str)  # success, message
+    legacy_detected = pyqtSignal(str)  # decrypted output path
 
     def __init__(self, operation, file_path, password, is_folder=False):
         super().__init__()
@@ -143,6 +144,7 @@ class EncryptionWorker(QThread):
     def run(self):
         """Run the encryption/decryption operation."""
         logger.info("Starting %s operation on: %s", self.operation, self.file_path)
+        is_legacy = False
         try:
             # Generate salt
             salt = os.urandom(16)
@@ -197,6 +199,7 @@ class EncryptionWorker(QThread):
                         # Legacy format: 16-byte salt only — iteration count was 100 000
                         stored_iterations = _LEGACY_ITERATIONS
                         salt = raw
+                        is_legacy = True
                     else:
                         self.finished_signal.emit(
                             False, "Salt file is corrupt or unrecognised format. Cannot decrypt."
@@ -237,6 +240,13 @@ class EncryptionWorker(QThread):
                     successful_operations,
                     total_files,
                 )
+                if self.operation == "decrypt" and is_legacy:
+                    decrypted_output = (
+                        self.file_path[: -len(ENC_FILE_SUFFIX)]
+                        if self.file_path.endswith(ENC_FILE_SUFFIX)
+                        else self.file_path
+                    )
+                    self.legacy_detected.emit(decrypted_output)
                 self.finished_signal.emit(True, message)
             else:
                 operation_name = "encryption" if self.operation == "encrypt" else "decryption"
@@ -468,12 +478,14 @@ class FileEncryptor:
 
     def _process_file(self, file_path, password, operation, is_folder):
         """Process file/folder with progress dialog."""
+        self._legacy_decrypted_path = None
         progress_dialog = ProgressDialog(operation, file_path)
 
         # Create worker thread
         self.worker = EncryptionWorker(operation, file_path, password, is_folder)
         self.worker.progress_updated.connect(progress_dialog.update_progress)
         self.worker.status_updated.connect(progress_dialog.update_status)
+        self.worker.legacy_detected.connect(self._on_legacy_detected)
         self.worker.finished_signal.connect(
             lambda success, message: self._on_operation_finished(progress_dialog, success, message)
         )
@@ -482,6 +494,10 @@ class FileEncryptor:
         self.worker.start()
         progress_dialog.exec()
 
+    def _on_legacy_detected(self, decrypted_path: str) -> None:
+        """Store the decrypted path from a legacy-encrypted file for upgrade prompt."""
+        self._legacy_decrypted_path = decrypted_path
+
     def _on_operation_finished(self, progress_dialog, success, message):
         """Handle operation completion."""
         progress_dialog.disable_cancel()
@@ -489,5 +505,71 @@ class FileEncryptor:
 
         if success:
             QMessageBox.information(None, "Success", message)
+            if self._legacy_decrypted_path:
+                legacy_path = self._legacy_decrypted_path
+                self._legacy_decrypted_path = None
+                reply = QMessageBox.question(
+                    None,
+                    "Legacy Encryption Detected",
+                    "This file was encrypted with a legacy key (100\u202f000 iterations).\n"
+                    "Re-encrypt now to upgrade to the current standard (600\u202f000 iterations)?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if reply == QMessageBox.StandardButton.Yes:
+                    self._reencrypt_to_current_standard(legacy_path)
         else:
             QMessageBox.warning(None, "Error", message)
+
+    def _reencrypt_to_current_standard(self, file_path: str) -> None:
+        """Re-encrypt a plaintext file using current KDF parameters (600 000 iterations).
+
+        Operates atomically: writes to temp files first, then os.replace() into final
+        positions. The original plaintext file is not removed until both temp files have
+        been written successfully.
+        """
+        import tempfile
+
+        enc_path = file_path + ENC_FILE_SUFFIX
+        salt_path = file_path + SALT_FILE_SUFFIX
+        try:
+            password_dialog = PasswordDialog("re-encrypt", file_path)
+            if password_dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+            password = password_dialog.get_password()
+
+            salt = os.urandom(16)
+            key = EncryptionWorker("encrypt", file_path, password)._derive_key(
+                password, salt, iterations=_PBKDF2_ITERATIONS
+            )
+
+            with open(file_path, "rb") as fh:
+                plaintext = fh.read()
+
+            fernet = Fernet(key)
+            ciphertext = fernet.encrypt(plaintext)
+
+            dir_ = os.path.dirname(file_path) or "."
+            with tempfile.NamedTemporaryFile(dir=dir_, delete=False, suffix=".enc.tmp") as enc_tmp:
+                enc_tmp.write(ciphertext)
+                enc_tmp_path = enc_tmp.name
+
+            with tempfile.NamedTemporaryFile(dir=dir_, delete=False, suffix=".salt.tmp") as salt_tmp:
+                salt_tmp.write(struct.pack(">I", _PBKDF2_ITERATIONS))
+                salt_tmp.write(salt)
+                salt_tmp_path = salt_tmp.name
+
+            os.replace(enc_tmp_path, enc_path)
+            os.replace(salt_tmp_path, salt_path)
+            os.remove(file_path)
+
+            QMessageBox.information(None, "Re-encrypted", "File upgraded to current encryption standard.")
+        except Exception as exc:
+            logger.error("Re-encryption failed: %s", exc)
+            QMessageBox.warning(None, "Re-encryption Failed", f"Could not re-encrypt file: {exc}")
+            for tmp in [locals().get("enc_tmp_path"), locals().get("salt_tmp_path")]:
+                if tmp and os.path.exists(tmp):
+                    try:
+                        os.remove(tmp)
+                    except OSError:
+                        pass
