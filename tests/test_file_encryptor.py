@@ -309,6 +309,10 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
 
     def test_reencrypt_produces_20_byte_salt_and_enc_file(self):
         """_reencrypt_to_current_standard must produce a 20-byte .salt and .enc file."""
+        import struct
+
+        from cryptography.fernet import Fernet
+
         import modules.file_encryptor as fe_mod
         from modules.file_encryptor import ENC_FILE_SUFFIX, SALT_FILE_SUFFIX
 
@@ -338,6 +342,17 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
             self.assertTrue(os.path.exists(enc_file), "Enc file must exist after re-encryption")
             self.assertEqual(os.path.getsize(salt_file), 20, "Salt file must be 20 bytes")
             self.assertFalse(os.path.exists(plain_file), "Plaintext must be removed")
+
+            salt_content = Path(salt_file).read_bytes()
+            iterations = struct.unpack(">I", salt_content[:4])[0]
+            self.assertEqual(iterations, _PBKDF2_ITERATIONS)
+
+            salt = salt_content[4:]
+            key = EncryptionWorker("encrypt", enc_file, "newpassword")._derive_key(
+                "newpassword", salt, iterations=_PBKDF2_ITERATIONS
+            )
+            decrypted = Fernet(key).decrypt(Path(enc_file).read_bytes())
+            self.assertEqual(decrypted, b"secret data")
 
     def test_reencrypt_atomic_cleanup_on_rename_failure(self):
         """If rename fails after writing temp enc file, original plaintext is preserved."""

@@ -240,7 +240,7 @@ class EncryptionWorker(QThread):
                     successful_operations,
                     total_files,
                 )
-                if self.operation == "decrypt" and is_legacy:
+                if self.operation == "decrypt" and is_legacy and not self.is_folder:
                     decrypted_output = (
                         self.file_path[: -len(ENC_FILE_SUFFIX)]
                         if self.file_path.endswith(ENC_FILE_SUFFIX)
@@ -533,7 +533,7 @@ class FileEncryptor:
         enc_path = file_path + ENC_FILE_SUFFIX
         salt_path = file_path + SALT_FILE_SUFFIX
         try:
-            password_dialog = PasswordDialog("re-encrypt", file_path)
+            password_dialog = PasswordDialog("re-encrypt")
             if password_dialog.exec() != QDialog.DialogCode.Accepted:
                 return
             password = password_dialog.get_password()
