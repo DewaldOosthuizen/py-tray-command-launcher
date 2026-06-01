@@ -39,20 +39,22 @@ class CommandExecutor:
         process.setProgram("bash")
         process.setArguments(["-c", command])
         process.errorOccurred.connect(
-            lambda err: logger.error(
-                "QProcess error for command '%s': %s", command, err
-            )
+            lambda err: logger.error("QProcess error for command '%s': %s", command, err)
         )
         process.finished.connect(
             lambda code, status: (
                 logger.warning(
                     "QProcess exited with non-zero code for command '%s': exit_code=%d status=%s",
-                    command, code, status,
+                    command,
+                    code,
+                    status,
                 )
                 if code != 0
                 else logger.info(
                     "QProcess finished successfully for command '%s': exit_code=%d status=%s",
-                    command, code, status,
+                    command,
+                    code,
+                    status,
                 )
             )
         )

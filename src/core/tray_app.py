@@ -282,9 +282,7 @@ class TrayApp:
             self._update_tray_badge()
 
         def _on_error(error):
-            logger.error(
-                "QProcess error for command '%s': %s", command, error
-            )
+            logger.error("QProcess error for command '%s': %s", command, error)
             win = output_win_ref()
             if win is not None:
                 try:
