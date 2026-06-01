@@ -191,3 +191,58 @@ class TestValidateCommands:
         # items without it are skipped (they may be sub-groups or icon entries).
         commands = {"Group": {"NoCmd": {"confirm": True}}}
         self._mgr()._validate_commands(commands)  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# _validate_settings_schema  (issue #61)
+# ---------------------------------------------------------------------------
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SCHEMA_PATH = PROJECT_ROOT / "config" / "settings.schema.json"
+
+
+def _make_settings_mgr(tmp_path, settings_data, defaults_dir=None):
+    """Return a minimal ConfigManager instance wired to tmp_path."""
+    mgr = ConfigManager.__new__(ConfigManager)
+    mgr._initialized = False
+    mgr._settings_cache = None
+    mgr.settings_file = tmp_path / "settings.json"
+    mgr.defaults_dir = defaults_dir if defaults_dir is not None else PROJECT_ROOT / "config"
+    if settings_data is not None:
+        import json as _json
+        mgr.settings_file.write_text(_json.dumps(settings_data), encoding="utf-8")
+    return mgr
+
+
+class TestSettingsSchemaValidation:
+    def test_settings_schema_validation_warns_on_bad_type(self, tmp_path):
+        """history_limit='fifty' should trigger a schema validation warning and fall back to default."""
+        mgr = _make_settings_mgr(tmp_path, {"history_limit": "fifty"})
+        with patch("core.config_manager.logger") as mock_logger:
+            result = mgr.get_settings()
+        # A warning containing "settings.json validation error" must have been issued
+        warning_msgs = [str(call) for call in mock_logger.warning.call_args_list]
+        assert any("settings.json validation error" in msg for msg in warning_msgs), (
+            f"Expected 'settings.json validation error' in warnings, got: {warning_msgs}"
+        )
+        # Despite bad type the returned dict must still have the default history_limit
+        assert result["history_limit"] == 50
+
+    def test_settings_schema_validation_passes_for_valid_settings(self, tmp_path):
+        """Valid settings.json must not produce any schema-validation warning."""
+        valid = {"theme": "dark", "history_limit": 25}
+        mgr = _make_settings_mgr(tmp_path, valid)
+        with patch("core.config_manager.logger") as mock_logger:
+            mgr.get_settings()
+        warning_msgs = [str(call) for call in mock_logger.warning.call_args_list]
+        assert not any("settings.json validation error" in msg for msg in warning_msgs)
+
+    def test_settings_schema_validation_skipped_when_schema_absent(self, tmp_path):
+        """When settings.schema.json is missing no schema-validation warning is issued."""
+        no_schema_dir = tmp_path / "no_schema"
+        no_schema_dir.mkdir()
+        mgr = _make_settings_mgr(tmp_path, {"history_limit": "fifty"}, defaults_dir=no_schema_dir)
+        with patch("core.config_manager.logger") as mock_logger:
+            mgr.get_settings()
+        warning_msgs = [str(call) for call in mock_logger.warning.call_args_list]
+        assert not any("settings.json validation error" in msg for msg in warning_msgs)

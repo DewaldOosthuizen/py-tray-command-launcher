@@ -121,6 +121,64 @@ Output: `dist\py-tray-command-launcher.exe`
 
 ---
 
+## Automated Releases (CI/CD)
+
+The project ships a GitHub Actions workflow (`.github/workflows/release.yml`) that
+builds the AppImage automatically and publishes it as a GitHub Release asset whenever
+a version tag is pushed.
+
+### How it works
+
+Trigger: push a tag that matches `v*.*.*` (semantic version, e.g. `v1.2.0`).
+
+The workflow:
+1. Checks out the repository.
+2. Installs all required system and Python dependencies on an `ubuntu-latest` runner.
+3. Builds the Linux executable with PyInstaller.
+4. Downloads `appimagetool`, assembles `AppDir/`, and produces the AppImage.
+5. Creates a GitHub Release named after the tag with auto-generated release notes.
+6. Uploads `py-tray-command-launcher-<tag>-x86_64.AppImage` as a downloadable asset.
+
+Pre-release detection: if the tag contains a hyphen (e.g. `v1.2.0-beta.1`) the release
+is automatically marked as a pre-release. Clean tags (`v1.2.0`) are full releases.
+
+### Publishing a release
+
+```bash
+# 1. Ensure main is up to date
+git push origin main
+
+# 2. Create and push the version tag
+git tag v1.2.0 -m "Release v1.2.0"
+git push origin v1.2.0
+```
+
+That is all. Go to the GitHub Actions tab to watch the build, and the Releases page
+to download the finished AppImage.
+
+### Version naming
+
+The AppImage is named using the tag directly:
+
+    py-tray-command-launcher-v1.2.0-x86_64.AppImage
+
+The tag is the single source of truth for the release version. No manual edits to
+`pyproject.toml` or any other file are required before tagging.
+
+### Re-building a release
+
+If you need to rebuild an existing release (e.g. after a bad tag), delete the release
+on GitHub first, then force-push the tag:
+
+```bash
+git tag -f v1.2.0 -m "Re-release v1.2.0"
+git push origin v1.2.0 --force
+```
+
+The workflow will not overwrite an existing release — the old one must be deleted first.
+
+---
+
 ## Build Artifacts
 
 ```

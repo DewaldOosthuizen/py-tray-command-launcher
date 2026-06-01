@@ -110,9 +110,7 @@ class CommandCreator:
             command = cmd_edit.text()
 
             if not group or not name or not command:
-                QMessageBox.critical(
-                    dialog, "Error", "Group, Name, and Command are required!"
-                )
+                QMessageBox.critical(dialog, "Error", "Group, Name, and Command are required!")
                 return
 
             # Create command data

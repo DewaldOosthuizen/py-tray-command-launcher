@@ -40,15 +40,17 @@ class IconResolver:
     # Default icon cache TTL in seconds (7 days).  Override via settings.
     _DEFAULT_CACHE_TTL_SECONDS = 7 * 24 * 3600
     # Content-Type values accepted for downloaded icons.
-    _ALLOWED_ICON_CONTENT_TYPES = frozenset({
-        "image/png",
-        "image/jpeg",
-        "image/gif",
-        "image/bmp",
-        "image/x-icon",
-        "image/vnd.microsoft.icon",
-        "image/svg+xml",
-    })
+    _ALLOWED_ICON_CONTENT_TYPES = frozenset(
+        {
+            "image/png",
+            "image/jpeg",
+            "image/gif",
+            "image/bmp",
+            "image/x-icon",
+            "image/vnd.microsoft.icon",
+            "image/svg+xml",
+        }
+    )
 
     def __init__(self, base_dir: str) -> None:
         self.base_dir = base_dir
@@ -109,7 +111,10 @@ class IconResolver:
                 candidates.append(
                     os.path.normpath(
                         os.path.join(
-                            exe_dir, "..", "share", "pixmaps",
+                            exe_dir,
+                            "..",
+                            "share",
+                            "pixmaps",
                             "py-tray-command-launcher.png",
                         )
                     )
@@ -167,6 +172,7 @@ class IconResolver:
             if os.path.exists(cached_file):
                 if self._cache_ttl_seconds > 0:
                     import time
+
                     age = time.time() - os.path.getmtime(cached_file)
                     if age < self._cache_ttl_seconds:
                         return cached_file
@@ -268,9 +274,7 @@ class IconResolver:
     def _resolve_base64_icon(self, icon_path: str, fallback: str) -> str:
         """Decode a base64 data URI and return a path to the cached file."""
         try:
-            match = re.match(
-                r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", icon_path
-            )
+            match = re.match(r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", icon_path)
             if not match:
                 return fallback
 

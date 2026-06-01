@@ -153,8 +153,8 @@ config/history.json
 config/favorites.json
 config/backups
 
-# AI
+# workspace-orchestrator managed entries
 .understand-anything/intermediate/
 .understand-anything/diff-overlay.json.hermes_tmp_prompt.txt
-# workspace-orchestrator managed entries
+.hermes_tmp_prompt.txt
 graphify-out/cache/

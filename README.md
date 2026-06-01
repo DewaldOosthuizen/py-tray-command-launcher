@@ -16,7 +16,9 @@ A Python system tray application for launching custom commands and scripts from 
     - [4. Install Python dependencies](#4-install-python-dependencies)
   - [Configuration](#configuration)
   - [Running the App](#running-the-app)
-  - [Packaging](#packaging)
+  - [Download](#download)
+  - [Packaging (local builds)](#packaging-local-builds)
+  - [Publishing a Release](#publishing-a-release)
   - [Documentation](#documentation)
   - [Screenshots](#screenshots)
   - [Contributing](#contributing)
@@ -79,6 +81,11 @@ pip install .
 pip install -e ".[dev]"
 ```
 
+> **Dependency convention:** `pyproject.toml` is the single source of truth for all
+> runtime dependencies (including the `PyQt6>=6.11.0` lower-bound constraint).
+> `requirements.txt` is a dev-install convenience shim (`-e ".[dev]"`) and must never
+> declare standalone version pins — add or change deps only in `pyproject.toml`.
+
 ---
 
 ## Configuration
@@ -129,9 +136,21 @@ nohup python3 src/main.py &
 
 ---
 
-## Packaging
+## Download
 
-Pre-built packages can be built with the scripts in `scripts/`:
+Pre-built AppImages for every release are available on the
+[GitHub Releases](../../releases) page.
+
+Download the latest `.AppImage`, make it executable, and run it:
+
+```bash
+chmod +x py-tray-command-launcher-v*.AppImage
+./py-tray-command-launcher-v*.AppImage
+```
+
+No installation required. Config is stored at `~/.config/py-tray-command-launcher/`.
+
+## Packaging (local builds)
 
 ```sh
 ./scripts/build-all.sh          # all formats
@@ -142,6 +161,18 @@ scripts\build-windows.bat       # Windows .exe (run on Windows)
 ```
 
 See [docs/packaging.md](docs/packaging.md) for prerequisites, output locations, and troubleshooting.
+
+## Publishing a Release
+
+Releases are automated via GitHub Actions. Push a version tag to build and publish:
+
+```bash
+git tag v1.2.0 -m "Release v1.2.0"
+git push origin v1.2.0
+```
+
+The workflow builds the AppImage and attaches it to a GitHub Release automatically.
+See [docs/packaging.md](docs/packaging.md#automated-releases-cicd) for full details.
 
 ---
 
@@ -192,7 +223,9 @@ without verifying the file length (16 bytes = legacy, 20 bytes = current).
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for linting setup, noqa suppression conventions, and development workflow. For broader setup instructions and documentation policy, see [docs/contributing.md](docs/contributing.md).
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full
+contribution guide: architecture overview, development setup, adding a new feature,
+test conventions, and PR guidelines.
 
 ### Dependency updates
 
