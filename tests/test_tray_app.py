@@ -185,6 +185,29 @@ def test_execute_prompt_windows_uses_list2cmdline():
     app.executor.execute_command.assert_called_once_with('echo "a b"')
 
 
+def test_execute_prompt_posix_uses_shlex_quote():
+    """On POSIX (os.name != 'nt') prompt input is quoted via shlex.quote."""
+    app = _make_app()
+    with (
+        patch("core.tray_app.config_manager"),
+        patch("core.tray_app.QInputDialog") as dialog,
+        patch("core.tray_app.os") as mock_os,
+        patch("core.tray_app.shlex") as mock_shlex,
+    ):
+        mock_os.name = "posix"
+        dialog.getText.return_value = ("a b; rm -rf x", True)
+        mock_shlex.quote.return_value = "'a b; rm -rf x'"
+        app.execute(
+            title="Term",
+            command="echo {promptInput}",
+            confirm=False,
+            show_output=False,
+            prompt="Enter value",
+        )
+    mock_shlex.quote.assert_called_once_with("a b; rm -rf x")
+    app.executor.execute_command.assert_called_once_with("echo 'a b; rm -rf x'")
+
+
 # --------------------------------------------------------------------------- #
 # _update_tray_badge()                                                          #
 # --------------------------------------------------------------------------- #
