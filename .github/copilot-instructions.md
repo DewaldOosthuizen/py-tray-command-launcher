@@ -249,7 +249,9 @@ mypy src/ --ignore-missing-imports
 | `pytest>=8.0` | Test runner |
 | `pytest-qt>=4.4` | Qt widget testing support |
 
-Full list in `requirements.txt`. Build/packaging deps in `requirements-build.txt`.
+All runtime dependencies are declared in `pyproject.toml` (single source of truth).
+`requirements.txt` is a convenience dev-install shim (`-e ".[dev]"`) — never add
+standalone version pins there. Build/packaging deps live in `requirements-build.txt`.
 
 System packages installed by `scripts/install_packages.sh`:
 `libxcb-xinerama0`, `libxcb-cursor0`, `policykit-1`, `libegl1`
@@ -417,28 +419,3 @@ System, Media, Studies, Utilities, Development, Networking, Favorites
 ### Test count
 50 tests across 5 files — all should pass on every commit.
 
-<!-- graph-tools-start -->
-
-## Code Exploration and Token Efficiency
-
-If `.codegraph/` exists, use CodeGraph tools FIRST for symbol lookup,
-context gathering, and call tracing before opening any source files.
-
-```bash
-codegraph context "<task description>" -p .
-codegraph query "<ClassName or function>" -p .
-codegraph affected <changed-files> -p .   # find affected tests
-codegraph sync .                          # after any code changes
-```
-
-If `.understand-anything/knowledge-graph.json` exists, use it for architecture
-questions (layers, relationships, guided tour) — launch the dashboard with:
-
-```bash
-cd ~/.understand-anything-plugin/packages/dashboard
-GRAPH_DIR=$(pwd) npx vite --host 127.0.0.1
-```
-
-Fall back to grep/file reading only when these tools return insufficient results.
-
-<!-- graph-tools-end -->

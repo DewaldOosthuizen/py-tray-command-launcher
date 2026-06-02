@@ -1,5 +1,10 @@
 # py-tray-command-launcher
 
+[![CI](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/ci.yml)
+[![Tests](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/tests.yml/badge.svg)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/tests.yml)
+[![Lint](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/lint.yml/badge.svg)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/lint.yml)
+[![Release](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/release.yml/badge.svg)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/release.yml)
+
 A Python system tray application for launching custom commands and scripts from a hierarchical menu. Supports file encryption, command scheduling, backup/restore, favorites, command search, and packaging for Linux and Windows.
 
 ---
