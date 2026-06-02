@@ -33,20 +33,42 @@ def _install_real_pyqt6_stub():
             pass
 
     class _QWidget(_QWidget_base):
-        def show(self): pass
-        def hide(self): pass
-        def isVisible(self): return False
-        def setObjectName(self, n): pass
-        def setAttribute(self, *a): pass
-        def setMinimumWidth(self, v): pass
-        def setWindowTitle(self, t): pass
-        def adjustSize(self): pass
-        def style(self): return MagicMock()
+        def show(self):
+            pass
+
+        def hide(self):
+            pass
+
+        def isVisible(self):
+            return False
+
+        def setObjectName(self, n):
+            pass
+
+        def setAttribute(self, *a):
+            pass
+
+        def setMinimumWidth(self, v):
+            pass
+
+        def setWindowTitle(self, t):
+            pass
+
+        def adjustSize(self):
+            pass
+
+        def style(self):
+            return MagicMock()
 
     class _QDialog(_QWidget):
-        def accept(self): pass
-        def reject(self): pass
-        def exec(self): return 0
+        def accept(self):
+            pass
+
+        def reject(self):
+            pass
+
+        def exec(self):
+            return 0
 
     _mm = MagicMock
 
@@ -64,15 +86,28 @@ def _install_real_pyqt6_stub():
     # Inheriting from _QWidget_base gives us __getattr__ for any method not
     # explicitly listed (e.g. addStretch, addLayout).
     class _Layout(_QWidget_base):
-        def __init__(self, *a, **kw): pass
-        def addRow(self, *a): pass
-        def addWidget(self, *a): pass
-        def setContentsMargins(self, *a): pass
-        def setSpacing(self, *a): pass
+        def __init__(self, *a, **kw):
+            pass
+
+        def addRow(self, *a):
+            pass
+
+        def addWidget(self, *a):
+            pass
+
+        def setContentsMargins(self, *a):
+            pass
+
+        def setSpacing(self, *a):
+            pass
+
         # count() must return 0 — quick_launch_bar._build_buttons does
         # `while self._layout.count():` and would loop forever otherwise.
-        def count(self): return 0
-        def takeAt(self, i): return None
+        def count(self):
+            return 0
+
+        def takeAt(self, i):
+            return None
 
     class _QGroupBox(_QWidget):
         pass
@@ -98,16 +133,26 @@ def _install_real_pyqt6_stub():
     # calls in other modules re-fetch from sys.modules at test-run time; a MagicMock
     # instance would fail with AttributeError: 'setObjectName'.
     class _QLabel(_Base):
-        def __init__(self, *a, **kw): pass
-        def setObjectName(self, n): pass
-        def addWidget(self, *a): pass
+        def __init__(self, *a, **kw):
+            pass
+
+        def setObjectName(self, n):
+            pass
+
+        def addWidget(self, *a):
+            pass
 
     QtWidgets.QLabel = _QLabel
 
     for name in [
-        "QListWidget", "QListWidgetItem",
-        "QPushButton", "QFrame", "QStackedWidget", "QSizePolicy",
-        "QToolButton", "QScrollArea",
+        "QListWidget",
+        "QListWidgetItem",
+        "QPushButton",
+        "QFrame",
+        "QStackedWidget",
+        "QSizePolicy",
+        "QToolButton",
+        "QScrollArea",
     ]:
         setattr(QtWidgets, name, _mm())
 
@@ -127,29 +172,51 @@ def _install_real_pyqt6_stub():
             self._idx = 0
             self.currentTextChanged = MagicMock()
             self.currentTextChanged.connect = MagicMock()
-        def addItems(self, items): self._items = list(items)
-        def findText(self, text): return self._items.index(text) if text in self._items else -1
-        def setCurrentIndex(self, i): self._idx = i
-        def currentText(self): return self._items[self._idx] if self._items else ""
+
+        def addItems(self, items):
+            self._items = list(items)
+
+        def findText(self, text):
+            return self._items.index(text) if text in self._items else -1
+
+        def setCurrentIndex(self, i):
+            self._idx = i
+
+        def currentText(self):
+            return self._items[self._idx] if self._items else ""
 
     class _QLineEdit(_QWidget_base):
         def __init__(self, text="", *a, **kw):
             self._text = text
-        def text(self): return self._text
-        def setPlaceholderText(self, t): pass
+
+        def text(self):
+            return self._text
+
+        def setPlaceholderText(self, t):
+            pass
 
     class _QSpinBox(_QWidget_base):
         def __init__(self, *a, **kw):
             self._val = 0
-        def setRange(self, lo, hi): pass
-        def setValue(self, v): self._val = v
-        def value(self): return self._val
+
+        def setRange(self, lo, hi):
+            pass
+
+        def setValue(self, v):
+            self._val = v
+
+        def value(self):
+            return self._val
 
     class _QCheckBox(_QWidget_base):
         def __init__(self, *a, **kw):
             self._checked = False
-        def setChecked(self, v): self._checked = v
-        def isChecked(self): return self._checked
+
+        def setChecked(self, v):
+            self._checked = v
+
+        def isChecked(self):
+            return self._checked
 
     QtWidgets.QComboBox = _QComboBox
     QtWidgets.QLineEdit = _QLineEdit

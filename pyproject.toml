@@ -43,3 +43,14 @@ ignore = [
     "S606",   # os.startfile — intentional launch of user-configured file path on Windows
     "S607",   # partial executable path (open, xdg-open) — platform helpers, not user input
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+    "S101",   # assert is the correct assertion mechanism in pytest tests
+    "S108",   # hardcoded /tmp paths are acceptable in tests (not production code)
+    "S105",   # hardcoded test passwords are intentional fixture values
+    "S324",   # insecure hash in tests is testing the implementation, not production use
+    "S604",   # shell=True in test fixtures mirrors the implementation under test
+    "E402",   # sys.modules injection for PyQt6 stubs must precede src imports
+    "E701",   # single-line stub classes (pass) in test setup blocks are idiomatic
+]

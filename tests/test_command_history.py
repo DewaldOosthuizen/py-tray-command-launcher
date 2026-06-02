@@ -7,11 +7,11 @@ clear_history) while patching modules.command_history.config_manager so
 that no filesystem I/O is performed.
 """
 
-import sys
-from pathlib import Path
-import unittest
-from unittest.mock import patch, MagicMock, call
 import datetime
+import sys
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -32,7 +32,7 @@ class TestCommandHistory(unittest.TestCase):
         self.mock_config_manager = MagicMock()
         self.mock_config_manager.get_history.return_value = []
 
-        with patch('modules.command_history.config_manager', self.mock_config_manager):
+        with patch("modules.command_history.config_manager", self.mock_config_manager):
             self.history = CommandHistory(self.mock_services)
 
     # ------------------------------------------------------------------
@@ -41,10 +41,9 @@ class TestCommandHistory(unittest.TestCase):
 
     def test_add_command_to_history(self):
         """add_to_history should persist the command via config_manager."""
-        with patch('modules.command_history.config_manager', self.mock_config_manager):
+        with patch("modules.command_history.config_manager", self.mock_config_manager):
             self.history.add_to_history(
-                title="List Files", command="ls -la",
-                confirm=False, show_output=False, prompt=None
+                title="List Files", command="ls -la", confirm=False, show_output=False, prompt=None
             )
 
         self.mock_config_manager.add_to_history.assert_called_once()
@@ -55,11 +54,10 @@ class TestCommandHistory(unittest.TestCase):
 
     def test_add_command_logs_debug_message(self):
         """add_to_history should emit a debug or info log message."""
-        with patch('modules.command_history.logger') as mock_logger:
-            with patch('modules.command_history.config_manager', self.mock_config_manager):
+        with patch("modules.command_history.logger") as mock_logger:
+            with patch("modules.command_history.config_manager", self.mock_config_manager):
                 self.history.add_to_history(
-                    title="Test", command="test",
-                    confirm=False, show_output=False, prompt=None
+                    title="Test", command="test", confirm=False, show_output=False, prompt=None
                 )
 
         self.assertTrue(
@@ -73,14 +71,14 @@ class TestCommandHistory(unittest.TestCase):
 
     def test_clear_history(self):
         """clear_history should call config_manager.clear_history."""
-        with patch('modules.command_history.config_manager', self.mock_config_manager):
+        with patch("modules.command_history.config_manager", self.mock_config_manager):
             self.history.clear_history()
 
         self.mock_config_manager.clear_history.assert_called_once()
 
     def test_clear_history_reloads_commands(self):
         """clear_history should trigger a history reload via services."""
-        with patch('modules.command_history.config_manager', self.mock_config_manager):
+        with patch("modules.command_history.config_manager", self.mock_config_manager):
             self.history.clear_history()
 
         self.mock_services.reload_history_commands.assert_called_once()
@@ -93,14 +91,24 @@ class TestCommandHistory(unittest.TestCase):
         """populate_menu should add one action per history entry."""
         mock_menu = MagicMock()
         self.mock_config_manager.get_history.return_value = [
-            {"command": "ls", "title": "List Files",
-             "confirm": False, "showOutput": False, "prompt": None},
-            {"command": "pwd", "title": "Current Dir",
-             "confirm": False, "showOutput": False, "prompt": None},
+            {
+                "command": "ls",
+                "title": "List Files",
+                "confirm": False,
+                "showOutput": False,
+                "prompt": None,
+            },
+            {
+                "command": "pwd",
+                "title": "Current Dir",
+                "confirm": False,
+                "showOutput": False,
+                "prompt": None,
+            },
         ]
 
-        with patch('modules.command_history.QAction', return_value=MagicMock()):
-            with patch('modules.command_history.config_manager', self.mock_config_manager):
+        with patch("modules.command_history.QAction", return_value=MagicMock()):
+            with patch("modules.command_history.config_manager", self.mock_config_manager):
                 self.history.populate_menu(mock_menu)
 
         # At least 2 addAction calls for the history entries (plus "Clear History")
@@ -111,7 +119,7 @@ class TestCommandHistory(unittest.TestCase):
         mock_menu = MagicMock()
         self.mock_config_manager.get_history.return_value = []
 
-        with patch('modules.command_history.config_manager', self.mock_config_manager):
+        with patch("modules.command_history.config_manager", self.mock_config_manager):
             self.history.populate_menu(mock_menu)
 
         self.mock_config_manager.get_history.assert_called()
@@ -123,10 +131,22 @@ class TestCommandHistory(unittest.TestCase):
         mock_menu = MagicMock()
         # Most recent first (as stored by add_to_history in config_manager)
         self.mock_config_manager.get_history.return_value = [
-            {"command": "cmd2", "title": "Second", "timestamp": time2,
-             "confirm": False, "showOutput": False, "prompt": None},
-            {"command": "cmd1", "title": "First", "timestamp": time1,
-             "confirm": False, "showOutput": False, "prompt": None},
+            {
+                "command": "cmd2",
+                "title": "Second",
+                "timestamp": time2,
+                "confirm": False,
+                "showOutput": False,
+                "prompt": None,
+            },
+            {
+                "command": "cmd1",
+                "title": "First",
+                "timestamp": time1,
+                "confirm": False,
+                "showOutput": False,
+                "prompt": None,
+            },
         ]
 
         created_titles = []
@@ -135,8 +155,8 @@ class TestCommandHistory(unittest.TestCase):
             created_titles.append(title)
             return MagicMock()
 
-        with patch('modules.command_history.QAction', side_effect=capture_qaction):
-            with patch('modules.command_history.config_manager', self.mock_config_manager):
+        with patch("modules.command_history.QAction", side_effect=capture_qaction):
+            with patch("modules.command_history.config_manager", self.mock_config_manager):
                 self.history.populate_menu(mock_menu)
 
         self.assertIn("Second", created_titles)
@@ -148,5 +168,5 @@ class TestCommandHistory(unittest.TestCase):
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

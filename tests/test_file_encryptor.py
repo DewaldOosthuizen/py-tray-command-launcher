@@ -14,10 +14,13 @@ from unittest.mock import MagicMock, patch
 # and __new__ works correctly during tests.
 class _FakeQThread:
     """Minimal QThread stub — just enough for EncryptionWorker to subclass."""
+
     def __init__(self, *args, **kwargs):
         pass
+
     def start(self):
         pass
+
 
 _qt_core_stub = MagicMock()
 _qt_core_stub.QThread = _FakeQThread
@@ -114,8 +117,11 @@ class TestEncryptDecryptRoundTrip(unittest.TestCase):
 
             salt_file = plain_file + ".salt"
             self.assertTrue(os.path.exists(salt_file), "Salt file not created")
-            self.assertEqual(os.path.getsize(salt_file), 20,
-                             "Salt file must be 20 bytes (4-byte uint32 + 16-byte salt)")
+            self.assertEqual(
+                os.path.getsize(salt_file),
+                20,
+                "Salt file must be 20 bytes (4-byte uint32 + 16-byte salt)",
+            )
 
     def test_round_trip_restores_plaintext(self):
         """Encrypt then decrypt must restore the original plaintext."""
@@ -248,7 +254,9 @@ class TestLegacyDetectedSignal(unittest.TestCase):
         from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
         salt = os.urandom(16)
-        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=_LEGACY_ITERATIONS)
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(), length=32, salt=salt, iterations=_LEGACY_ITERATIONS
+        )
         key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
         fernet = Fernet(key)
         plaintext = Path(plain_file).read_bytes()
@@ -302,6 +310,7 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
 
     def _make_encryptor(self):
         from modules.file_encryptor import FileEncryptor
+
         services = MagicMock()
         enc = FileEncryptor.__new__(FileEncryptor)
         enc.services = services
@@ -330,9 +339,11 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
             mock_qdialog = MagicMock()
             mock_qdialog.DialogCode.Accepted = accepted_sentinel
 
-            with patch.object(fe_mod, "PasswordDialog", return_value=mock_dialog), \
-                 patch.object(fe_mod, "QDialog", mock_qdialog), \
-                 patch.object(fe_mod.QMessageBox, "information"):
+            with (
+                patch.object(fe_mod, "PasswordDialog", return_value=mock_dialog),
+                patch.object(fe_mod, "QDialog", mock_qdialog),
+                patch.object(fe_mod.QMessageBox, "information"),
+            ):
                 enc._reencrypt_to_current_standard(plain_file)
 
             salt_file = plain_file + SALT_FILE_SUFFIX
@@ -381,17 +392,21 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
                     raise OSError("simulated rename failure")
                 return real_replace(src, dst)
 
-            with patch.object(fe_mod, "PasswordDialog", return_value=mock_dialog), \
-                 patch.object(fe_mod, "QDialog", mock_qdialog), \
-                 patch("os.replace", side_effect=fake_replace), \
-                 patch.object(fe_mod.QMessageBox, "warning"):
+            with (
+                patch.object(fe_mod, "PasswordDialog", return_value=mock_dialog),
+                patch.object(fe_mod, "QDialog", mock_qdialog),
+                patch("os.replace", side_effect=fake_replace),
+                patch.object(fe_mod.QMessageBox, "warning"),
+            ):
                 enc._reencrypt_to_current_standard(plain_file)
 
             # Original plaintext must still exist
             self.assertTrue(os.path.exists(plain_file), "Plaintext must be preserved on failure")
             self.assertEqual(Path(plain_file).read_bytes(), b"must survive")
             # No leftover .enc.tmp files
-            tmp_files = [f for f in os.listdir(tmp) if f.endswith(".enc.tmp") or f.endswith(".salt.tmp")]
+            tmp_files = [
+                f for f in os.listdir(tmp) if f.endswith(".enc.tmp") or f.endswith(".salt.tmp")
+            ]
             self.assertEqual(tmp_files, [], f"Temp files not cleaned up: {tmp_files}")
 
 

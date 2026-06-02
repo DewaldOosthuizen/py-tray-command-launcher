@@ -9,11 +9,12 @@ import sys
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock
 
 # ---------------------------------------------------------------------------
 # Install a real-class PyQt6 stub BEFORE any src imports
 # ---------------------------------------------------------------------------
+
 
 def _install_real_pyqt6_stub():
     # Capture the existing QWidget stub *before* clearing the modules so that
@@ -29,26 +30,57 @@ def _install_real_pyqt6_stub():
             del sys.modules[key]
 
     class _Base:
-        def __init__(self, *a, **kw): pass
+        def __init__(self, *a, **kw):
+            pass
 
-    class _QObject(_Base): pass
+    class _QObject(_Base):
+        pass
 
     class _QWidget(_QWidget_base):
-        def show(self): pass
-        def hide(self): pass
-        def isVisible(self): return False
-        def raise_(self): pass
-        def activateWindow(self): pass
-        def move(self, *a): pass
-        def adjustSize(self): pass
-        def x(self): return 100
-        def y(self): return 100
-        def setObjectName(self, n): pass
-        def setAttribute(self, *a): pass
-        def childAt(self, *a): return None
-        def frameGeometry(self): return MagicMock()
-        def style(self): return MagicMock()
-        def deleteLater(self): pass
+        def show(self):
+            pass
+
+        def hide(self):
+            pass
+
+        def isVisible(self):
+            return False
+
+        def raise_(self):
+            pass
+
+        def activateWindow(self):
+            pass
+
+        def move(self, *a):
+            pass
+
+        def adjustSize(self):
+            pass
+
+        def x(self):
+            return 100
+
+        def y(self):
+            return 100
+
+        def setObjectName(self, n):
+            pass
+
+        def setAttribute(self, *a):
+            pass
+
+        def childAt(self, *a):
+            return None
+
+        def frameGeometry(self):
+            return MagicMock()
+
+        def style(self):
+            return MagicMock()
+
+        def deleteLater(self):
+            pass
 
     _mm = MagicMock
 
@@ -62,18 +94,32 @@ def _install_real_pyqt6_stub():
     QtWidgets.QApplication = _mm()
 
     for name in [
-        "QCheckBox", "QComboBox", "QDialogButtonBox", "QFormLayout",
-        "QGroupBox", "QListWidget", "QListWidgetItem",
-        "QPushButton", "QFrame", "QStackedWidget", "QSizePolicy",
-        "QToolButton", "QScrollArea",
+        "QCheckBox",
+        "QComboBox",
+        "QDialogButtonBox",
+        "QFormLayout",
+        "QGroupBox",
+        "QListWidget",
+        "QListWidgetItem",
+        "QPushButton",
+        "QFrame",
+        "QStackedWidget",
+        "QSizePolicy",
+        "QToolButton",
+        "QScrollArea",
     ]:
         setattr(QtWidgets, name, _mm())
 
     # QLabel needs setObjectName for the placeholder in _build_buttons
     class _QLabel(_Base):
-        def __init__(self, *a, **kw): pass
-        def setObjectName(self, n): pass
-        def addWidget(self, *a): pass
+        def __init__(self, *a, **kw):
+            pass
+
+        def setObjectName(self, n):
+            pass
+
+        def addWidget(self, *a):
+            pass
 
     QtWidgets.QLabel = _QLabel
 
@@ -142,7 +188,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from ui.quick_launch_bar import QuickLaunchBar, _to_pynput_str
+from ui.quick_launch_bar import QuickLaunchBar
 
 
 def _make_services(pinned=None, commands=None, visible=False):
@@ -172,17 +218,24 @@ def _repair_qtwidgets_stub():
     ensures our well-behaved stubs are in place for every test in this file.
     """
     import sys
+
     QtWidgets = sys.modules.get("PyQt6.QtWidgets")
     if QtWidgets is None:
         return  # nothing to repair
 
     class _Base:
-        def __init__(self, *a, **kw): pass
+        def __init__(self, *a, **kw):
+            pass
 
     class _QLabel(_Base):
-        def __init__(self, *a, **kw): pass
-        def setObjectName(self, n): pass
-        def addWidget(self, *a): pass
+        def __init__(self, *a, **kw):
+            pass
+
+        def setObjectName(self, n):
+            pass
+
+        def addWidget(self, *a):
+            pass
 
     QtWidgets.QLabel = _QLabel
 
@@ -200,10 +253,12 @@ class TestQuickLaunchBarButtonLogic(unittest.TestCase):
 
     def test_one_button_per_pinned_item(self):
         """_build_buttons creates one button per valid pinned entry."""
-        services = _make_services(pinned=[
-            {"group": "System", "label": "Terminal"},
-            {"group": "System", "label": "Editor"},
-        ])
+        services = _make_services(
+            pinned=[
+                {"group": "System", "label": "Terminal"},
+                {"group": "System", "label": "Editor"},
+            ]
+        )
         bar = QuickLaunchBar(services)
         bar._layout.addWidget.reset_mock()
         bar._build_buttons()
@@ -227,15 +282,13 @@ class TestQuickLaunchBarButtonLogic(unittest.TestCase):
         bar._build_buttons()
         callback = qlb.QToolButton.return_value.clicked.connect.call_args[0][0]
         callback()
-        services.execute.assert_called_once_with(
-            "Terminal", "xterm", False, False, None
-        )
+        services.execute.assert_called_once_with("Terminal", "xterm", False, False, None)
 
     def test_bar_instantiation_with_no_pinned_does_not_raise(self):
         """QuickLaunchBar can be created with no pinned commands."""
         services = _make_services(pinned=[])
         try:
-            bar = QuickLaunchBar(services)
+            QuickLaunchBar(services)
         except Exception as exc:
             self.fail(f"QuickLaunchBar() raised: {exc}")
 

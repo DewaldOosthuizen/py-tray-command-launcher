@@ -12,8 +12,7 @@ import os
 import sys
 import types
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
-import pytest
+from unittest.mock import MagicMock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -27,12 +26,20 @@ for _mod in ["PyQt6", "PyQt6.QtCore", "PyQt6.QtWidgets"]:
 _qc = sys.modules["PyQt6.QtCore"]
 # QSharedMemory stub — give it create/attach/detach/isAttached methods
 _QSM = MagicMock(name="QSharedMemory")
-setattr(_qc, "QSharedMemory", _QSM)
+_qc.QSharedMemory = _QSM
 _qw = sys.modules["PyQt6.QtWidgets"]
 _qapp = MagicMock(name="QApplication")
 _qapp.instance = MagicMock(return_value=None)
-setattr(_qw, "QApplication", _qapp)
-_syms_to_stub = ["QMessageBox", "QLabel", "QVBoxLayout", "QHBoxLayout", "QPushButton", "QDialog", "QWidget"]
+_qw.QApplication = _qapp
+_syms_to_stub = [
+    "QMessageBox",
+    "QLabel",
+    "QVBoxLayout",
+    "QHBoxLayout",
+    "QPushButton",
+    "QDialog",
+    "QWidget",
+]
 _saved_qw_attrs = {s: getattr(_qw, s, None) for s in _syms_to_stub}
 for _sym in _syms_to_stub:
     setattr(_qw, _sym, MagicMock)
@@ -63,6 +70,7 @@ def _make_checker(key="test-key", pidfile=None):
 # is_pid_running
 # ---------------------------------------------------------------------------
 
+
 class TestIsPidRunning:
     def test_own_pid_is_running(self):
         checker = _make_checker()
@@ -84,6 +92,7 @@ class TestIsPidRunning:
 # ---------------------------------------------------------------------------
 # acquire_lock – PID file handling
 # ---------------------------------------------------------------------------
+
 
 class TestAcquireLock:
     def test_writes_pid_file_on_success(self, tmp_path):
@@ -126,6 +135,7 @@ class TestAcquireLock:
 # Headless / Wayland detection
 # ---------------------------------------------------------------------------
 
+
 class TestHeadlessDetection:
     """These tests verify the headless-detection logic inline (pure env checks)."""
 
@@ -137,15 +147,13 @@ class TestHeadlessDetection:
         if wayland:
             env["WAYLAND_DISPLAY"] = wayland
         # Remove vars not set
-        strip = [k for k in ("DISPLAY", "WAYLAND_DISPLAY")
-                 if k not in env]
+        strip = [k for k in ("DISPLAY", "WAYLAND_DISPLAY") if k not in env]
         clean = {k: v for k, v in os.environ.items() if k not in strip}
         clean.update(env)
         with patch.dict(os.environ, clean, clear=True):
             plat = os.environ.get("QT_QPA_PLATFORM", "").lower()
             return plat == "offscreen" or (
-                not os.environ.get("DISPLAY")
-                and not os.environ.get("WAYLAND_DISPLAY")
+                not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY")
             )
 
     def test_x11_only_is_not_headless(self):
@@ -167,6 +175,7 @@ class TestHeadlessDetection:
 # ---------------------------------------------------------------------------
 # force_unlock / cleanup — OSError must be logged, not swallowed
 # ---------------------------------------------------------------------------
+
 
 class TestCleanupLogging:
     def test_force_unlock_logs_oserror(self, tmp_path):

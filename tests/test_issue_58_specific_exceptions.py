@@ -5,10 +5,10 @@ Verifies that broad `except Exception` handlers have been replaced with
 specific exception types, so unexpected exception types propagate properly.
 """
 
-import json
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -145,7 +145,9 @@ class TestSaveCommandsSpecificExceptions:
         mgr = _bare_mgr(tmp_path)
         with patch.object(mgr, "_validate_commands"):
             with patch.object(mgr, "backup_commands"):
-                with patch.object(mgr, "_write_json_atomic", side_effect=RuntimeError("unexpected")):
+                with patch.object(
+                    mgr, "_write_json_atomic", side_effect=RuntimeError("unexpected")
+                ):
                     with pytest.raises(RuntimeError):
                         mgr.save_commands({"Group": {}})
 

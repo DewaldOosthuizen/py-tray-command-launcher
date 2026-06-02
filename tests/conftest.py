@@ -14,6 +14,7 @@ from unittest.mock import MagicMock as _MagicMock
 
 import pytest
 
+
 def _make_pyqt6_stub():
     pyqt6 = _MagicMock()
     pyqt6.QtCore = _MagicMock()
@@ -29,42 +30,84 @@ def _make_pyqt6_stub():
     _qapp_mock = _MagicMock()
     _qapp_mock.instance = _MagicMock(return_value=None)
     pyqt6.QtWidgets.QApplication = _qapp_mock
+
     # pytest-qt uses isinstance(widget, QWidget) — must be a real type.
     # All widget base classes must also be this type so that src subclasses pass.
     class _StubAttr:
         """Callable stub that also has attribute access and .connect support."""
+
         def __call__(self, *args, **kwargs):
             return _StubAttr()  # always chainable
+
         def __getattr__(self, name):
             return _StubAttr()
-        def __int__(self): return 0
-        def __bool__(self): return False
-        def __str__(self): return ""
-        def __repr__(self): return "_StubAttr()"
-        def __iter__(self): return iter([])
-        def __len__(self): return 0
-        def __or__(self, other): return _StubAttr()
-        def __ror__(self, other): return _StubAttr()
-        def __and__(self, other): return _StubAttr()
-        def __ge__(self, other): return True
-        def __gt__(self, other): return True
-        def __le__(self, other): return True
-        def __lt__(self, other): return True
-        def __eq__(self, other): return True
-        def __hash__(self): return 0
-        def connect(self, *a, **kw): pass
-        def disconnect(self, *a, **kw): pass
-        def emit(self, *a, **kw): pass
+
+        def __int__(self):
+            return 0
+
+        def __bool__(self):
+            return False
+
+        def __str__(self):
+            return ""
+
+        def __repr__(self):
+            return "_StubAttr()"
+
+        def __iter__(self):
+            return iter([])
+
+        def __len__(self):
+            return 0
+
+        def __or__(self, other):
+            return _StubAttr()
+
+        def __ror__(self, other):
+            return _StubAttr()
+
+        def __and__(self, other):
+            return _StubAttr()
+
+        def __ge__(self, other):
+            return True
+
+        def __gt__(self, other):
+            return True
+
+        def __le__(self, other):
+            return True
+
+        def __lt__(self, other):
+            return True
+
+        def __eq__(self, other):
+            return True
+
+        def __hash__(self):
+            return 0
+
+        def connect(self, *a, **kw):
+            pass
+
+        def disconnect(self, *a, **kw):
+            pass
+
+        def emit(self, *a, **kw):
+            pass
 
     class _StubMeta(type):
         """Metaclass that allows class-level attribute access (e.g. QDialogButtonBox.StandardButton)."""
+
         def __getattr__(cls, name):
             return _StubAttr()
 
     class _QObject(metaclass=_StubMeta):  # noqa: N801
         """Stub base class for QtCore QObject-derived types under test."""
+
         def __init__(self, *args, **kwargs):
             pass
+
         def __getattr__(self, name):
             attr = _StubAttr()
             object.__setattr__(self, name, attr)
@@ -72,12 +115,15 @@ def _make_pyqt6_stub():
 
     class _QWidget(metaclass=_StubMeta):  # noqa: N801
         """Stub base class for all Qt widget types under test."""
+
         def __init__(self, *args, **kwargs):
             pass
+
         def __getattr__(self, name):
             attr = _StubAttr()
             object.__setattr__(self, name, attr)
             return attr
+
     pyqt6.QtCore.QObject = _QObject
     pyqt6.QtWidgets.QWidget = _QWidget
     pyqt6.QtWidgets.QMainWindow = _QWidget
@@ -112,6 +158,7 @@ def _make_pyqt6_stub():
     pyqt6.QtGui = _MagicMock()
     return pyqt6
 
+
 if "PyQt6" not in sys.modules:
     _stub = _make_pyqt6_stub()
     sys.modules["PyQt6"] = _stub
@@ -129,6 +176,7 @@ if str(SRC_DIR) not in sys.path:
 # ---------------------------------------------------------------------------
 # Filesystem helpers
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def tmp_config_dir(tmp_path: Path) -> Path:
@@ -158,6 +206,7 @@ def tmp_commands_file(tmp_config_dir: Path) -> Path:
 # ---------------------------------------------------------------------------
 # Mock AppServices
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def mock_services() -> MagicMock:

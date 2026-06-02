@@ -10,8 +10,6 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -20,8 +18,12 @@ if str(SRC_DIR) not in sys.path:
 # Stub out PyQt6 so this file can be imported without a display or Qt install.
 # _build_command_path is a pure Python function; it has no Qt dependency.
 import types
+
 for _mod in [
-    "PyQt6", "PyQt6.QtWidgets", "PyQt6.QtGui", "PyQt6.QtCore",
+    "PyQt6",
+    "PyQt6.QtWidgets",
+    "PyQt6.QtGui",
+    "PyQt6.QtCore",
 ]:
     if _mod not in sys.modules:
         sys.modules[_mod] = types.ModuleType(_mod)
@@ -40,7 +42,7 @@ for _sym in _qg_syms:
     setattr(_qg, _sym, MagicMock)
 _qc = sys.modules["PyQt6.QtCore"]
 _saved_qt = getattr(_qc, "Qt", None)
-setattr(_qc, "Qt", MagicMock)
+_qc.Qt = MagicMock
 
 from modules.favorites import _build_command_path
 
@@ -62,7 +64,7 @@ for _sym, _val in _saved_qg.items():
         except AttributeError:
             pass
 if _saved_qt is not None:
-    setattr(_qc, "Qt", _saved_qt)
+    _qc.Qt = _saved_qt
 else:
     try:
         delattr(_qc, "Qt")

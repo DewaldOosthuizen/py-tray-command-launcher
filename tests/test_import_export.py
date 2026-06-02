@@ -12,10 +12,12 @@ _cm_mock = MagicMock()
 sys.modules["core.config_manager"] = _cm_mock
 
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from modules.import_export import ImportExport
 import pytest
+
+from modules.import_export import ImportExport
 
 # Restore the real module so subsequent test files get the real ConfigManager.
 if _orig_cm is None:
@@ -37,9 +39,11 @@ def test_export_calls_config_manager(tmp_path):
     _cm_mock.config_manager.get_commands.return_value = {"Dev": {}}
     _cm_mock.config_manager.export_command_group.return_value = True
 
-    with patch("modules.import_export.QInputDialog") as mock_input, \
-         patch("modules.import_export.QFileDialog") as mock_fd, \
-         patch("modules.import_export.QMessageBox"):
+    with (
+        patch("modules.import_export.QInputDialog") as mock_input,
+        patch("modules.import_export.QFileDialog") as mock_fd,
+        patch("modules.import_export.QMessageBox"),
+    ):
         mock_input.getItem.return_value = ("Dev", True)
         mock_fd.getSaveFileName.return_value = (out_file, "")
         ie.export_command_group()
@@ -70,8 +74,10 @@ def test_import_calls_config_manager(tmp_path):
         "config_dir": str(tmp_path),
     }
 
-    with patch("modules.import_export.QFileDialog") as mock_fd, \
-         patch("modules.import_export.QMessageBox") as mock_mb:
+    with (
+        patch("modules.import_export.QFileDialog") as mock_fd,
+        patch("modules.import_export.QMessageBox") as mock_mb,
+    ):
         mock_fd.getOpenFileName.return_value = (in_file, "")
         mock_mb.question.return_value = mock_mb.StandardButton.No
         ie.import_command_group()
@@ -91,8 +97,10 @@ def test_import_invalid_json_propagates():
         "config_dir": "/tmp",
     }
 
-    with patch("modules.import_export.QFileDialog") as mock_fd, \
-         patch("modules.import_export.QMessageBox") as mock_mb:
+    with (
+        patch("modules.import_export.QFileDialog") as mock_fd,
+        patch("modules.import_export.QMessageBox") as mock_mb,
+    ):
         mock_fd.getOpenFileName.return_value = ("/tmp/x.json", "")
         mock_mb.question.return_value = mock_mb.StandardButton.No
 

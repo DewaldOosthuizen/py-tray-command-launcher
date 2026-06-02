@@ -12,7 +12,8 @@ Covers:
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -22,10 +23,10 @@ if str(SRC_DIR) not in sys.path:
 
 from core.config_manager import ConfigManager, ConfigurationError
 
-
 # ---------------------------------------------------------------------------
 # deep_merge
 # ---------------------------------------------------------------------------
+
 
 class TestDeepMerge:
     def test_adds_missing_key(self):
@@ -58,6 +59,7 @@ class TestDeepMerge:
 # Atomic write
 # ---------------------------------------------------------------------------
 
+
 class TestAtomicWrite:
     def test_write_and_read_roundtrip(self, tmp_path):
         target = tmp_path / "data.json"
@@ -77,6 +79,7 @@ class TestAtomicWrite:
 # ---------------------------------------------------------------------------
 # get_commands
 # ---------------------------------------------------------------------------
+
 
 class TestGetCommands:
     def test_loads_valid_commands(self, tmp_commands_file):
@@ -117,6 +120,7 @@ class TestGetCommands:
 # ---------------------------------------------------------------------------
 # set_commands_override
 # ---------------------------------------------------------------------------
+
 
 class TestSetCommandsOverride:
     def test_valid_path_accepted(self, tmp_commands_file):
@@ -159,6 +163,7 @@ class TestSetCommandsOverride:
 # ---------------------------------------------------------------------------
 # _validate_commands
 # ---------------------------------------------------------------------------
+
 
 class TestValidateCommands:
     def _mgr(self):
@@ -210,6 +215,7 @@ def _make_settings_mgr(tmp_path, settings_data, defaults_dir=None):
     mgr.defaults_dir = defaults_dir if defaults_dir is not None else PROJECT_ROOT / "config"
     if settings_data is not None:
         import json as _json
+
         mgr.settings_file.write_text(_json.dumps(settings_data), encoding="utf-8")
     return mgr
 

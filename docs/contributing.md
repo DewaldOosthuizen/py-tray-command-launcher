@@ -30,7 +30,7 @@ pip install -r requirements-build.txt
 ### 4. Install development tools
 
 ```bash
-pip install flake8 black pylint
+pip install "ruff>=0.5.0"
 ```
 
 ### 5. Validate the installation
@@ -62,7 +62,18 @@ The headless run should start cleanly, print configuration loading messages, the
 
 ## Code Quality
 
-All contributions must pass both checks before committing.
+All contributions must pass both checks before committing. Use the local lint
+script to replicate the CI lint job exactly:
+
+```bash
+bash scripts/lint.sh
+```
+
+To auto-fix violations before reviewing:
+
+```bash
+bash scripts/lint.sh --fix
+```
 
 ### Syntax / import errors
 
@@ -72,23 +83,15 @@ find src -name "*.py" -exec python3 -m py_compile {} \;
 
 No output means no errors.
 
-### Style (flake8)
+### Linting and formatting (ruff)
 
 ```bash
-flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+bash scripts/lint.sh
 ```
 
-This checks for syntax errors and undefined names. The exit code must be `0` (no issues found).
-
-### Formatting
-
-Code is formatted with `black` (line length 88):
-
-```bash
-black src/
-```
-
-Run this before committing to avoid formatting-only review comments.
+The script runs `ruff check src/ tests/` and `ruff format --check src/ tests/`
+in sequence — identical to what the CI lint job in `.github/workflows/lint.yml`
+executes. Pass `--fix` to apply safe auto-fixes first.
 
 ---
 

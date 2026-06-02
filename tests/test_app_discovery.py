@@ -18,6 +18,7 @@ def _clear_terminal_emulator_cache():
 # clean_exec
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("placeholder", ["%f", "%F", "%u", "%U", "%i", "%c", "%k"])
 def test_clean_exec_placeholder_removal_individual(placeholder):
     result = AppDiscovery.clean_exec(f"gedit {placeholder}")
@@ -105,7 +106,9 @@ def test_build_launch_args_shlex_error_fallback():
 
 
 def test_build_launch_args_unmatched_quote_falls_back_to_whitespace_split():
-    entry = AppEntry(name="TestApp", exec_cmd="/usr/bin/app --flag 'bad", terminal=False, icon_name="")
+    entry = AppEntry(
+        name="TestApp", exec_cmd="/usr/bin/app --flag 'bad", terminal=False, icon_name=""
+    )
     result = AppDiscovery.build_launch_args(entry)
     assert result is not None
     assert isinstance(result, list)
@@ -131,7 +134,9 @@ class TestFindTerminalEmulatorCache:
     def test_shutil_which_called_only_once_across_multiple_build_launch_args(self):
         entry = AppEntry(name="Htop", exec_cmd="htop", terminal=True, icon_name="")
 
-        with patch("modules.app_discovery.shutil.which", return_value="/usr/bin/xterm") as mock_which:
+        with patch(
+            "modules.app_discovery.shutil.which", return_value="/usr/bin/xterm"
+        ) as mock_which:
             AppDiscovery.build_launch_args(entry)
             AppDiscovery.build_launch_args(entry)
 
@@ -144,7 +149,9 @@ class TestFindTerminalEmulatorCache:
 
 
 def test_is_windows_lnk_entry_lnk_path():
-    entry = AppEntry(name="App", exec_cmd=r"C:\Users\user\AppData\Roaming\App.lnk", terminal=False, icon_name="")
+    entry = AppEntry(
+        name="App", exec_cmd=r"C:\Users\user\AppData\Roaming\App.lnk", terminal=False, icon_name=""
+    )
     with patch("modules.app_discovery.IS_WINDOWS", True):
         result = AppDiscovery.is_windows_lnk_entry(entry)
     assert result is True

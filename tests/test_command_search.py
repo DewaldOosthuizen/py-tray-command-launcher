@@ -8,10 +8,12 @@ sys.modules.setdefault("PyQt6.QtCore", _pyqt6.QtCore)
 sys.modules.setdefault("PyQt6.QtGui", _pyqt6.QtGui)
 
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from modules.command_search import _score, _FUZZY_AVAILABLE
 import pytest
+
+from modules.command_search import _score
 
 
 def test_exact_match_scores_high():

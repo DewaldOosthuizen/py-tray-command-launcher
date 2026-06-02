@@ -554,7 +554,9 @@ class FileEncryptor:
                 enc_tmp.write(ciphertext)
                 enc_tmp_path = enc_tmp.name
 
-            with tempfile.NamedTemporaryFile(dir=dir_, delete=False, suffix=".salt.tmp") as salt_tmp:
+            with tempfile.NamedTemporaryFile(
+                dir=dir_, delete=False, suffix=".salt.tmp"
+            ) as salt_tmp:
                 salt_tmp.write(struct.pack(">I", _PBKDF2_ITERATIONS))
                 salt_tmp.write(salt)
                 salt_tmp_path = salt_tmp.name
@@ -563,7 +565,9 @@ class FileEncryptor:
             os.replace(salt_tmp_path, salt_path)
             os.remove(file_path)
 
-            QMessageBox.information(None, "Re-encrypted", "File upgraded to current encryption standard.")
+            QMessageBox.information(
+                None, "Re-encrypted", "File upgraded to current encryption standard."
+            )
         except Exception as exc:
             logger.error("Re-encryption failed: %s", exc)
             QMessageBox.warning(None, "Re-encryption Failed", f"Could not re-encrypt file: {exc}")

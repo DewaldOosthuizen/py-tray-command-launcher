@@ -10,10 +10,9 @@ silent execution modes, using the actual public API:
 """
 
 import sys
-from pathlib import Path
 import unittest
-from unittest.mock import patch, MagicMock, call
-import logging
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -42,7 +41,9 @@ class TestCommandExecutor(unittest.TestCase):
         mock_proc = MagicMock()
         mock_proc.pid = 12345
 
-        with patch('modules.command_executor.subprocess.Popen', return_value=mock_proc) as mock_popen:
+        with patch(
+            "modules.command_executor.subprocess.Popen", return_value=mock_proc
+        ) as mock_popen:
             self.executor.execute_command("ls -la")
 
         mock_popen.assert_called_once_with("ls -la", shell=True)
@@ -52,8 +53,8 @@ class TestCommandExecutor(unittest.TestCase):
         mock_proc = MagicMock()
         mock_proc.pid = 99
 
-        with patch('modules.command_executor.subprocess.Popen', return_value=mock_proc):
-            with patch('modules.command_executor.logger') as mock_logger:
+        with patch("modules.command_executor.subprocess.Popen", return_value=mock_proc):
+            with patch("modules.command_executor.logger") as mock_logger:
                 self.executor.execute_command("echo hello")
 
         # At least one debug call must reference the PID
@@ -69,7 +70,9 @@ class TestCommandExecutor(unittest.TestCase):
         mock_process = MagicMock()
         mock_app = MagicMock()
 
-        with patch('modules.command_executor.QProcess', return_value=mock_process) as mock_qprocess_cls:
+        with patch(
+            "modules.command_executor.QProcess", return_value=mock_process
+        ) as mock_qprocess_cls:
             result = self.executor.execute_command_process(mock_app, "top")
 
         mock_qprocess_cls.assert_called_once_with(mock_app)
@@ -82,7 +85,7 @@ class TestCommandExecutor(unittest.TestCase):
         mock_process = MagicMock()
         mock_app = MagicMock()
 
-        with patch('modules.command_executor.QProcess', return_value=mock_process):
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
             self.executor.execute_command_process(mock_app, "pwd")
 
         mock_process.start.assert_called_once()
@@ -96,34 +99,36 @@ class TestCommandExecutor(unittest.TestCase):
         mock_process = MagicMock()
         mock_app = MagicMock()
 
-        with patch('modules.command_executor.QProcess', return_value=mock_process):
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
             # Spy on the inner helper to confirm it is called (and only it starts the process)
             with patch.object(
                 self.executor,
-                'execute_command_process',
+                "execute_command_process",
                 wraps=self.executor.execute_command_process,
             ) as mock_execute_command_process:
                 self.executor.execute_command_process_silently(mock_app, "df -h")
 
         mock_execute_command_process.assert_called_once_with(mock_app, "df -h")
         # The process must have been started exactly once regardless of call path.
-        self.assertEqual(mock_process.start.call_count, 1,
-                         "QProcess.start() must be called exactly once on the silent path")
+        self.assertEqual(
+            mock_process.start.call_count,
+            1,
+            "QProcess.start() must be called exactly once on the silent path",
+        )
 
     def test_execute_command_process_silently_logs_command(self):
         """execute_command_process_silently should log the command."""
         mock_process = MagicMock()
         mock_app = MagicMock()
 
-        with patch('modules.command_executor.QProcess', return_value=mock_process):
-            with patch('modules.command_executor.logger') as mock_logger:
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
+            with patch("modules.command_executor.logger") as mock_logger:
                 self.executor.execute_command_process_silently(mock_app, "uptime")
 
         # Either info or debug logging should mention the command
         all_calls = mock_logger.info.call_args_list + mock_logger.debug.call_args_list
         messages = " ".join(str(c) for c in all_calls)
         self.assertIn("uptime", messages)
-
 
     # ------------------------------------------------------------------
     # Signal wiring tests (issue #60)
@@ -134,39 +139,39 @@ class TestCommandExecutor(unittest.TestCase):
         mock_process = MagicMock()
         mock_app = MagicMock()
 
-        with patch('modules.command_executor.QProcess', return_value=mock_process):
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
             self.executor.execute_command_process(mock_app, "ls")
 
         mock_process.errorOccurred.connect.assert_called_once()
         # Verify ordering: errorOccurred.connect must appear before start()
         call_names = [str(c) for c in mock_process.mock_calls]
-        connect_idx = next(i for i, c in enumerate(call_names) if 'errorOccurred.connect' in c)
-        start_idx = next(i for i, c in enumerate(call_names) if c == 'call.start()')
-        self.assertLess(connect_idx, start_idx,
-                        "errorOccurred.connect() must be called before start()")
+        connect_idx = next(i for i, c in enumerate(call_names) if "errorOccurred.connect" in c)
+        start_idx = next(i for i, c in enumerate(call_names) if c == "call.start()")
+        self.assertLess(
+            connect_idx, start_idx, "errorOccurred.connect() must be called before start()"
+        )
 
     def test_execute_command_process_wires_finished_signal(self):
         """execute_command_process should connect finished before start()."""
         mock_process = MagicMock()
         mock_app = MagicMock()
 
-        with patch('modules.command_executor.QProcess', return_value=mock_process):
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
             self.executor.execute_command_process(mock_app, "ls")
 
         mock_process.finished.connect.assert_called_once()
         # Verify ordering: finished.connect must appear before start()
         call_names = [str(c) for c in mock_process.mock_calls]
-        connect_idx = next(i for i, c in enumerate(call_names) if 'finished.connect' in c)
-        start_idx = next(i for i, c in enumerate(call_names) if c == 'call.start()')
-        self.assertLess(connect_idx, start_idx,
-                        "finished.connect() must be called before start()")
+        connect_idx = next(i for i, c in enumerate(call_names) if "finished.connect" in c)
+        start_idx = next(i for i, c in enumerate(call_names) if c == "call.start()")
+        self.assertLess(connect_idx, start_idx, "finished.connect() must be called before start()")
 
     def test_execute_command_process_silently_wires_error_signal(self):
         """Silent path should also wire errorOccurred via execute_command_process."""
         mock_process = MagicMock()
         mock_app = MagicMock()
 
-        with patch('modules.command_executor.QProcess', return_value=mock_process):
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
             self.executor.execute_command_process_silently(mock_app, "uptime")
 
         mock_process.errorOccurred.connect.assert_called_once()
@@ -176,8 +181,8 @@ class TestCommandExecutor(unittest.TestCase):
         mock_process = MagicMock()
         mock_app = MagicMock()
 
-        with patch('modules.command_executor.QProcess', return_value=mock_process):
-            with patch('modules.command_executor.logger') as mock_logger:
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
+            with patch("modules.command_executor.logger") as mock_logger:
                 self.executor.execute_command_process(mock_app, "false")
                 # Extract and invoke the finished lambda
                 finished_cb = mock_process.finished.connect.call_args[0][0]
@@ -190,16 +195,19 @@ class TestCommandExecutor(unittest.TestCase):
         mock_process = MagicMock()
         mock_app = MagicMock()
 
-        with patch('modules.command_executor.QProcess', return_value=mock_process):
-            with patch('modules.command_executor.logger') as mock_logger:
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
+            with patch("modules.command_executor.logger") as mock_logger:
                 self.executor.execute_command_process(mock_app, "true")
                 info_count_before = mock_logger.info.call_count
                 finished_cb = mock_process.finished.connect.call_args[0][0]
                 finished_cb(0, "NormalExit")
 
         mock_logger.warning.assert_not_called()
-        self.assertGreater(mock_logger.info.call_count, info_count_before,
-                           "finished callback should call logger.info for zero exit code")
+        self.assertGreater(
+            mock_logger.info.call_count,
+            info_count_before,
+            "finished callback should call logger.info for zero exit code",
+        )
 
 
 class TestPromptInputSanitisation(unittest.TestCase):
@@ -208,24 +216,30 @@ class TestPromptInputSanitisation(unittest.TestCase):
     def test_shlex_quote_escapes_semicolon(self):
         """shlex.quote should wrap input containing ; so it is not treated as a command separator."""
         import shlex
+
         result = shlex.quote("foo; rm -rf /")
         self.assertEqual(result, "'foo; rm -rf /'")
 
     def test_prompt_input_metacharacters_are_quoted(self):
         """shlex.quote wraps metachar input in single-quotes, neutralising injection."""
         import shlex
+
         dangerous = "; rm -rf /"
         quoted = shlex.quote(dangerous)
         # Must be wrapped in single quotes so shell treats it as a single literal token
-        self.assertTrue(quoted.startswith("'") and quoted.endswith("'"),
-                        f"Expected single-quoted string, got: {quoted!r}")
+        self.assertTrue(
+            quoted.startswith("'") and quoted.endswith("'"),
+            f"Expected single-quoted string, got: {quoted!r}",
+        )
         # The quoted result must be a single shell word (no unquoted whitespace)
-        self.assertEqual(quoted.count("'"), 2,
-                         f"Expected exactly one pair of single quotes, got: {quoted!r}")
+        self.assertEqual(
+            quoted.count("'"), 2, f"Expected exactly one pair of single quotes, got: {quoted!r}"
+        )
 
     def test_metacharacter_variants_are_quoted(self):
         """shlex.quote neutralises all common injection metacharacters."""
         import shlex
+
         metacharacters = [
             ";",
             "&&",
@@ -249,15 +263,16 @@ class TestPromptInputSanitisation(unittest.TestCase):
     def test_benign_input_is_not_over_escaped(self):
         """shlex.quote should pass through simple safe filenames without extra escaping."""
         import shlex
+
         benign = "my_file.txt"
         result = shlex.quote(benign)
         # shlex.quote returns the bare word when no quoting is needed
-        self.assertEqual(result, benign,
-                         f"Benign input over-escaped: {result!r}")
+        self.assertEqual(result, benign, f"Benign input over-escaped: {result!r}")
 
     def test_tray_app_execute_applies_shlex_quote(self):
         """TrayApp.execute() must pass shlex-quoted prompt input to execute_command."""
         import shlex
+
         from core.tray_app import TrayApp
 
         # Build a minimal TrayApp instance without running __init__
@@ -269,8 +284,10 @@ class TestPromptInputSanitisation(unittest.TestCase):
 
         dangerous_input = "; rm -rf /"
 
-        with patch('core.tray_app.config_manager'), \
-             patch('core.tray_app.QInputDialog') as mock_dialog:
+        with (
+            patch("core.tray_app.config_manager"),
+            patch("core.tray_app.QInputDialog") as mock_dialog,
+        ):
             mock_dialog.getText.return_value = (dangerous_input, True)
             tray_app.execute(
                 title="Test",
@@ -285,10 +302,10 @@ class TestPromptInputSanitisation(unittest.TestCase):
         # The dangerous input must arrive as a quoted shell token
         self.assertIn(shlex.quote(dangerous_input), actual_command)
 
-
     def test_semicolon_injection_does_not_spawn_second_process(self):
         """Injecting '; id' must not cause Popen to be called more than once."""
         import shlex
+
         from core.tray_app import TrayApp
 
         tray_app = object.__new__(TrayApp)
@@ -298,9 +315,11 @@ class TestPromptInputSanitisation(unittest.TestCase):
 
         dangerous_input = "; id"
 
-        with patch("subprocess.Popen") as mock_popen, \
-             patch("core.tray_app.config_manager"), \
-             patch("core.tray_app.QInputDialog") as mock_dialog:
+        with (
+            patch("subprocess.Popen") as mock_popen,
+            patch("core.tray_app.config_manager"),
+            patch("core.tray_app.QInputDialog") as mock_dialog,
+        ):
             mock_popen.return_value.pid = 12345
             mock_dialog.getText.return_value = (dangerous_input, True)
             tray_app.execute(
@@ -320,5 +339,5 @@ class TestPromptInputSanitisation(unittest.TestCase):
         self.assertNotIn("; id", actual_command.replace(shlex.quote(dangerous_input), ""))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

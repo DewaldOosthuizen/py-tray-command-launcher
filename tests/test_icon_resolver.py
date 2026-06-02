@@ -16,11 +16,8 @@ import os
 import sys
 import tempfile
 import time
-import types
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -29,10 +26,10 @@ if str(SRC_DIR) not in sys.path:
 
 from core.icon_resolver import IconResolver
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _resolver(base_dir=None):
     if base_dir is None:
@@ -57,6 +54,7 @@ def _cache_path_for(url: str) -> Path:
 # HTTP vs HTTPS gating
 # ---------------------------------------------------------------------------
 
+
 class TestUrlGating:
     def test_http_url_rejected(self):
         r = _resolver()
@@ -73,8 +71,7 @@ class TestUrlGating:
         mock_response.__enter__ = lambda s: s
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch("core.icon_resolver.urllib.request.urlopen",
-                   return_value=mock_response):
+        with patch("core.icon_resolver.urllib.request.urlopen", return_value=mock_response):
             result = r.download_icon("https://example.com/icon.png")
 
         assert result is not None
@@ -84,6 +81,7 @@ class TestUrlGating:
 # ---------------------------------------------------------------------------
 # Base64 / data URI
 # ---------------------------------------------------------------------------
+
 
 class TestBase64Icon:
     def test_valid_base64_png_handled(self, tmp_path):
@@ -102,6 +100,7 @@ class TestBase64Icon:
 # Absolute / relative path resolution
 # ---------------------------------------------------------------------------
 
+
 class TestPathResolution:
     def test_absolute_existing_path_returned_as_is(self, tmp_path):
         icon = tmp_path / "icon.png"
@@ -114,9 +113,7 @@ class TestPathResolution:
         fallback = tmp_path / "fallback.png"
         fallback.write_bytes(b"fb")
         r = _resolver(str(tmp_path))
-        result = r.resolve_icon_path(
-            str(tmp_path / "no_such.png"), fallback=str(fallback)
-        )
+        result = r.resolve_icon_path(str(tmp_path / "no_such.png"), fallback=str(fallback))
         assert result == str(fallback)
 
     def test_relative_path_resolved_against_resource_roots(self, tmp_path):
@@ -137,6 +134,7 @@ class TestPathResolution:
 # ---------------------------------------------------------------------------
 # Cache TTL
 # ---------------------------------------------------------------------------
+
 
 class TestCacheTTL:
     def test_expired_cache_triggers_redownload(self, tmp_path):
@@ -159,8 +157,9 @@ class TestCacheTTL:
         mock_response.__enter__ = lambda s: s
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch("core.icon_resolver.urllib.request.urlopen",
-                   return_value=mock_response) as mock_open:
+        with patch(
+            "core.icon_resolver.urllib.request.urlopen", return_value=mock_response
+        ) as mock_open:
             r.download_icon(url)
 
         mock_open.assert_called_once()
@@ -186,6 +185,7 @@ class TestCacheTTL:
 # ---------------------------------------------------------------------------
 # resolve_tray_icon
 # ---------------------------------------------------------------------------
+
 
 class TestResolveTrayIcon:
     def test_returns_str_or_none(self, tmp_path):

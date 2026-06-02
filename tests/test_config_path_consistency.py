@@ -65,9 +65,7 @@ class ConfigPathConsistencyTests(unittest.TestCase):
 
         expected_config_dir = self.tmp_path / "xdg" / "py-tray-command-launcher"
         self.assertEqual(manager.get_config_dir(), expected_config_dir)
-        self.assertEqual(
-            manager.get_active_commands_file(), expected_config_dir / "commands.json"
-        )
+        self.assertEqual(manager.get_active_commands_file(), expected_config_dir / "commands.json")
 
     def test_migrates_legacy_commands_into_canonical(self):
         base_dir = self.tmp_path / "base"
@@ -88,7 +86,7 @@ class ConfigPathConsistencyTests(unittest.TestCase):
             json.dump(legacy_commands, f, indent=4)
 
         manager = self._new_manager(base_dir)
-        with open(manager.get_active_commands_file(), "r", encoding="utf-8") as f:
+        with open(manager.get_active_commands_file(), encoding="utf-8") as f:
             migrated = json.load(f)
 
         self.assertIn("LegacyGroup", migrated)
@@ -140,7 +138,7 @@ class ConfigPathConsistencyTests(unittest.TestCase):
             json.dump(legacy_commands, f, indent=4)
 
         manager = self._new_manager(base_dir)
-        with open(manager.get_active_commands_file(), "r", encoding="utf-8") as f:
+        with open(manager.get_active_commands_file(), encoding="utf-8") as f:
             merged = json.load(f)
 
         self.assertEqual(
@@ -186,7 +184,7 @@ class ConfigPathConsistencyTests(unittest.TestCase):
         refreshed = manager.get_commands(refresh=True)
         self.assertIn("Imported", refreshed)
 
-        with open(manager.get_active_commands_file(), "r", encoding="utf-8") as f:
+        with open(manager.get_active_commands_file(), encoding="utf-8") as f:
             on_disk = json.load(f)
         self.assertIn("Imported", on_disk)
 

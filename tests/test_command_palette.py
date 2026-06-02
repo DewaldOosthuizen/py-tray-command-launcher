@@ -11,11 +11,12 @@ import sys
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 # ---------------------------------------------------------------------------
 # Install a real-class PyQt6 stub BEFORE any src imports
 # ---------------------------------------------------------------------------
+
 
 def _install_real_pyqt6_stub():
     """Replace the MagicMock PyQt6 stub with one that has real base classes."""
@@ -40,25 +41,62 @@ def _install_real_pyqt6_stub():
         pass
 
     class _QWidget(_QWidget_base):
-        def show(self): pass
-        def hide(self): pass
-        def isVisible(self): return False
-        def raise_(self): pass
-        def activateWindow(self): pass
-        def move(self, *a): pass
-        def adjustSize(self): pass
-        def x(self): return 0
-        def y(self): return 0
-        def setObjectName(self, n): pass
-        def setAttribute(self, *a): pass
-        def setMinimumWidth(self, v): pass
-        def setMaximumHeight(self, v): pass
-        def setWindowTitle(self, t): pass
-        def childAt(self, *a): return None
-        def frameGeometry(self): return MagicMock()
-        def width(self): return 500
-        def height(self): return 400
-        def style(self): return MagicMock()
+        def show(self):
+            pass
+
+        def hide(self):
+            pass
+
+        def isVisible(self):
+            return False
+
+        def raise_(self):
+            pass
+
+        def activateWindow(self):
+            pass
+
+        def move(self, *a):
+            pass
+
+        def adjustSize(self):
+            pass
+
+        def x(self):
+            return 0
+
+        def y(self):
+            return 0
+
+        def setObjectName(self, n):
+            pass
+
+        def setAttribute(self, *a):
+            pass
+
+        def setMinimumWidth(self, v):
+            pass
+
+        def setMaximumHeight(self, v):
+            pass
+
+        def setWindowTitle(self, t):
+            pass
+
+        def childAt(self, *a):
+            return None
+
+        def frameGeometry(self):
+            return MagicMock()
+
+        def width(self):
+            return 500
+
+        def height(self):
+            return 400
+
+        def style(self):
+            return MagicMock()
 
     _mm = MagicMock
 
@@ -74,11 +112,25 @@ def _install_real_pyqt6_stub():
 
     # Everything else is a Mock
     for name in [
-        "QCheckBox", "QComboBox", "QDialogButtonBox", "QFormLayout",
-        "QGroupBox", "QLineEdit", "QMessageBox", "QSpinBox", "QVBoxLayout",
-        "QHBoxLayout", "QLabel", "QListWidget", "QListWidgetItem",
-        "QPushButton", "QFrame", "QStackedWidget", "QSizePolicy",
-        "QToolButton", "QScrollArea",
+        "QCheckBox",
+        "QComboBox",
+        "QDialogButtonBox",
+        "QFormLayout",
+        "QGroupBox",
+        "QLineEdit",
+        "QMessageBox",
+        "QSpinBox",
+        "QVBoxLayout",
+        "QHBoxLayout",
+        "QLabel",
+        "QListWidget",
+        "QListWidgetItem",
+        "QPushButton",
+        "QFrame",
+        "QStackedWidget",
+        "QSizePolicy",
+        "QToolButton",
+        "QScrollArea",
     ]:
         setattr(QtWidgets, name, _mm())
 
@@ -171,12 +223,12 @@ if "modules.app_discovery" not in sys.modules:
     _ad.app_discovery.resolve_icon_pixmap.return_value = None
     sys.modules["modules.app_discovery"] = _ad
 
-from ui.command_palette import _score, _to_pynput_str, CommandPalette, _PaletteWindow
-
+from ui.command_palette import CommandPalette, _PaletteWindow, _score, _to_pynput_str
 
 # ---------------------------------------------------------------------------
 # Pure-logic: _score
 # ---------------------------------------------------------------------------
+
 
 class TestScoreFunction(unittest.TestCase):
     def test_exact_match_scores_high(self):
@@ -203,6 +255,7 @@ class TestScoreFunction(unittest.TestCase):
 # Pure-logic: _to_pynput_str
 # ---------------------------------------------------------------------------
 
+
 class TestToPynputStr(unittest.TestCase):
     def test_modifier_keys_get_brackets(self):
         result = _to_pynput_str("ctrl+shift+space")
@@ -219,6 +272,7 @@ class TestToPynputStr(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # CommandPalette lifecycle
 # ---------------------------------------------------------------------------
+
 
 class TestCommandPaletteLifecycle(unittest.TestCase):
     def _make_palette(self):

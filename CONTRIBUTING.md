@@ -90,7 +90,7 @@ tighten a dependency (e.g. `PyQt6>=6.11.0`), edit `[project].dependencies` in
 Verify the setup:
 
     python3 -m pytest tests/           # all tests should pass
-    ruff check src/                    # no lint errors
+    bash scripts/lint.sh               # no lint errors (mirrors CI exactly)
 
 ## Adding a New Feature
 
@@ -117,22 +117,25 @@ Follow these steps to add a new capability to the launcher:
      "Test Conventions" below).
 
 6. **Run lint and tests** before opening a PR:
-       ruff check src/
-       python3 -m pytest tests/
+      bash scripts/lint.sh
+      python3 -m pytest tests/
 
 ## Linting
 
-Run the linter before opening a PR:
+Run the linter before opening a PR using the local script that mirrors CI exactly:
 
-    ruff check src/
+    bash scripts/lint.sh
 
-Check formatting (does not modify files):
+The script runs `ruff check src/ tests/` and `ruff format --check src/ tests/`
+in sequence — identical to what the CI lint job executes. A non-zero exit means
+lint would also fail in CI.
 
-    ruff format --check src/
+To auto-fix violations before reviewing manually:
 
-Apply formatting:
+    bash scripts/lint.sh --fix
 
-    ruff format src/
+The `--fix` flag runs `ruff format` and `ruff check --fix` first, then
+re-runs the check. The output shows what remains after auto-fixing (if anything).
 
 The CI workflow (`.github/workflows/lint.yml`) runs both commands on every push
 and pull request. A PR cannot merge if either check fails.
@@ -218,8 +221,7 @@ Reference the issue in the body:
     Closes #51
 
 **PR checklist before opening:**
-- [ ] `ruff check src/` — zero errors
-- [ ] `ruff format --check src/` — zero formatting diffs
+- [ ] `bash scripts/lint.sh` — zero errors and zero formatting diffs
 - [ ] `python3 -m pytest tests/` — all tests pass
 - [ ] New feature includes at least one test
 - [ ] Issue number referenced in the PR description
