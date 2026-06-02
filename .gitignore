@@ -144,7 +144,6 @@ dmypy.json
 .history
 .ionide
 .venv/icons
-.codegraph
 .lh
 openspec
 
@@ -158,3 +157,11 @@ config/backups
 .understand-anything/diff-overlay.json.hermes_tmp_prompt.txt
 .hermes_tmp_prompt.txt
 graphify-out/cache/
+# BEGIN workspace-orchestrator
+.hermes_tmp_prompt.txt
+graphify-out/cache/
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
+.codegraph/*.db
+.codegraph/cache/
+# END workspace-orchestrator
