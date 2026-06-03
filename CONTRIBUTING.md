@@ -1,5 +1,75 @@
 # Contributing to py-tray-command-launcher
 
+Thank you for contributing. This guide covers the full workflow, architecture
+conventions, and standards for making clean, reviewable contributions.
+
+---
+
+## Table of Contents
+
+1. [Code of Conduct](#1-code-of-conduct)
+2. [Getting Started](#2-getting-started)
+3. [Picking Up an Issue](#3-picking-up-an-issue)
+4. [Branch Naming](#4-branch-naming)
+5. [Development Setup](#development-setup)
+6. [Adding a New Feature](#adding-a-new-feature)
+7. [Linting](#linting)
+8. [Running Tests](#running-tests)
+9. [Commit Message Style](#commit-message-style)
+10. [Pull Request Checklist](#pull-request-checklist)
+11. [Architecture Overview](#architecture-overview)
+
+---
+
+## 1. Code of Conduct
+
+Be respectful, constructive, and collaborative. Contributions that are
+disrespectful, dismissive, or harmful will not be accepted.
+
+---
+
+## 2. Getting Started
+
+1. Fork the repository.
+2. Clone your fork locally.
+3. Follow the [Development Setup](#development-setup) section below.
+
+---
+
+## 3. Picking Up an Issue
+
+**Before you write a single line of code:**
+
+1. Browse the [GitHub Issues](../../issues) tab and find an issue you want to work on.
+2. **Assign the issue to yourself** before starting any work.
+   Go to the issue page → Assignees (right sidebar) → assign yourself.
+   This signals to all other contributors that the issue is claimed.
+3. Leave a comment on the issue stating you are picking it up and your
+   intended approach — especially for larger changes.
+4. Only then create your branch and begin work.
+
+> Why this matters: two contributors working on the same issue in parallel
+> wastes effort and creates painful merge conflicts. A self-assignment takes
+> five seconds and saves hours.
+
+If you were assigned an issue but can no longer work on it, unassign yourself
+and leave a comment so someone else can pick it up.
+
+---
+
+## 4. Branch Naming
+
+| Prefix     | Pattern                         | When to use                                |
+|------------|---------------------------------|--------------------------------------------|
+| `feature/` | `feature/<issue-id>-<topic>`    | New feature or capability                  |
+| `fix/`     | `fix/<issue-id>-<topic>`        | Bug fix                                    |
+| `chore/`   | `chore/<topic>`                 | Tooling, deps, CI, config updates          |
+| `docs/`    | `docs/<topic>`                  | Documentation only                         |
+
+Always branch from `main`.
+
+---
+
 ## Architecture Overview
 
 The source tree is organised into four top-level areas:

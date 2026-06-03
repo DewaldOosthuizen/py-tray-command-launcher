@@ -230,9 +230,9 @@ without verifying the file length (16 bytes = legacy, 20 bytes = current).
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full
-contribution guide: architecture overview, development setup, adding a new feature,
-test conventions, and PR guidelines.
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for
+the full workflow, including how to pick up an issue, branch naming conventions,
+local validation steps, and the pull request process.
 
 ### Dependency updates
 
