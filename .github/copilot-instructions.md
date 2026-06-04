@@ -86,7 +86,7 @@ from core.config_manager import config_manager   # always import the instance
 ```
 Never instantiate `ConfigManager()` directly. It reads from:
 1. CLI `--config <path>` override (highest priority)
-2. `~/.config/py-tray-launcher/commands.json` (user config)
+2. `~/.config/py-tray-command-launcher/commands.json` (user config)
 3. `config/commands.json` (bundled default)
 
 Config writes use atomic temp-file rename to prevent corruption.
@@ -122,7 +122,7 @@ to support group-only entries. Only non-dict items raise ValueError.
 
 ### 6. Icon cache lives in /tmp
 ```
-/tmp/py-tray-launcher-icons/<md5-of-url>.<ext>
+/tmp/py-tray-command-launcher-icons/<md5-of-url>.<ext>
 ```
 TTL is configurable. When `_cache_ttl_seconds == 0`, TTL check is skipped entirely
 (treat as permanent cache).
@@ -150,7 +150,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 # 3. Python dependencies (4-6s — NEVER CANCEL)
-pip install -r requirements.txt
+pip install -e ".[dev]"
 
 # 4. Validate installation
 python3 -c "import sys; sys.path.append('src'); from core.tray_app import TrayApp; print('OK')"
@@ -350,7 +350,6 @@ Change artifacts live in `openspec/changes/<name>/`:
 - `tasks.md` — implementation checklist
 
 Completed changes are moved to `openspec/changes/archive/`.
-Use the skills in `.github/skills/openspec-*/` for full workflows.
 
 ---
 
@@ -360,7 +359,7 @@ Read `docs/add/` before making architectural changes. Key decisions:
 
 | ADD | Decision |
 |-----|---------|
-| ADD-001 | Config storage uses XDG base dirs (`~/.config/py-tray-launcher/`) |
+| ADD-001 | Config storage uses XDG base dirs (`~/.config/py-tray-command-launcher/`) |
 | ADD-002 | ConfigManager is a module-level singleton — never re-instantiate |
 | ADD-003 | AppServices dataclass wires all dependencies — no direct cross-module imports |
 | ADD-004 | commands.json schema validation is soft (warn, don't crash) |
@@ -411,11 +410,12 @@ Set timeouts generously (60s+ for installs, 30s for tests). NEVER CANCEL.
 System, Media, Studies, Utilities, Development, Networking, Favorites
 
 ### Runtime data paths
-- User config: `~/.config/py-tray-launcher/commands.json`
-- Favorites: `~/.config/py-tray-launcher/favorites.json`
-- Icon cache: `/tmp/py-tray-launcher-icons/`
-- Logs: `~/.local/share/py-tray-launcher/app.log`
+- User config: `~/.config/py-tray-command-launcher/commands.json`
+- Favorites: `~/.config/py-tray-command-launcher/favorites.json`
+- Icon cache: `/tmp/py-tray-command-launcher-icons/`
+- Logs: `~/.local/share/py-tray-command-launcher/app.log`
 
 ### Test count
 50 tests across 5 files — all should pass on every commit.
 
+---
