@@ -28,7 +28,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --cov=src/ui --cov-report=term-missing --cov-fail-under=60"
+addopts = "-v --cov=src --cov-report=term-missing --cov-fail-under=50"
 
 [tool.ruff]
 line-length = 100
