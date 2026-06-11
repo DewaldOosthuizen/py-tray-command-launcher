@@ -151,6 +151,7 @@ class EncryptionWorker(QThread):
         logger.info("Starting %s operation on: %s", self.operation, self.file_path)
         is_legacy = False
         password = self.password
+        self.password = None  # best-effort: drop instance reference ASAP
         try:
             if password is None:
                 self.finished_signal.emit(False, "Password is required.")
