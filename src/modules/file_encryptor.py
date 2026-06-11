@@ -45,7 +45,7 @@ class EncryptionWorker(QThread):
         super().__init__()
         self.operation = operation  # 'encrypt' or 'decrypt'
         self.file_path = file_path
-        self.password = password  # best-effort only: cleared after run(); CPython may retain internals
+        self.password = password  # best-effort only: cleared after run(); CPython may retain string contents in memory
         self.is_folder = is_folder
 
     def _derive_key(
