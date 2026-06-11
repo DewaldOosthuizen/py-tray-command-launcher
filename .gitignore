@@ -136,6 +136,7 @@ dmypy.json
 
 # Local History for Visual Studio Code
 .history/
+.lh
 
 # Built Visual Studio Code Extensions
 *.vsix
@@ -145,8 +146,6 @@ dmypy.json
 .history
 .ionide
 .venv/icons
-.lh
-openspec
 
 # Application specific files
 config/history.json
@@ -161,5 +160,5 @@ graphify-out/cache/
 .understand-anything/diff-overlay.json
 .codegraph/*.db
 .codegraph/cache/
+openspec
 # END workspace-orchestrator
-.ruff_cache
