@@ -151,12 +151,8 @@ openspec
 config/history.json
 config/favorites.json
 config/backups
+.ci-logs
 
-# workspace-orchestrator managed entries
-.understand-anything/intermediate/
-.understand-anything/diff-overlay.json.hermes_tmp_prompt.txt
-.hermes_tmp_prompt.txt
-graphify-out/cache/
 # BEGIN workspace-orchestrator
 .hermes_tmp_prompt.txt
 graphify-out/cache/

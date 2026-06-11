@@ -12,12 +12,13 @@ conventions, and standards for making clean, reviewable contributions.
 3. [Picking Up an Issue](#3-picking-up-an-issue)
 4. [Branch Naming](#4-branch-naming)
 5. [Development Setup](#development-setup)
-6. [Adding a New Feature](#adding-a-new-feature)
-7. [Linting](#linting)
-8. [Running Tests](#running-tests)
-9. [Commit Message Style](#commit-message-style)
-10. [Pull Request Checklist](#pull-request-checklist)
-11. [Architecture Overview](#architecture-overview)
+6. [Local CI Validation](#local-ci-validation)
+7. [Adding a New Feature](#adding-a-new-feature)
+8. [Linting](#linting)
+9. [Running Tests](#running-tests)
+10. [Commit Message Style](#commit-message-style)
+11. [Pull Request Checklist](#pull-request-checklist)
+12. [Architecture Overview](#architecture-overview)
 
 ---
 
@@ -161,6 +162,32 @@ Verify the setup:
 
     python3 -m pytest tests/           # all tests should pass
     bash scripts/lint.sh               # no lint errors (mirrors CI exactly)
+
+## Local CI Validation
+
+Use the repository `Makefile` to run the same flow groups that CI executes.
+Run these before committing to avoid avoidable CI failures.
+
+Primary targets:
+
+    make ci-workflow           # mirrors .github/workflows/ci.yml
+    make tests-workflow        # mirrors .github/workflows/tests.yml
+    make lint-workflow         # mirrors .github/workflows/lint.yml
+    make release-workflow      # mirrors build/verify from .github/workflows/release.yml
+
+Recommended pre-commit command:
+
+    make ci
+
+This runs the CI, tests, and lint workflow groups locally.
+
+Full local validation (including release build emulation):
+
+    make ci-full
+
+If you need release artifact naming to match a version tag locally:
+
+    make release-workflow VERSION=v1.2.3
 
 ## Adding a New Feature
 
