@@ -45,7 +45,7 @@ class EncryptionWorker(QThread):
         super().__init__()
         self.operation = operation  # 'encrypt' or 'decrypt'
         self.file_path = file_path
-        self.password = password
+        self.password = password  # best-effort only: cleared after run(); CPython may retain string contents in memory
         self.is_folder = is_folder
 
     def _derive_key(
@@ -142,13 +142,23 @@ class EncryptionWorker(QThread):
         return files
 
     def run(self):
-        """Run the encryption/decryption operation."""
+        """Run the encryption/decryption operation.
+
+        Best-effort secret handling only: the worker clears its password reference
+        in finally, but CPython cannot guarantee the underlying string bytes are
+        zeroised immediately.
+        """
         logger.info("Starting %s operation on: %s", self.operation, self.file_path)
         is_legacy = False
+        password = self.password
+        self.password = None  # best-effort: drop instance reference ASAP
         try:
+            if password is None:
+                self.finished_signal.emit(False, "Password is required.")
+                return
             # Generate salt
             salt = os.urandom(16)
-            key = self._derive_key(self.password, salt)
+            key = self._derive_key(password, salt)
 
             # Get all files to process
             files_to_process = self._get_all_files(self.file_path, self.operation)
@@ -205,7 +215,7 @@ class EncryptionWorker(QThread):
                             False, "Salt file is corrupt or unrecognised format. Cannot decrypt."
                         )
                         return
-                    key = self._derive_key(self.password, salt, iterations=stored_iterations)
+                    key = self._derive_key(password, salt, iterations=stored_iterations)
                 else:
                     self.finished_signal.emit(
                         False, "Salt file not found. Cannot decrypt without the original salt."
@@ -262,6 +272,9 @@ class EncryptionWorker(QThread):
         except Exception as e:
             logger.error("Encryption worker failed: %s", str(e))
             self.finished_signal.emit(False, f"Operation failed: {str(e)}")
+        finally:
+            password = None  # best-effort: drop local reference too
+            self.password = None
 
 
 class PasswordDialog(QDialog):
