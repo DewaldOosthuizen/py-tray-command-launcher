@@ -272,6 +272,7 @@ class EncryptionWorker(QThread):
             logger.error("Encryption worker failed: %s", str(e))
             self.finished_signal.emit(False, f"Operation failed: {str(e)}")
         finally:
+            password = None  # best-effort: drop local reference too
             self.password = None
 
 
