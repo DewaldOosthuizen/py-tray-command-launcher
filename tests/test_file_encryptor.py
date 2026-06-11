@@ -104,7 +104,7 @@ class TestEncryptDecryptRoundTrip(unittest.TestCase):
         worker.progress_updated = MagicMock()
         worker.status_updated = MagicMock()
         worker.run()
-        return results
+        return worker, results
 
     def test_new_salt_file_is_20_bytes(self):
         """After encryption the .salt file must be 20 bytes (4 + 16)."""
@@ -112,7 +112,7 @@ class TestEncryptDecryptRoundTrip(unittest.TestCase):
             plain_file = os.path.join(tmp, "data.txt")
             Path(plain_file).write_text("hello world")
 
-            result = self._run_worker("encrypt", plain_file, "pass123")
+            _worker, result = self._run_worker("encrypt", plain_file, "pass123")
             self.assertTrue(result.get("success"), result.get("message"))
 
             salt_file = plain_file + ".salt"
@@ -130,14 +130,25 @@ class TestEncryptDecryptRoundTrip(unittest.TestCase):
             plain_file = os.path.join(tmp, "secret.txt")
             Path(plain_file).write_bytes(original_content)
 
-            enc_result = self._run_worker("encrypt", plain_file, "mypassword")
+            _enc_worker, enc_result = self._run_worker("encrypt", plain_file, "mypassword")
             self.assertTrue(enc_result.get("success"), enc_result.get("message"))
 
             enc_file = plain_file + ".enc"
-            dec_result = self._run_worker("decrypt", enc_file, "mypassword")
+            _dec_worker, dec_result = self._run_worker("decrypt", enc_file, "mypassword")
             self.assertTrue(dec_result.get("success"), dec_result.get("message"))
 
             self.assertEqual(Path(plain_file).read_bytes(), original_content)
+
+    def test_password_reference_cleared_after_run(self):
+        """Worker must clear the plaintext password reference after finishing."""
+        with tempfile.TemporaryDirectory() as tmp:
+            plain_file = os.path.join(tmp, "secret.txt")
+            Path(plain_file).write_text("top secret")
+
+            worker, result = self._run_worker("encrypt", plain_file, "mypassword")
+
+        self.assertTrue(result.get("success"), result.get("message"))
+        self.assertIsNone(worker.password)
 
 
 class TestLegacySaltFallback(unittest.TestCase):
