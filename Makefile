@@ -5,6 +5,8 @@ PIP ?= pip
 PYTEST ?= pytest
 RUFF ?= ruff
 PIP_AUDIT ?= pip-audit
+PIP_MIN_SAFE ?= 26.1.2
+WHEEL_MIN_SAFE ?= 0.46.2
 PYINSTALLER ?= pyinstaller
 VERSION ?= local
 LOG_DIR ?= .ci-logs
@@ -120,6 +122,18 @@ lint-test:
 .PHONY: lint-audit
 lint-audit:
 	@mkdir -p $(LOG_DIR)
+	@echo "[lint-audit] Upgrading pip to >= $(PIP_MIN_SAFE)..."
+	@$(PIP) install --upgrade "pip>=$(PIP_MIN_SAFE)" || { \
+		echo "[FAIL] lint-audit: failed to upgrade pip to a safe version"; \
+		exit 1; \
+	}
+	@echo "[lint-audit] Using $$(pip --version)"
+	@echo "[lint-audit] Upgrading wheel to >= $(WHEEL_MIN_SAFE)..."
+	@$(PIP) install --upgrade "wheel>=$(WHEEL_MIN_SAFE)" || { \
+		echo "[FAIL] lint-audit: failed to upgrade wheel to a safe version"; \
+		exit 1; \
+	}
+	@echo "[lint-audit] Using $$(python3 -m pip show wheel | awk '/^Version:/ {print "wheel " $$2}')"
 	@echo "[lint-audit] Installing pip-audit..."
 	@$(PIP) install pip-audit || { \
 		echo "[FAIL] lint-audit: failed to install pip-audit"; \
