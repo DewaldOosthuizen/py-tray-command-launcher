@@ -1,9 +1,9 @@
 # py-tray-command-launcher
 
-[![CI](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/ci.yml)
-[![Tests](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/tests.yml/badge.svg)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/tests.yml)
-[![Lint](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/lint.yml/badge.svg)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/lint.yml)
-[![Release](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/release.yml/badge.svg)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/release.yml)
+[![CI](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/ci.yml?query=branch%3Amain)
+[![Tests](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/tests.yml?query=branch%3Amain)
+[![Lint](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/lint.yml?query=branch%3Amain)
+[![Release](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/DewaldOosthuizen/py-tray-command-launcher/actions/workflows/release.yml?query=branch%3Amain)
 
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/paypalme/DewaldOosthuizen1)
 
