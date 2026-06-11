@@ -153,7 +153,8 @@ class EncryptionWorker(QThread):
         password = self.password
         try:
             if password is None:
-                raise RuntimeError("Password reference missing before operation start.")
+                self.finished_signal.emit(False, "Password is required.")
+                return
             # Generate salt
             salt = os.urandom(16)
             key = self._derive_key(password, salt)
