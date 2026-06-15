@@ -1,5 +1,5 @@
 # Build dependencies for creating packages
-PyInstaller==6.20.0
+PyInstaller==6.21.0
 setuptools
 wheel
 # Runtime deps also needed at build time for proper bundling
