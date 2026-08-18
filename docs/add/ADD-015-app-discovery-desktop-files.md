@@ -67,6 +67,26 @@ The module-level singleton `app_discovery` exposes:
 - `search(query)` — returns a scored, filtered subset using
   `rapidfuzz.fuzz.WRatio` over `name` and `comment` fields.
 
+### Thread safety — `_icon_path_index` locking (issue #87)
+
+`_build_icon_index` runs on a daemon background thread and populates
+`self._icon_path_index` (icon name → resolved absolute path) as a
+supplementary fallback for icons that Qt's theme resolver misses.
+`_find_pixmap`, invoked from the Qt main thread, reads that same dict.
+
+`_icon_path_index` is only ever mutated by building a full local `dict` and
+then performing a single atomic swap (`self._icon_path_index = index`) —
+never incremental in-place mutation. An explicit `threading.Lock`
+(`self._icon_index_lock`) guards both the swap in `_build_icon_index` and the
+read in `_find_pixmap`, formalizing this invariant so a future edit cannot
+silently reintroduce a `RuntimeError: dictionary changed size during
+iteration` race by mutating the dict incrementally instead of swapping it.
+
+`_pixmap_cache` (icon+size → resolved `QPixmap`) is intentionally left
+unlocked: it is read and written exclusively from the Qt main thread. This
+assumption is documented at its declaration and access sites and must be
+revisited if cross-thread access to `_pixmap_cache` is ever introduced.
+
 ---
 
 ## Alternatives considered
