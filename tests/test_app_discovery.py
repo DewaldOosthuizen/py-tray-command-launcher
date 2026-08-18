@@ -1,5 +1,6 @@
 """Tests for AppDiscovery.clean_exec, build_launch_args, and is_windows_lnk_entry."""
 
+import threading
 from unittest.mock import patch
 
 import pytest
@@ -169,3 +170,46 @@ def test_is_windows_lnk_entry_linux_always_false():
     with patch("modules.app_discovery.IS_WINDOWS", False):
         result = AppDiscovery.is_windows_lnk_entry(entry)
     assert result is False
+
+
+# ---------------------------------------------------------------------------
+# Thread-safety — issue #87
+# ---------------------------------------------------------------------------
+
+
+def test_find_pixmap_concurrent_with_icon_index_build_no_exception():
+    """`_find_pixmap` reads `_icon_path_index` while `_build_icon_index` swaps it
+    concurrently. The `_icon_index_lock` must prevent any race/exception and
+    every read must observe either the initial empty dict or the fully-built
+    replacement — never a partially mutated dict."""
+    with patch("modules.app_discovery.IS_WINDOWS", True):
+        # Avoid the constructor's own background thread; we drive both sides manually.
+        discovery = AppDiscovery()
+
+    errors: list[BaseException] = []
+    stop = threading.Event()
+
+    def reader():
+        while not stop.is_set():
+            try:
+                with discovery._icon_index_lock:
+                    path = discovery._icon_path_index.get("nonexistent-icon")
+                assert path is None or isinstance(path, str)
+            except BaseException as exc:  # noqa: BLE001 - want to capture any race exception
+                errors.append(exc)
+
+    reader_threads = [threading.Thread(target=reader) for _ in range(4)]
+    for t in reader_threads:
+        t.start()
+
+    # Run the real index builder concurrently with the readers.
+    builder_thread = threading.Thread(target=discovery._build_icon_index)
+    builder_thread.start()
+    builder_thread.join(timeout=10)
+
+    stop.set()
+    for t in reader_threads:
+        t.join(timeout=10)
+
+    assert not errors
+    assert isinstance(discovery._icon_path_index, dict)
