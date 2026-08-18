@@ -100,7 +100,10 @@ class AppDiscovery:
         self._apps: list[AppEntry] | None = None
         # icon_name → resolved absolute path; built once in a background thread
         self._icon_path_index: dict[str, str] = {}
-        # cache_key → QPixmap; eliminates repeated disk I/O on every keystroke
+        self._icon_index_lock = threading.Lock()
+        # cache_key → QPixmap; eliminates repeated disk I/O on every keystroke.
+        # Read/written exclusively from the Qt main thread — no lock required
+        # unless a future change introduces cross-thread access to this cache.
         self._pixmap_cache: dict[str, QPixmap] = {}
         if not IS_WINDOWS:
             threading.Thread(target=self._build_icon_index, daemon=True, name="icon-index").start()
@@ -283,6 +286,8 @@ class AppDiscovery:
             return self._fallback_pixmap(size)
 
         cache_key = f"{icon_name}\x00{size}"
+        # _pixmap_cache is intentionally unlocked: it is only ever accessed
+        # from the Qt main thread. Revisit if cross-thread access is added.
         cached = self._pixmap_cache.get(cache_key)
         if cached is not None:
             return cached
@@ -333,7 +338,8 @@ class AppDiscovery:
                 return px
 
         # 4. Background file index (supplementary; catches theme-unregistered icons)
-        path = self._icon_path_index.get(icon_name)
+        with self._icon_index_lock:
+            path = self._icon_path_index.get(icon_name)
         if path:
             px = QPixmap(path)
             if not px.isNull():
@@ -402,8 +408,10 @@ class AppDiscovery:
         # Pass 3 — /usr/share/pixmaps (catch-all for older packages)
         _index_dir(Path("/usr/share/pixmaps"))
 
-        # Atomic replacement so readers always see a complete dict
-        self._icon_path_index = index
+        # Atomic replacement so readers always see a complete dict; lock
+        # formalizes this guarantee against future incremental-mutation edits.
+        with self._icon_index_lock:
+            self._icon_path_index = index
         logger.info("AppDiscovery: icon index built — %d icons indexed", len(index))
 
     def _fallback_pixmap(self, size: int) -> QPixmap:
