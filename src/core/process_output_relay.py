@@ -64,6 +64,4 @@ class ProcessOutputRelay:
         except RuntimeError as exc:
             if swallow:
                 return
-            logger.debug(
-                "Output window destroyed before %s could be written: %s", stream, exc
-            )
+            logger.debug("Output window destroyed before %s could be written: %s", stream, exc)
