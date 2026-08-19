@@ -124,6 +124,43 @@ def _make_pyqt6_stub():
             object.__setattr__(self, name, attr)
             return attr
 
+    class _BoundSignal:
+        """Per-instance Qt-signal stand-in: connect()/emit() actually dispatch."""
+
+        def __init__(self):
+            self._slots: list = []
+
+        def connect(self, slot):
+            self._slots.append(slot)
+
+        def disconnect(self, slot=None):
+            if slot is None:
+                self._slots.clear()
+            else:
+                self._slots.remove(slot)
+
+        def emit(self, *args, **kwargs):
+            for slot in list(self._slots):
+                slot(*args, **kwargs)
+
+    class _SignalDescriptor:
+        """Stand-in for pyqtSignal: a descriptor giving each instance its own _BoundSignal."""
+
+        def __init__(self, *args, **kwargs):
+            self._name = None
+
+        def __set_name__(self, owner, name):
+            self._name = name
+
+        def __get__(self, obj, objtype=None):
+            if obj is None:
+                return self
+            store = obj.__dict__.setdefault("_bound_signals", {})
+            if self._name not in store:
+                store[self._name] = _BoundSignal()
+            return store[self._name]
+
+    pyqt6.QtCore.pyqtSignal = _SignalDescriptor
     pyqt6.QtCore.QObject = _QObject
     pyqt6.QtWidgets.QWidget = _QWidget
     pyqt6.QtWidgets.QMainWindow = _QWidget
@@ -172,6 +209,15 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+# Import modules that rely on our per-instance pyqtSignal stub (real
+# connect()/emit() dispatch) NOW, while our stub is still installed in
+# sys.modules["PyQt6"]. Some test modules (e.g. test_command_palette.py)
+# permanently replace sys.modules["PyQt6"] with a lighter-weight stub whose
+# pyqtSignal doesn't actually dispatch; since Python caches module imports,
+# importing these modules here (before any test module runs) guarantees they
+# bind to our fully-functional signal stub regardless of collection order.
+import core.badge_manager  # noqa: E402, F401
+import core.process_tracker  # noqa: E402, F401
 
 # ---------------------------------------------------------------------------
 # Filesystem helpers

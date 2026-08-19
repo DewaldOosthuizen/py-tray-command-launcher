@@ -6,15 +6,16 @@ import os
 import shlex
 import subprocess
 import sys
-import weakref
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QInputDialog, QMenu, QSystemTrayIcon
 
+from core.badge_manager import BadgeManager
 from core.config_manager import ConfigurationError, config_manager
 from core.icon_resolver import IconResolver
 from core.menu_builder import MenuBuilder
+from core.process_output_relay import ProcessOutputRelay
+from core.process_tracker import ProcessTracker
 from core.services import AppServices
 from core.theme_manager import ThemeManager
 from modules.backup_restore import BackupRestore
@@ -49,7 +50,8 @@ class TrayApp:
           _setup_paths()       — base_dir, icon_file
           _setup_theme()       — ThemeManager, apply theme from settings
           _setup_tray_icon()   — QSystemTrayIcon, quit-on-close behaviour
-          _build_services()    — AppServices dataclass
+          _build_services()    — AppServices dataclass (ProcessTracker, BadgeManager,
+                                 ProcessOutputRelay wiring)
           _build_modules()     — feature module instances
           _build_ui()          — UI widget instances and hotkeys
           _build_menu()        — tray context menu
@@ -104,7 +106,7 @@ class TrayApp:
 
         self.menu = QMenu()
         self.output_windows: list = []
-        self._running_processes: dict = {}
+        self.process_tracker = ProcessTracker(self.app)
         self._running_action = None
 
     def _build_services(self) -> None:
@@ -126,7 +128,11 @@ class TrayApp:
             reload_favorites_commands=self.reload_favorites_commands,
             resolve_icon_path=self._resolve_icon_path,
             notify_user=self.notify_user,
+            process_tracker=self.process_tracker,
         )
+
+        self.badge_manager = BadgeManager(self.tray_icon, self.icon_file)
+        self.process_tracker.process_count_changed.connect(self._on_process_count_changed)
 
     def _build_modules(self) -> None:
         """Construct all feature module instances."""
@@ -238,10 +244,6 @@ class TrayApp:
 
     def show_command_output(self, title, command):
         """Execute a command, show output in RichOutputWindow, and update badge."""
-        import uuid
-
-        proc_id = str(uuid.uuid4())
-
         process = self.executor.execute_command_process(self.app, command)
 
         output_win = RichOutputWindow(self.app.activeWindow())
@@ -249,53 +251,9 @@ class TrayApp:
         self.output_windows.append(output_win)
         output_win.destroyed.connect(lambda _, w=output_win: self._on_output_window_closed(w))
 
-        output_win_ref = weakref.ref(output_win)
-
-        def _on_stdout():
-            output = process.readAllStandardOutput().data().decode(errors="replace")
-            if not output:
-                return
-            win = output_win_ref()
-            if win is not None:
-                try:
-                    win.append_output(tab, output)
-                except RuntimeError as exc:
-                    logger.debug("Output window destroyed before stdout could be written: %s", exc)
-
-        def _on_stderr():
-            output = process.readAllStandardError().data().decode(errors="replace")
-            if not output:
-                return
-            win = output_win_ref()
-            if win is not None:
-                try:
-                    win.append_output(tab, output)
-                except RuntimeError as exc:
-                    logger.debug("Output window destroyed before stderr could be written: %s", exc)
-
-        process.readyReadStandardOutput.connect(_on_stdout)
-        process.readyReadStandardError.connect(_on_stderr)
-
-        self._running_processes[proc_id] = process
-        self._update_tray_badge()
-
-        def _on_finished():
-            self._running_processes.pop(proc_id, None)
-            self._update_tray_badge()
-
-        def _on_error(error):
-            logger.error("QProcess error for command '%s': %s", command, error)
-            win = output_win_ref()
-            if win is not None:
-                try:
-                    win.append_output(tab, f"\n[ERROR] Process error: {error}\n")
-                except RuntimeError:
-                    pass
-            self._running_processes.pop(proc_id, None)
-            self._update_tray_badge()
-
-        process.finished.connect(_on_finished)
-        process.errorOccurred.connect(_on_error)
+        proc_id = self.process_tracker.track(process)
+        relay = ProcessOutputRelay(process, output_win, tab, command)
+        relay.wire(on_finished=lambda *_args: self.process_tracker.remove(proc_id))
         # process.start() is called inside execute_command_process
 
     def _on_output_window_closed(self, win):
@@ -305,44 +263,15 @@ class TrayApp:
         except ValueError:
             pass
 
-    def _update_tray_badge(self):
-        """Repaint the tray icon with a badge showing running process count."""
-        count = len(self._running_processes)
-
+    def _on_process_count_changed(self, count: int) -> None:
+        """Update the running-action label/visibility and repaint the tray badge."""
         if self._running_action is not None:
             if count > 0:
                 self._running_action.setText(f"Running: {count}")
                 self._running_action.setVisible(True)
             else:
                 self._running_action.setVisible(False)
-
-        base = QPixmap(self.icon_file)
-        if base.isNull():
-            return
-
-        if count == 0:
-            self.tray_icon.setIcon(QIcon(base))
-            return
-
-        badge_size = max(base.width() // 3, 12)
-        painter = QPainter(base)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        bx = base.width() - badge_size - 1
-        by = base.height() - badge_size - 1
-        painter.setBrush(QColor("#e64553"))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(bx, by, badge_size, badge_size)
-
-        font = QFont()
-        font.setPixelSize(max(badge_size - 4, 8))
-        font.setBold(True)
-        painter.setFont(font)
-        painter.setPen(QColor("white"))
-        painter.drawText(bx, by, badge_size, badge_size, Qt.AlignmentFlag.AlignCenter, str(count))
-        painter.end()
-
-        self.tray_icon.setIcon(QIcon(base))
+        self.badge_manager.update_badge(count)
 
     # ------------------------------------------------------------------ #
     # Utility / reload methods                                             #
@@ -471,7 +400,7 @@ class TrayApp:
             self.quick_launch_bar.refresh()
         logger.info("Pinned '%s' to Quick-Launch Bar", entry["label"])
 
-        dlg = CommandManagerDialog(self.services, self._running_processes, parent=None)
+        dlg = CommandManagerDialog(self.services, self.process_tracker.processes, parent=None)
         dlg.exec()
 
     def _open_settings(self):
