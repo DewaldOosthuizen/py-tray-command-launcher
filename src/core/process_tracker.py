@@ -18,6 +18,18 @@ class ProcessTracker(QObject):
         self._processes[proc_id] = process
         self.process_count_changed.emit(self.count())
 
+    def track(self, process) -> str:
+        """Register *process* under a freshly generated id and return that id.
+
+        Convenience wrapper around :meth:`add` for callers that don't need
+        to choose their own process id (the common case).
+        """
+        import uuid
+
+        proc_id = str(uuid.uuid4())
+        self.add(proc_id, process)
+        return proc_id
+
     def remove(self, proc_id: str) -> None:
         """Remove a process (no-op if proc_id is unknown) and emit the new count."""
         self._processes.pop(proc_id, None)
