@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.config_manager import ConfigManager
+    from core.process_tracker import ProcessTracker
 
 
 @dataclass
@@ -31,3 +32,4 @@ class AppServices:
     reload_favorites_commands: Callable[[], None]
     resolve_icon_path: Callable[[str], str]
     notify_user: Callable[[str, str], None]
+    process_tracker: ProcessTracker

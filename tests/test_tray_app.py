@@ -24,6 +24,7 @@ PyQt6 is stubbed in ``conftest.py`` (sys.modules injection) — not repeated her
 
 from unittest.mock import MagicMock, patch
 
+from core.process_tracker import ProcessTracker
 from core.tray_app import TrayApp
 
 
@@ -209,36 +210,30 @@ def test_execute_prompt_posix_uses_shlex_quote():
 
 
 # --------------------------------------------------------------------------- #
-# _update_tray_badge()                                                          #
+# _on_process_count_changed()                                                   #
 # --------------------------------------------------------------------------- #
 
 
 def test_update_badge_hides_running_action_when_zero():
     """With no running processes the running-action entry is hidden."""
     app = object.__new__(TrayApp)
-    app._running_processes = {}
     app._running_action = MagicMock()
-    app.icon_file = "icon.png"
-    app.tray_icon = MagicMock()
-    with patch("core.tray_app.QPixmap") as qpix:
-        qpix.return_value.isNull.return_value = True
-        app._update_tray_badge()
+    app.badge_manager = MagicMock()
+    app._on_process_count_changed(0)
     app._running_action.setVisible.assert_any_call(False)
     app._running_action.setText.assert_not_called()
+    app.badge_manager.update_badge.assert_called_once_with(0)
 
 
 def test_update_badge_shows_count_when_running():
     """With running processes the running-action shows 'Running: N' and is visible."""
     app = object.__new__(TrayApp)
-    app._running_processes = {"a": MagicMock(), "b": MagicMock()}
     app._running_action = MagicMock()
-    app.icon_file = "icon.png"
-    app.tray_icon = MagicMock()
-    with patch("core.tray_app.QPixmap") as qpix:
-        qpix.return_value.isNull.return_value = True
-        app._update_tray_badge()
+    app.badge_manager = MagicMock()
+    app._on_process_count_changed(2)
     app._running_action.setText.assert_any_call("Running: 2")
     app._running_action.setVisible.assert_any_call(True)
+    app.badge_manager.update_badge.assert_called_once_with(2)
 
 
 # --------------------------------------------------------------------------- #
@@ -247,13 +242,12 @@ def test_update_badge_shows_count_when_running():
 
 
 def test_on_finished_removes_process_and_updates_badge():
-    """When a process finishes it is removed from _running_processes and the badge refreshes."""
+    """When a process finishes it is removed from process_tracker and the badge refreshes."""
     app = object.__new__(TrayApp)
     app.app = MagicMock()
     app.executor = MagicMock()
     app.output_windows = []
-    app._running_processes = {}
-    app._update_tray_badge = MagicMock()
+    app.process_tracker = ProcessTracker()
 
     process = app.executor.execute_command_process.return_value
 
@@ -261,16 +255,13 @@ def test_on_finished_removes_process_and_updates_badge():
         app.show_command_output("Status", "git status")
 
     # Registration side effects.
-    assert len(app._running_processes) == 1
-    assert app._update_tray_badge.called
+    assert app.process_tracker.count() == 1
 
     # Capture and invoke the finished callback wired by show_command_output.
     on_finished = process.finished.connect.call_args[0][0]
-    badge_calls_before = app._update_tray_badge.call_count
     on_finished()
 
-    assert len(app._running_processes) == 0
-    assert app._update_tray_badge.call_count > badge_calls_before
+    assert app.process_tracker.count() == 0
 
 
 # --------------------------------------------------------------------------- #
