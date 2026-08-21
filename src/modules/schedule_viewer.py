@@ -310,8 +310,60 @@ class ScheduleViewer:
             QMessageBox.critical(parent_dialog, "Error", f"Could not remove old entry:\n{e}")
             return
         sc = ScheduleCreator(self.services)
-        sc.show_dialog()
-        self.refresh_dialog(parent_dialog)
+        if sc.show_dialog():
+            self.refresh_dialog(parent_dialog)
+        else:
+            # Creation was cancelled or failed after we already deleted the old entry.
+            # Re-install the old cron line so the user does not lose their schedule.
+            try:
+                self._reinstall_cron_job(schedule)
+            except Exception as e:
+                QMessageBox.critical(
+                    parent_dialog,
+                    "Error",
+                    f"Editing was cancelled and the original schedule could not be restored:\n{e}",
+                )
+            else:
+                QMessageBox.information(
+                    parent_dialog,
+                    "Edit Cancelled",
+                    f"Schedule editing was cancelled. The original schedule '{name}' has been restored.",
+                )
+                self.refresh_dialog(parent_dialog)
+
+    def _reinstall_cron_job(self, schedule):
+        """Re-install a previously deleted cron entry back to the crontab.
+
+        This is used to restore a schedule when editing is cancelled after the
+        old entry was already deleted. The stored cron_line from the schedule
+        dict is written back to the crontab.
+        """
+        cron_line = schedule.get("cron_line", "")
+        if not cron_line:
+            raise ValueError("Schedule has no cron_line stored")
+
+        name = schedule.get("name", "")
+        comment = f"# py-tray-command-launcher: {name}"
+
+        result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+        current_crontab = result.stdout if result.returncode == 0 else ""
+
+        # Check if the entry is already present
+        if comment in current_crontab and cron_line in current_crontab:
+            return  # Already installed, nothing to do
+
+        new_crontab = current_crontab.rstrip("\n") + "\n" + comment + "\n" + cron_line + "\n"
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".cron") as f:
+            f.write(new_crontab)
+            temp_file = f.name
+
+        try:
+            install = subprocess.run(["crontab", temp_file], capture_output=True, text=True)
+            if install.returncode != 0:
+                raise RuntimeError(install.stderr.strip() or "crontab install failed")
+        finally:
+            os.unlink(temp_file)
 
     def delete_schedule(self, schedule, parent_dialog):
         """Delete a scheduled task."""

@@ -52,7 +52,7 @@ class ScheduleCreator:
                 command_data[display_text] = cmd_info
         except Exception as e:
             QMessageBox.critical(dialog, "Error", f"Failed to load commands: {str(e)}")
-            return
+            return False
 
         command_layout.addWidget(command_combo)
         layout.addLayout(command_layout)
@@ -162,7 +162,7 @@ class ScheduleCreator:
         layout.addLayout(button_layout)
 
         dialog.setLayout(layout)
-        dialog.exec()
+        return dialog.exec() == QDialog.DialogCode.Accepted
 
     def create_schedule(self, command_info, hour, minute, selected_days):
         """Create a scheduled task based on the platform."""
@@ -254,6 +254,17 @@ class ScheduleCreator:
         cron_entry = f"{minute} {hour} * * {days_string} {command}"
         human_desc = self._human_cron(minute, hour, selected_days)
 
+        # Validate the cron expression before any subprocess call
+        if not self._validate_cron_expression(cron_entry):
+            logger.error("Rejected invalid cron expression: %s", cron_entry)
+            QMessageBox.critical(
+                None,
+                "Error",
+                f"Invalid cron expression:\n{cron_entry}\n\n"
+                "The generated schedule could not be validated. Please try again.",
+            )
+            return False
+
         try:
             # Read current user crontab; an exit code of 1 means "no crontab for user" which is OK
             logger.debug("Reading current user crontab")
@@ -288,6 +299,28 @@ class ScheduleCreator:
                     command_info["label"],
                     cron_entry,
                 )
+
+                # Post-install verification: confirm the entry is present in the installed crontab
+                verify = subprocess.run(
+                    ["crontab", "-l"],
+                    capture_output=True,
+                    text=True,
+                )
+                if verify.returncode != 0 or cron_entry not in verify.stdout:
+                    logger.error(
+                        "Post-install verification failed: cron entry not found in crontab after install. "
+                        "Entry: %s, crontab output: %s",
+                        cron_entry,
+                        verify.stdout,
+                    )
+                    QMessageBox.critical(
+                        None,
+                        "Error",
+                        "Cron job installation may have failed.\n\n"
+                        "The entry was not found in your crontab after installation.\n"
+                        "Please check your cron configuration manually.",
+                    )
+                    return False
             finally:
                 os.unlink(temp_file)
 
@@ -314,6 +347,89 @@ class ScheduleCreator:
                 "Make sure the cron service is installed and running.",
             )
             return False
+
+    @staticmethod
+    def _validate_cron_expression(cron_entry: str) -> bool:
+        """Validate a cron expression string against structural rules.
+
+        Checks:
+        - Non-empty, no embedded newlines
+        - At least 6 whitespace-separated fields: minute hour * * day_of_week command
+        - minute is '*' or an integer 0-59
+        - hour is '*' or an integer 0-23
+        - day_of_week is '*' or a comma-separated list of integers 0-7
+        - command portion is non-empty after stripping
+
+        Note: minute 0-59 and hour 0-23 are defense-in-depth. QTimeEdit with
+        display format "HH:mm" already constrains these at the UI level.
+        The validator retains them because the static method is independently
+        callable and the tests for invalid minute/hour verify the range checks.
+        """
+        if not cron_entry or "\n" in cron_entry:
+            return False
+
+        parts = cron_entry.split()
+        if len(parts) < 6:
+            return False
+
+        # Validate minute: '*' or integer 0-59
+        minute_str = parts[0]
+        if minute_str != "*":
+            try:
+                minute = int(minute_str)
+                if minute < 0 or minute > 59:
+                    return False
+            except ValueError:
+                return False
+
+        # Validate hour: '*' or integer 0-23
+        hour_str = parts[1]
+        if hour_str != "*":
+            try:
+                hour = int(hour_str)
+                if hour < 0 or hour > 23:
+                    return False
+            except ValueError:
+                return False
+
+        # Fields 2 and 3 must be '*'
+        if parts[2] != "*" or parts[3] != "*":
+            return False
+
+        # Validate day_of_week (field 4): '*' or comma-separated list of values 0-7
+        # Each value can be a single integer or a range (e.g., "0-7")
+        day_of_week = parts[4]
+        if day_of_week == "*":
+            pass  # OK
+        else:
+            for token in day_of_week.split(","):
+                token = token.strip()
+                # Handle ranges like "0-7"
+                if "-" in token:
+                    range_parts = token.split("-")
+                    if len(range_parts) != 2:
+                        return False
+                    try:
+                        low = int(range_parts[0])
+                        high = int(range_parts[1])
+                        if low < 0 or low > 7 or high < 0 or high > 7:
+                            return False
+                    except ValueError:
+                        return False
+                else:
+                    try:
+                        day_val = int(token)
+                        if day_val < 0 or day_val > 7:
+                            return False
+                    except ValueError:
+                        return False
+
+        # Command portion must be non-empty
+        command = " ".join(parts[5:]).strip()
+        if not command:
+            return False
+
+        return True
 
     @staticmethod
     def _human_cron(minute: int, hour: int, days: list) -> str:
