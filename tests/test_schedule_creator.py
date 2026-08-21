@@ -1,12 +1,16 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 import sys
 from unittest.mock import MagicMock, patch
 
-_pyqt6 = MagicMock()
-sys.modules.setdefault("PyQt6", _pyqt6)
-sys.modules.setdefault("PyQt6.QtWidgets", _pyqt6.QtWidgets)
-sys.modules.setdefault("PyQt6.QtCore", _pyqt6.QtCore)
-sys.modules.setdefault("PyQt6.QtGui", _pyqt6.QtGui)
-sys.modules.setdefault("core.config_manager", MagicMock())
+# Use the PyQt6 stub from conftest.py if available, otherwise create a simple one
+if "PyQt6" not in sys.modules:
+    _pyqt6 = MagicMock()
+    sys.modules.setdefault("PyQt6", _pyqt6)
+    sys.modules.setdefault("PyQt6.QtWidgets", _pyqt6.QtWidgets)
+    sys.modules.setdefault("PyQt6.QtCore", _pyqt6.QtCore)
+    sys.modules.setdefault("PyQt6.QtGui", _pyqt6.QtGui)
+    sys.modules.setdefault("core.config_manager", MagicMock())
 
 import os
 import sys as _sys
@@ -48,17 +52,18 @@ def test_create_linux_cron_installs_entry():
 
     list_result = MagicMock(returncode=0, stdout="# existing\n", stderr="")
     install_result = MagicMock(returncode=0, stdout="", stderr="")
+    verify_result = MagicMock(returncode=0, stdout="# existing\n30 9 * * 1 /usr/bin/backup.sh\n", stderr="")
 
     with (
         patch(
-            "modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result]
+            "modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result, verify_result]
         ) as mock_run,
         patch("modules.schedule_creator.QMessageBox"),
     ):
         result = creator._create_linux_cron(cmd_info, hour=9, minute=30, selected_days=["Monday"])
 
     assert result is True
-    assert mock_run.call_count == 2
+    assert mock_run.call_count == 3  # crontab -l + crontab install + crontab -l verification
 
 
 def test_create_linux_cron_empty_crontab():
@@ -70,9 +75,10 @@ def test_create_linux_cron_empty_crontab():
 
     list_result = MagicMock(returncode=1, stdout="", stderr="no crontab for user")
     install_result = MagicMock(returncode=0, stdout="", stderr="")
+    verify_result = MagicMock(returncode=0, stdout="0 10 * * 2 echo hello\n", stderr="")
 
     with (
-        patch("modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result]),
+        patch("modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result, verify_result]),
         patch("modules.schedule_creator.QMessageBox"),
     ):
         result = creator._create_linux_cron(cmd_info, hour=10, minute=0, selected_days=["Tuesday"])
@@ -129,6 +135,9 @@ def test_create_schedule_dispatches_to_windows_on_win32():
 
     mock_win.assert_called_once()
     assert result is True
+
+
+# === NEW TESTS FOR ISSUE #82 ===
 
 
 def test_validate_cron_expression_valid():
@@ -209,17 +218,18 @@ def test_create_linux_cron_validation_success():
     cmd_info = {"label": "Test", "command": "/bin/true"}
 
     list_result = MagicMock(returncode=0, stdout="", stderr="")
-    install_result = MagicMock(returncode=0, stdout="/bin/true\n", stderr="")
+    install_result = MagicMock(returncode=0, stdout="", stderr="")
+    verify_result = MagicMock(returncode=0, stdout="30 9 * * 1 /bin/true\n", stderr="")
 
     with (
         patch.object(creator, "_validate_cron_expression", return_value=True),
-        patch("modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result]),
+        patch("modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result, verify_result]) as mock_run,
         patch("modules.schedule_creator.QMessageBox"),
     ):
         result = creator._create_linux_cron(cmd_info, hour=9, minute=30, selected_days=["Monday"])
 
     assert result is True
-    assert mock_run.call_count >= 2  # crontab -l + crontab install
+    assert mock_run.call_count >= 3  # crontab -l + crontab install + crontab -l verification
 
 
 def test_create_linux_cron_post_install_verification_fails():
@@ -253,7 +263,12 @@ def test_show_dialog_returns_false_on_command_load_failure():
     creator = ScheduleCreator(svc)
     svc.get_all_commands.side_effect = RuntimeError("load failed")
 
-    with patch("modules.schedule_creator.QMessageBox"):
+    with (
+        patch("modules.schedule_creator.QDialog") as mock_dialog_cls,
+        patch("modules.schedule_creator.QMessageBox"),
+    ):
+        mock_dialog = MagicMock()
+        mock_dialog_cls.return_value = mock_dialog
         result = creator.show_dialog()
 
     assert result is False
@@ -263,7 +278,6 @@ def test_show_dialog_returns_false_on_cancel():
     """show_dialog returns False when user cancels the dialog."""
     svc = MagicMock()
     creator = ScheduleCreator(svc)
-    cmd_data = {"Test → MyCmd": {"label": "MyCmd", "command": "/bin/true"}}
     svc.get_all_commands.return_value = [{"group": "Test", "label": "MyCmd", "command": "/bin/true"}]
 
     with (
@@ -271,7 +285,8 @@ def test_show_dialog_returns_false_on_cancel():
         patch("modules.schedule_creator.QMessageBox"),
     ):
         mock_dialog = MagicMock()
-        mock_dialog.exec.return_value = _pyqt6.QDialog.DialogCode.Rejected
+        # Use the SAME QDialog.DialogCode.Accepted that the patched QDialog provides
+        mock_dialog.exec.return_value = mock_dialog_cls.DialogCode.Rejected
         mock_dialog_cls.return_value = mock_dialog
         result = creator.show_dialog()
 
@@ -282,16 +297,21 @@ def test_show_dialog_returns_true_on_accept():
     """show_dialog returns True when user successfully creates a schedule."""
     svc = MagicMock()
     creator = ScheduleCreator(svc)
-    cmd_data = {"Test → MyCmd": {"label": "MyCmd", "command": "/bin/true"}}
     svc.get_all_commands.return_value = [{"group": "Test", "label": "MyCmd", "command": "/bin/true"}]
 
     with (
         patch("modules.schedule_creator.QDialog") as mock_dialog_cls,
         patch("modules.schedule_creator.QMessageBox"),
         patch.object(creator, "create_schedule", return_value=True),
+        patch("modules.schedule_creator.QComboBox") as mock_combo_cls,
     ):
+        mock_combo = MagicMock()
+        mock_combo.currentText.return_value = "Test → MyCmd"
+        mock_combo_cls.return_value = mock_combo
+
         mock_dialog = MagicMock()
-        mock_dialog.exec.return_value = _pyqt6.QDialog.DialogCode.Accepted
+        # Use the SAME QDialog.DialogCode.Accepted that the patched QDialog provides
+        mock_dialog.exec.return_value = mock_dialog_cls.DialogCode.Accepted
         mock_dialog_cls.return_value = mock_dialog
         result = creator.show_dialog()
 
