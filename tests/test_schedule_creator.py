@@ -52,11 +52,14 @@ def test_create_linux_cron_installs_entry():
 
     list_result = MagicMock(returncode=0, stdout="# existing\n", stderr="")
     install_result = MagicMock(returncode=0, stdout="", stderr="")
-    verify_result = MagicMock(returncode=0, stdout="# existing\n30 9 * * 1 /usr/bin/backup.sh\n", stderr="")
+    verify_result = MagicMock(
+        returncode=0, stdout="# existing\n30 9 * * 1 /usr/bin/backup.sh\n", stderr=""
+    )
 
     with (
         patch(
-            "modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result, verify_result]
+            "modules.schedule_creator.subprocess.run",
+            side_effect=[list_result, install_result, verify_result],
         ) as mock_run,
         patch("modules.schedule_creator.QMessageBox"),
     ):
@@ -78,7 +81,10 @@ def test_create_linux_cron_empty_crontab():
     verify_result = MagicMock(returncode=0, stdout="0 10 * * 2 echo hello\n", stderr="")
 
     with (
-        patch("modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result, verify_result]),
+        patch(
+            "modules.schedule_creator.subprocess.run",
+            side_effect=[list_result, install_result, verify_result],
+        ),
         patch("modules.schedule_creator.QMessageBox"),
     ):
         result = creator._create_linux_cron(cmd_info, hour=10, minute=0, selected_days=["Tuesday"])
@@ -223,7 +229,10 @@ def test_create_linux_cron_validation_success():
 
     with (
         patch.object(creator, "_validate_cron_expression", return_value=True),
-        patch("modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result, verify_result]) as mock_run,
+        patch(
+            "modules.schedule_creator.subprocess.run",
+            side_effect=[list_result, install_result, verify_result],
+        ) as mock_run,
         patch("modules.schedule_creator.QMessageBox"),
     ):
         result = creator._create_linux_cron(cmd_info, hour=9, minute=30, selected_days=["Monday"])
@@ -245,7 +254,10 @@ def test_create_linux_cron_post_install_verification_fails():
 
     with (
         patch.object(creator, "_validate_cron_expression", return_value=True),
-        patch("modules.schedule_creator.subprocess.run", side_effect=[list_result, install_result, verify_result]),
+        patch(
+            "modules.schedule_creator.subprocess.run",
+            side_effect=[list_result, install_result, verify_result],
+        ),
         patch("modules.schedule_creator.QMessageBox") as mock_msgbox,
     ):
         result = creator._create_linux_cron(cmd_info, hour=9, minute=30, selected_days=["Monday"])
@@ -278,7 +290,9 @@ def test_show_dialog_returns_false_on_cancel():
     """show_dialog returns False when user cancels the dialog."""
     svc = MagicMock()
     creator = ScheduleCreator(svc)
-    svc.get_all_commands.return_value = [{"group": "Test", "label": "MyCmd", "command": "/bin/true"}]
+    svc.get_all_commands.return_value = [
+        {"group": "Test", "label": "MyCmd", "command": "/bin/true"}
+    ]
 
     with (
         patch("modules.schedule_creator.QDialog") as mock_dialog_cls,
@@ -297,7 +311,9 @@ def test_show_dialog_returns_true_on_accept():
     """show_dialog returns True when user successfully creates a schedule."""
     svc = MagicMock()
     creator = ScheduleCreator(svc)
-    svc.get_all_commands.return_value = [{"group": "Test", "label": "MyCmd", "command": "/bin/true"}]
+    svc.get_all_commands.return_value = [
+        {"group": "Test", "label": "MyCmd", "command": "/bin/true"}
+    ]
 
     with (
         patch("modules.schedule_creator.QDialog") as mock_dialog_cls,

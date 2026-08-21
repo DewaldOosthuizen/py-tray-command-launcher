@@ -319,13 +319,15 @@ class ScheduleViewer:
                 self._reinstall_cron_job(schedule)
             except Exception as e:
                 QMessageBox.critical(
-                    parent_dialog, "Error",
-                    f"Editing was cancelled and the original schedule could not be restored:\n{e}"
+                    parent_dialog,
+                    "Error",
+                    f"Editing was cancelled and the original schedule could not be restored:\n{e}",
                 )
             else:
                 QMessageBox.information(
-                    parent_dialog, "Edit Cancelled",
-                    f"Schedule editing was cancelled. The original schedule '{name}' has been restored."
+                    parent_dialog,
+                    "Edit Cancelled",
+                    f"Schedule editing was cancelled. The original schedule '{name}' has been restored.",
                 )
                 self.refresh_dialog(parent_dialog)
 
