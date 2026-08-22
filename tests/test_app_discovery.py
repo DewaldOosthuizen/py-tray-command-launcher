@@ -1,6 +1,7 @@
 """Tests for AppDiscovery.clean_exec, build_launch_args, and is_windows_lnk_entry."""
 
 import threading
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -213,3 +214,113 @@ def test_find_pixmap_concurrent_with_icon_index_build_no_exception():
 
     assert not errors
     assert isinstance(discovery._icon_path_index, dict)
+
+
+# ---------------------------------------------------------------------------
+# Issue #93 — bare except replacement tests
+# ---------------------------------------------------------------------------
+
+
+class TestParseDesktopFileErrorHandling:
+    """Tests for issue #93: _parse_desktop_file should raise specific exceptions."""
+
+    def test_malformed_utf8_logs_warning_and_returns_none(self, caplog):
+        """UnicodeDecodeError from non-UTF-8 .desktop file → WARNING + None."""
+        from modules.app_discovery import AppDiscovery
+
+        discovery = AppDiscovery()
+        with caplog.at_level("WARNING", logger="modules.app_discovery"):
+            path = Path("/tmp/test-bad-utf8.desktop")
+            try:
+                path.write_bytes(b"\xff\xfeName=Bad\n")
+                result = discovery._parse_desktop_file(path)
+            finally:
+                path.unlink(missing_ok=True)
+
+        assert result is None
+        assert any(
+            "Skipping malformed .desktop file" in record.message
+            for record in caplog.records
+        )
+        assert any(
+            "can't decode byte" in record.message for record in caplog.records
+        )
+
+    def test_missing_section_header_logs_warning_and_returns_none(self, caplog):
+        """MissingSectionHeaderError → WARNING + None."""
+        from modules.app_discovery import AppDiscovery
+
+        discovery = AppDiscovery()
+        with caplog.at_level("WARNING", logger="modules.app_discovery"):
+            path = Path("/tmp/test-no-section.desktop")
+            try:
+                path.write_text("Name=Foo\nExec=/usr/bin/foo\n")
+                result = discovery._parse_desktop_file(path)
+            finally:
+                path.unlink(missing_ok=True)
+
+        assert result is None
+        assert any(
+            "Skipping malformed .desktop file" in record.message
+            for record in caplog.records
+        )
+        assert any(
+            "no section headers" in record.message for record in caplog.records
+        )
+
+    def test_missing_type_field_returns_none(self):
+        """Missing Type=Application → early return None (no regression)."""
+        from modules.app_discovery import AppDiscovery
+
+        discovery = AppDiscovery()
+        path = Path("/tmp/test-no-type.desktop")
+        try:
+            path.write_text("[Desktop Entry]\nName=Foo\nExec=/usr/bin/foo\n")
+            result = discovery._parse_desktop_file(path)
+        finally:
+            path.unlink(missing_ok=True)
+
+        assert result is None
+
+
+class TestGetboolErrorHandling:
+    """Tests for issue #93: getbool() should catch ValueError specifically."""
+
+    def test_getbool_returns_fallback_for_non_boolean_string(self):
+        """getbool() returns fallback when value is 'maybe' (ValueError path)."""
+        from modules.app_discovery import AppDiscovery
+
+        discovery = AppDiscovery()
+        path = Path("/tmp/test-getbool.desktop")
+        try:
+            path.write_text("[Desktop Entry]\nName=Foo\nExec=/usr/bin/foo\nType=Application\nTerminal=maybe\n")
+            entry = discovery._parse_desktop_file(path)
+        finally:
+            path.unlink(missing_ok=True)
+
+        assert entry is not None
+        assert entry.terminal is False  # fallback value
+
+
+# ---------------------------------------------------------------------------
+# Verify existing build_launch_args tests still pass (no regression)
+# ---------------------------------------------------------------------------
+
+
+def test_build_launch_args_shlex_error_fallback_still_works():
+    """Issue #93: verify existing shlex.error fallback test still passes."""
+    entry = AppEntry(name="Bad", exec_cmd="app 'unclosed", terminal=False, icon_name="")
+    result = AppDiscovery.build_launch_args(entry)
+    assert result == ["app", "'unclosed"]
+
+
+def test_build_launch_args_unmatched_quote_falls_back_still_works():
+    """Issue #93: verify existing unmatched-quote fallback still passes."""
+    entry = AppEntry(
+        name="TestApp", exec_cmd="/usr/bin/app --flag 'bad", terminal=False, icon_name=""
+    )
+    result = AppDiscovery.build_launch_args(entry)
+    assert result is not None
+    assert isinstance(result, list)
+    assert len(result) > 1
+    assert result[0] == "/usr/bin/app"
