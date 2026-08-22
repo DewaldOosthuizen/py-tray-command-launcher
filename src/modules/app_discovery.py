@@ -21,6 +21,7 @@ import shlex
 import shutil
 import sys
 import threading
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -48,6 +49,11 @@ def _score(query: str, text: str) -> float:
 # Preferred icon sizes to try when scanning icon theme directories
 _PREFERRED_SIZES = ("48x48", "32x32", "64x64", "scalable", "24x24", "22x22", "16x16")
 _ICON_EXTS = (".png", ".svg", ".xpm")
+
+# Maximum number of icon pixmaps held per AppDiscovery instance.  Raising the
+# cap increases peak memory on icon-heavy systems; lowering it increases icon
+# reload latency on the command palette.
+_MAX_PIXMAP_CACHE = 500
 
 # Terminal emulators to try (in preference order)
 _TERMINAL_EMULATORS = [
@@ -93,6 +99,20 @@ class AppEntry:
         return ", ".join(self.categories) if self.categories else ""
 
 
+class _LRUCache(OrderedDict):
+    """Bounded LRU cache backed by OrderedDict.
+
+    On every ``__setitem__`` the cache evicts the oldest entry when the size
+    exceeds ``_MAX_PIXMAP_CACHE``, keeping peak memory bounded on icon-heavy
+    systems.
+    """
+
+    def __setitem__(self, key, value):  # noqa: D105
+        super().__setitem__(key, value)
+        if len(self) > _MAX_PIXMAP_CACHE:
+            self.popitem(last=False)
+
+
 class AppDiscovery:
     """Discovers installed applications via XDG .desktop files."""
 
@@ -104,7 +124,7 @@ class AppDiscovery:
         # cache_key → QPixmap; eliminates repeated disk I/O on every keystroke.
         # Read/written exclusively from the Qt main thread — no lock required
         # unless a future change introduces cross-thread access to this cache.
-        self._pixmap_cache: dict[str, QPixmap] = {}
+        self._pixmap_cache: dict[str, QPixmap] = _LRUCache()
         if not IS_WINDOWS:
             threading.Thread(target=self._build_icon_index, daemon=True, name="icon-index").start()
 
