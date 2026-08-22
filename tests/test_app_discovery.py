@@ -239,12 +239,9 @@ class TestParseDesktopFileErrorHandling:
 
         assert result is None
         assert any(
-            "Skipping malformed .desktop file" in record.message
-            for record in caplog.records
+            "Skipping malformed .desktop file" in record.message for record in caplog.records
         )
-        assert any(
-            "can't decode byte" in record.message for record in caplog.records
-        )
+        assert any("can't decode byte" in record.message for record in caplog.records)
 
     def test_missing_section_header_logs_warning_and_returns_none(self, caplog):
         """MissingSectionHeaderError → WARNING + None."""
@@ -261,12 +258,9 @@ class TestParseDesktopFileErrorHandling:
 
         assert result is None
         assert any(
-            "Skipping malformed .desktop file" in record.message
-            for record in caplog.records
+            "Skipping malformed .desktop file" in record.message for record in caplog.records
         )
-        assert any(
-            "no section headers" in record.message for record in caplog.records
-        )
+        assert any("no section headers" in record.message for record in caplog.records)
 
     def test_missing_type_field_returns_none(self):
         """Missing Type=Application → early return None (no regression)."""
@@ -293,7 +287,9 @@ class TestGetboolErrorHandling:
         discovery = AppDiscovery()
         path = Path("/tmp/test-getbool.desktop")
         try:
-            path.write_text("[Desktop Entry]\nName=Foo\nExec=/usr/bin/foo\nType=Application\nTerminal=maybe\n")
+            path.write_text(
+                "[Desktop Entry]\nName=Foo\nExec=/usr/bin/foo\nType=Application\nTerminal=maybe\n"
+            )
             entry = discovery._parse_desktop_file(path)
         finally:
             path.unlink(missing_ok=True)
