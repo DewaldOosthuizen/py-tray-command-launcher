@@ -197,8 +197,8 @@ class AppDiscovery:
         parser.optionxform = str  # preserve case
         try:
             parser.read(str(path), encoding="utf-8")
-        except Exception as exc:
-            logger.debug("Skipping %s: %s", path, exc)
+        except (configparser.Error, UnicodeDecodeError) as exc:
+            logger.warning("Skipping malformed .desktop file %s: %s", path, exc)
             return None
 
         section = "Desktop Entry"
@@ -211,7 +211,7 @@ class AppDiscovery:
         def getbool(key, fallback=False):
             try:
                 return parser.getboolean(section, key, fallback=fallback)
-            except Exception:
+            except ValueError:
                 return fallback
 
         if get("Type") != "Application":
@@ -320,7 +320,7 @@ class AppDiscovery:
                 px = provider.icon(QFileInfo(icon_name)).pixmap(size, size)
                 if not px.isNull():
                     return px
-            except Exception as exc:
+            except (RuntimeError, TypeError) as exc:
                 logger.debug("QFileIconProvider failed for %s: %s", icon_name, exc)
             return None
 
