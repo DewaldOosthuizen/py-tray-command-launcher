@@ -5,6 +5,11 @@ AppServices dataclass — thin service interface passed to all feature modules.
 
 Decouples feature modules from the TrayApp god-object so they only depend
 on the specific callables they actually need.
+
+The full dependency-injection contract — including a field-by-field reference,
+consumption examples, and a step-by-step "Adding a new module" guide — is
+documented in docs/architecture.md under "AppServices (Dependency Injection
+Contract)".
 """
 
 from __future__ import annotations
