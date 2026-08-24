@@ -8,6 +8,9 @@ import pytest
 
 from modules.app_discovery import AppDiscovery, AppEntry, _find_terminal_emulator
 
+# Expected cap matches the value defined in app_discovery.py for issue #81.
+_PIXMAP_CACHE_CAP = 500
+
 
 @pytest.fixture(autouse=True)
 def _clear_terminal_emulator_cache():
@@ -296,6 +299,41 @@ class TestGetboolErrorHandling:
 
         assert entry is not None
         assert entry.terminal is False  # fallback value
+
+
+class TestPixmapCacheEviction:
+    """Tests for issue #81 — bounded LRU eviction on AppDiscovery._pixmap_cache."""
+
+    def setup_method(self):
+        # Patch IS_WINDOWS so the constructor does not spawn a background
+        # icon-index thread in these tests.
+        self._windows_patch = patch("modules.app_discovery.IS_WINDOWS", True)
+        self._windows_patch.start()
+        from modules.app_discovery import AppDiscovery
+
+        self.discovery = AppDiscovery()
+        self.cache = self.discovery._pixmap_cache
+
+    def teardown_method(self):
+        self._windows_patch.stop()
+
+    def test_cache_evicts_oldest_when_cap_exceeded(self):
+        """Inserting _PIXMAP_CACHE_CAP + 1 entries leaves exactly _PIXMAP_CACHE_CAP."""
+        for i in range(_PIXMAP_CACHE_CAP + 1):
+            self.cache[f"key-{i}"] = object()
+
+        assert len(self.cache) == _PIXMAP_CACHE_CAP
+
+    def test_evicted_key_is_oldest_inserted(self):
+        """The first-inserted key is evicted; the last-inserted key is retained."""
+        first_key = "first"
+        self.cache[first_key] = object()
+
+        for i in range(1, _PIXMAP_CACHE_CAP + 1):
+            self.cache[f"key-{i}"] = object()
+
+        assert first_key not in self.cache
+        assert f"key-{_PIXMAP_CACHE_CAP}" in self.cache
 
 
 # ---------------------------------------------------------------------------
