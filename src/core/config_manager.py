@@ -89,7 +89,9 @@ class ConfigManager:
         self._initialized = True
 
         # Optional override path set by --config CLI flag (takes priority over
-        # the platform-resolved path for reads; writes still go to config_dir)
+        # the platform-resolved path for both reads and writes via
+        # _get_commands_file_for_write() -> get_active_commands_file()
+        # -> _get_commands_file_for_read())
         self._commands_override: Path | None = None
         logger.info(
             "ConfigManager initialized (config dir: %s, commands file: %s)",
