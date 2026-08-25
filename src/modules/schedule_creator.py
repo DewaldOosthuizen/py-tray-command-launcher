@@ -6,19 +6,9 @@ import subprocess
 import sys
 import tempfile
 
-from PyQt6.QtCore import QTime
-from PyQt6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QMessageBox,
-    QPushButton,
-    QTimeEdit,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import QDialog, QMessageBox
+
+from ui.schedule_dialog import ScheduleDialog
 
 logger = logging.getLogger(__name__)
 
@@ -30,139 +20,24 @@ class ScheduleCreator:
         """Initialize with an AppServices instance."""
         self.services = services
 
-    def show_dialog(self):
+    def show_dialog(self) -> bool:
         """Show a dialog to create a scheduled task."""
-        dialog = QDialog()
-        dialog.setWindowTitle("Create Schedule")
-        dialog.setMinimumWidth(400)
-        layout = QVBoxLayout()
-
-        # Command selection
-        command_layout = QHBoxLayout()
-        command_layout.addWidget(QLabel("Command:"))
-        command_combo = QComboBox()
-
-        # Populate with all available commands
         try:
-            all_commands = self.services.get_all_commands()
-            command_data: dict = {}
-            for cmd_info in all_commands:
-                display_text = f"{cmd_info['group']} → {cmd_info['label']}"
-                command_combo.addItem(display_text)
-                command_data[display_text] = cmd_info
+            commands = self.services.get_all_commands()
         except Exception as e:
-            QMessageBox.critical(dialog, "Error", f"Failed to load commands: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Failed to load commands: {str(e)}")
             return False
-
-        command_layout.addWidget(command_combo)
-        layout.addLayout(command_layout)
-
-        # Time selection
-        time_layout = QHBoxLayout()
-        time_layout.addWidget(QLabel("Time:"))
-        time_edit = QTimeEdit()
-        time_edit.setTime(QTime.currentTime())
-        time_edit.setDisplayFormat("HH:mm")
-        time_layout.addWidget(time_edit)
-        layout.addLayout(time_layout)
-
-        # Days selection
-        days_layout = QVBoxLayout()
-        days_layout.addWidget(QLabel("Days:"))
-
-        days_grid = QGridLayout()
-        days_checkboxes = {}
-        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-        for i, day in enumerate(days):
-            checkbox = QCheckBox(day)
-            days_checkboxes[day] = checkbox
-            days_grid.addWidget(checkbox, i // 4, i % 4)
-
-        days_layout.addLayout(days_grid)
-        layout.addLayout(days_layout)
-
-        # Select all/none buttons
-        select_layout = QHBoxLayout()
-        select_all_btn = QPushButton("Select All")
-        select_none_btn = QPushButton("Select None")
-
-        def select_all():
-            for checkbox in days_checkboxes.values():
-                checkbox.setChecked(True)
-
-        def select_none():
-            for checkbox in days_checkboxes.values():
-                checkbox.setChecked(False)
-
-        select_all_btn.clicked.connect(select_all)
-        select_none_btn.clicked.connect(select_none)
-        select_layout.addWidget(select_all_btn)
-        select_layout.addWidget(select_none_btn)
-        layout.addLayout(select_layout)
-
-        # Human-readable preview label
-        preview_label = QLabel("")
-        preview_label.setObjectName("SchedulePreview")
-        layout.addWidget(preview_label)
-
-        def _update_preview():
-            t = time_edit.time()
-            days = [d for d, cb in days_checkboxes.items() if cb.isChecked()]
-            if days:
-                preview_label.setText(ScheduleCreator._human_cron(t.minute(), t.hour(), days))
-            else:
-                preview_label.setText("Select at least one day")
-
-        time_edit.timeChanged.connect(lambda _: _update_preview())
-        for cb in days_checkboxes.values():
-            cb.stateChanged.connect(lambda _: _update_preview())
-
-        # Buttons
-        button_layout = QHBoxLayout()
-        create_btn = QPushButton("Create Schedule")
-        cancel_btn = QPushButton("Cancel")
-
-        def on_create(_command_data=command_data):
-            # Get selected command
-            selected_command_text = command_combo.currentText()
-            if not selected_command_text or selected_command_text not in _command_data:
-                QMessageBox.warning(dialog, "Error", "Please select a command.")
-                return
-
-            selected_command = _command_data[selected_command_text]
-
-            # Get selected time
-            time = time_edit.time()
-            hour = time.hour()
-            minute = time.minute()
-
-            # Get selected days
-            selected_days = []
-            for day, checkbox in days_checkboxes.items():
-                if checkbox.isChecked():
-                    selected_days.append(day)
-
-            if not selected_days:
-                QMessageBox.warning(dialog, "Error", "Please select at least one day.")
-                return
-
-            # Create the schedule
-            success = self.create_schedule(selected_command, hour, minute, selected_days)
-            if success:
-                dialog.accept()
-
-        def on_cancel():
-            dialog.reject()
-
-        create_btn.clicked.connect(on_create)
-        cancel_btn.clicked.connect(on_cancel)
-        button_layout.addWidget(create_btn)
-        button_layout.addWidget(cancel_btn)
-        layout.addLayout(button_layout)
-
-        dialog.setLayout(layout)
-        return dialog.exec() == QDialog.DialogCode.Accepted
+        dialog = ScheduleDialog(commands)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            schedule = dialog.get_schedule()
+            if schedule is not None:
+                return self.create_schedule(
+                    schedule["command_info"],
+                    schedule["hour"],
+                    schedule["minute"],
+                    schedule["days"],
+                )
+        return False
 
     def create_schedule(self, command_info, hour, minute, selected_days):
         """Create a scheduled task based on the platform."""
