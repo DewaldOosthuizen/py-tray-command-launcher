@@ -151,9 +151,7 @@ class TestEncryptDecryptRoundTrip(unittest.TestCase):
             self.assertTrue(enc_result.get("success"), enc_result.get("message"))
 
             enc_file = plain_file + ".enc"
-            _dec_worker, dec_result = self._run_worker(
-                "decrypt", enc_file, "wrong-password"
-            )
+            _dec_worker, dec_result = self._run_worker("decrypt", enc_file, "wrong-password")
             self.assertFalse(dec_result.get("success", True))
             self.assertIn("decrypt", dec_result.get("message", "").lower())
             self.assertNotIn("corrupt", dec_result.get("message", "").lower())
@@ -186,9 +184,7 @@ class TestEncryptDecryptRoundTrip(unittest.TestCase):
             self.assertTrue(dec_result.get("success"), dec_result.get("message"))
 
             for rel_path, expected in original_files.items():
-                self.assertEqual(
-                    Path(os.path.join(folder, rel_path)).read_bytes(), expected
-                )
+                self.assertEqual(Path(os.path.join(folder, rel_path)).read_bytes(), expected)
 
     def test_password_reference_cleared_after_run(self):
         """Worker must clear the plaintext password reference after finishing."""
