@@ -139,6 +139,57 @@ class TestEncryptDecryptRoundTrip(unittest.TestCase):
 
             self.assertEqual(Path(plain_file).read_bytes(), original_content)
 
+    def test_wrong_password_decrypt_fails(self):
+        """Decrypt with the wrong password must emit finished_signal(False, ...)
+        with an error that is not about corrupt salt."""
+        original_content = b"secret payload"
+        with tempfile.TemporaryDirectory() as tmp:
+            plain_file = os.path.join(tmp, "secret.txt")
+            Path(plain_file).write_bytes(original_content)
+
+            _enc_worker, enc_result = self._run_worker("encrypt", plain_file, "correct-password")
+            self.assertTrue(enc_result.get("success"), enc_result.get("message"))
+
+            enc_file = plain_file + ".enc"
+            _dec_worker, dec_result = self._run_worker(
+                "decrypt", enc_file, "wrong-password"
+            )
+            self.assertFalse(dec_result.get("success", True))
+            self.assertIn("decrypt", dec_result.get("message", "").lower())
+            self.assertNotIn("corrupt", dec_result.get("message", "").lower())
+
+    def test_folder_round_trip_restores_all_files(self):
+        """Encrypt a folder (is_folder=True) then decrypt it; every file must
+        match its original content, including files in nested subdirectories."""
+        original_files = {
+            "readme.txt": b"top-level file",
+            "sub/deep/nested.log": b"deeply nested content",
+            "sub/another.txt": b" sibling file",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = os.path.join(tmp, "myfolder")
+            os.makedirs(folder)
+
+            for rel_path, content in original_files.items():
+                full_path = os.path.join(folder, rel_path)
+                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                Path(full_path).write_bytes(content)
+
+            _enc_worker, enc_result = self._run_worker(
+                "encrypt", folder, "folder-password", is_folder=True
+            )
+            self.assertTrue(enc_result.get("success"), enc_result.get("message"))
+
+            _dec_worker, dec_result = self._run_worker(
+                "decrypt", folder, "folder-password", is_folder=True
+            )
+            self.assertTrue(dec_result.get("success"), dec_result.get("message"))
+
+            for rel_path, expected in original_files.items():
+                self.assertEqual(
+                    Path(os.path.join(folder, rel_path)).read_bytes(), expected
+                )
+
     def test_password_reference_cleared_after_run(self):
         """Worker must clear the plaintext password reference after finishing."""
         with tempfile.TemporaryDirectory() as tmp:
