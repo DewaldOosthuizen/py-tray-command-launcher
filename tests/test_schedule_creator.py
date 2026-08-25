@@ -11,6 +11,10 @@ if "PyQt6" not in sys.modules:
     sys.modules.setdefault("PyQt6.QtCore", _pyqt6.QtCore)
     sys.modules.setdefault("PyQt6.QtGui", _pyqt6.QtGui)
     sys.modules.setdefault("core.config_manager", MagicMock())
+    _pyqt6.QtWidgets.QDialog.DialogCode = MagicMock()
+    _pyqt6.QtWidgets.QDialog.DialogCode.Accepted = 1
+    _pyqt6.QtWidgets.QDialog.DialogCode.Rejected = 0
+    _pyqt6.QtWidgets.QDialog.setWindowTitle = MagicMock()
 
 import os
 import sys as _sys

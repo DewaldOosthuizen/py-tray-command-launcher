@@ -167,6 +167,24 @@ class TestCommandHistory(unittest.TestCase):
             "Expected 'Second' (newer) to appear before 'First' (older)",
         )
 
+    def test_populate_menu_uses_cache_not_refresh(self):
+        """Two consecutive populate_menu calls without mutation should not call get_history with refresh=True."""
+        mock_menu = MagicMock()
+        self.mock_config_manager.get_history.return_value = []
+
+        with patch("modules.command_history.QAction", return_value=MagicMock()):
+            with patch("modules.command_history.config_manager", self.mock_config_manager):
+                self.history.populate_menu(mock_menu)
+                self.history.populate_menu(mock_menu)
+
+        # get_history should have been called exactly twice (once per populate_menu)
+        self.assertEqual(self.mock_config_manager.get_history.call_count, 2)
+
+        # Neither call should have used refresh=True
+        for call_args in self.mock_config_manager.get_history.call_args_list:
+            _, kwargs = call_args
+            self.assertFalse(kwargs.get("refresh", False), "get_history should not be called with refresh=True")
+
 
 if __name__ == "__main__":
     unittest.main()
