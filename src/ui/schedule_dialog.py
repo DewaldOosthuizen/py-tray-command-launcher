@@ -54,9 +54,7 @@ class ScheduleDialog(QDialog):
 
         selected_command = self._command_data[selected_command_text]
         time = time_edit.time()
-        selected_days = [
-            day for day, cb in days_checkboxes.items() if cb.isChecked()
-        ]
+        selected_days = [day for day, cb in days_checkboxes.items() if cb.isChecked()]
 
         if not selected_days:
             return None
@@ -99,8 +97,13 @@ class ScheduleDialog(QDialog):
         days_grid = QGridLayout()
         self._days_checkboxes: dict[str, QCheckBox] = {}
         days = [
-            "Monday", "Tuesday", "Wednesday", "Thursday",
-            "Friday", "Saturday", "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
         ]
 
         for i, day in enumerate(days):
@@ -171,9 +174,7 @@ class ScheduleDialog(QDialog):
         t = self._time_edit.time()
         days = [d for d, cb in self._days_checkboxes.items() if cb.isChecked()]
         if days:
-            self._preview_label.setText(
-                ScheduleCreator._human_cron(t.minute(), t.hour(), days)
-            )
+            self._preview_label.setText(ScheduleCreator._human_cron(t.minute(), t.hour(), days))
         else:
             self._preview_label.setText("Select at least one day")
 
@@ -181,14 +182,14 @@ class ScheduleDialog(QDialog):
         selected_command_text = self._command_combo.currentText()
         if not selected_command_text or selected_command_text not in self._command_data:
             from PyQt6.QtWidgets import QMessageBox
+
             QMessageBox.warning(self, "Error", "Please select a command.")
             return
 
-        selected_days = [
-            day for day, cb in self._days_checkboxes.items() if cb.isChecked()
-        ]
+        selected_days = [day for day, cb in self._days_checkboxes.items() if cb.isChecked()]
         if not selected_days:
             from PyQt6.QtWidgets import QMessageBox
+
             QMessageBox.warning(self, "Error", "Please select at least one day.")
             return
 

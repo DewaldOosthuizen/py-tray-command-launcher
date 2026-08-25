@@ -169,9 +169,6 @@ def _make_pyqt6_stub():
     pyqt6.QtWidgets.QDialog.DialogCode.Accepted = 1
     pyqt6.QtWidgets.QDialog.DialogCode.Rejected = 0
     pyqt6.QtWidgets.QDialog.setWindowTitle = _StubAttr()
-    pyqt6.QtWidgets.QDialog.DialogCode = _StubAttr()
-    pyqt6.QtWidgets.QDialog.DialogCode.Accepted = 1
-    pyqt6.QtWidgets.QDialog.DialogCode.Rejected = 0
     pyqt6.QtWidgets.QFrame = _QWidget
     pyqt6.QtWidgets.QTabWidget = _QWidget
     pyqt6.QtWidgets.QToolBar = _QWidget

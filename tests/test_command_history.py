@@ -183,7 +183,9 @@ class TestCommandHistory(unittest.TestCase):
         # Neither call should have used refresh=True
         for call_args in self.mock_config_manager.get_history.call_args_list:
             _, kwargs = call_args
-            self.assertFalse(kwargs.get("refresh", False), "get_history should not be called with refresh=True")
+            self.assertFalse(
+                kwargs.get("refresh", False), "get_history should not be called with refresh=True"
+            )
 
 
 if __name__ == "__main__":

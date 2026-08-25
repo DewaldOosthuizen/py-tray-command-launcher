@@ -435,6 +435,8 @@ class ConfigManager:
         history.insert(0, entry)
 
         # Save the updated history
+        # save_history updates _history_cache as a side effect, keeping the
+        # in-memory cache coherent for subsequent get_history(refresh=False) calls.
         self.save_history(history)
 
         return history
