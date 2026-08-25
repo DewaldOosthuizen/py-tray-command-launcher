@@ -259,8 +259,8 @@ class EncryptionWorker(QThread):
                     self.legacy_detected.emit(decrypted_output)
                 self.finished_signal.emit(True, message)
             else:
-                operation_name = "encryption" if self.operation == "encrypt" else "decryption"
-                message = f"Completed with issues: {successful_operations}/{total_files} files processed successfully."
+                op_name = "encryption" if self.operation == "encrypt" else "decryption"
+                message = f"Completed with issues: {successful_operations}/{total_files} {op_name} files processed successfully."
                 logger.warning(
                     "%s completed with issues: %d/%d files processed",
                     self.operation,
