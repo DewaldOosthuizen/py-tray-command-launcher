@@ -1,0 +1,662 @@
+{
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/config/commands.json": {
+    "mtime": 1775117282.9301424,
+    "ast_hash": "85539d014816edf2c8e1da8e9193a61e",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/config/win-commands.json": {
+    "mtime": 1775117282.9301424,
+    "ast_hash": "5b21d4cc3c57387c317653646f4c787b",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/config/commands.schema.json": {
+    "mtime": 1780303142.0461633,
+    "ast_hash": "8637c41556af5bfa4616ee8fa201cee9",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/config/settings.schema.json": {
+    "mtime": 1780303142.0461633,
+    "ast_hash": "1eb9f4633d91ef9668fe155d074a0d9d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/scripts/build-linux.sh": {
+    "mtime": 1775794753.1578665,
+    "ast_hash": "9db85cb092a4244064365aa396353a08",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/scripts/build-deb.sh": {
+    "mtime": 1775117282.9511425,
+    "ast_hash": "c9d1d70d365b202456ed4aae9e7b7044",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/scripts/build-appimage.sh": {
+    "mtime": 1775809638.8789594,
+    "ast_hash": "c13a68a29017308c44fa81a2b8c96014",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/scripts/install_packages.sh": {
+    "mtime": 1775117282.9511425,
+    "ast_hash": "9603d564e09de22e60535f1ad90a4aba",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/scripts/build-all.sh": {
+    "mtime": 1775117282.9511425,
+    "ast_hash": "4235deba1c1bc61575474bc03608daf7",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/scripts/lint.sh": {
+    "mtime": 1780407492.5899704,
+    "ast_hash": "d55a758aee52b1596c69faa24f40fcdd",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_import_export.py": {
+    "mtime": 1780407472.9238467,
+    "ast_hash": "b51205cffa8d36c93013bfcabafa70f4",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_ui_command_manager.py": {
+    "mtime": 1780407446.9486725,
+    "ast_hash": "d257a0059a65ae10c99c68fef72be391",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_process_tracker.py": {
+    "mtime": 1787160117.1719818,
+    "ast_hash": "4c2ae7f05f2253ea71ba6f88284fa805",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/conftest.py": {
+    "mtime": 1787686791.3008823,
+    "ast_hash": "ffcce89bbd4c688f1eab234f6584d5de",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/__init__.py": {
+    "mtime": 1779885059.102722,
+    "ast_hash": "eb6d9f9bdbcd341cc34277a457d9862d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_command_palette.py": {
+    "mtime": 1780407472.9238467,
+    "ast_hash": "0740f60524265b42e0736015ba91c32d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_ui_quick_launch_bar.py": {
+    "mtime": 1780303142.0841632,
+    "ast_hash": "30958272d5844cb9b1a2026224cc7520",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_icon_resolver.py": {
+    "mtime": 1780407472.9258466,
+    "ast_hash": "048bd0c99127dcf7f64bba03851d8159",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_command_executor.py": {
+    "mtime": 1780407472.9258466,
+    "ast_hash": "9b55a1dbfd7e6d36a6d5d9d64df55e1d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_backup_restore.py": {
+    "mtime": 1780407472.9238467,
+    "ast_hash": "c71a8c22f682cf035a8d90b2e5e8310a",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_favorites.py": {
+    "mtime": 1780407472.9238467,
+    "ast_hash": "6beaa387cfd66d0fcf9b1d03ca49b64c",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_schedule_viewer.py": {
+    "mtime": 1787382337.8683357,
+    "ast_hash": "74e0e965d70a6ccf3bf6776023e8cca6",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_ui_command_palette.py": {
+    "mtime": 1780303142.0831633,
+    "ast_hash": "09b88b0174c25ac1e098e7c5e12858af",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_logging_config.py": {
+    "mtime": 1776146391.8720086,
+    "ast_hash": "7989d9b801cd9235476340d13aa06b55",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_command_search.py": {
+    "mtime": 1780407446.9476726,
+    "ast_hash": "171b088af1671396df01bceed907e96b",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_menu_builder.py": {
+    "mtime": 1787649196.5393093,
+    "ast_hash": "9f44c4493dd22ebef8e1a2707e64a839",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_favorites_path.py": {
+    "mtime": 1780407472.9248466,
+    "ast_hash": "6144b83f2dead7cfcf9a93ae10d1a687",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_command_history.py": {
+    "mtime": 1787680472.0095778,
+    "ast_hash": "c01dcaa74c39b784a5fdb073024f6223",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_ui_schedule_dialog.py": {
+    "mtime": 1787686875.6065814,
+    "ast_hash": "0257adafe33a6f35f0ade114005af07b",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_schedule_creator.py": {
+    "mtime": 1787686687.9642692,
+    "ast_hash": "ded49bc2607827bd73eecfc2ea1f2f4f",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_badge_manager.py": {
+    "mtime": 1787160117.1712177,
+    "ast_hash": "106f5280e7843f59bc74303ba9fabff3",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_file_encryptor.py": {
+    "mtime": 1787639816.6184983,
+    "ast_hash": "cfd2e05ab5fcc344c8dcd3c7737d56cc",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_quick_launch_bar.py": {
+    "mtime": 1780407472.9238467,
+    "ast_hash": "3d87f51eabdc2cb86547bd22d908e45f",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_tray_app.py": {
+    "mtime": 1787160117.1719818,
+    "ast_hash": "631d842701f6e5aaf36f7decf0575a85",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_config_path_consistency.py": {
+    "mtime": 1780407472.9238467,
+    "ast_hash": "5f1fe777b4d38688d2d445e217ac638a",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_process_output_relay.py": {
+    "mtime": 1787160117.1716251,
+    "ast_hash": "76a8e40eaf01d97a4aefbda2c04c1f79",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_ui_output_window.py": {
+    "mtime": 1780303142.0831633,
+    "ast_hash": "c854fcf9bc46965ef4b1bc26b2e70aaa",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_settings_dialog.py": {
+    "mtime": 1780407472.9248466,
+    "ast_hash": "590c7936de9494c14c7d0f4fd689b627",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_ui_settings_dialog.py": {
+    "mtime": 1780303142.0841632,
+    "ast_hash": "515c70b6891ef268b5808269346377b0",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_config_manager.py": {
+    "mtime": 1787686875.6065814,
+    "ast_hash": "1ae798e4bca27631da5cc2e855e8edab",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_app_discovery.py": {
+    "mtime": 1787591060.0519836,
+    "ast_hash": "e9b5a185f3e607715d2881f1b62fe2cb",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_single_instance.py": {
+    "mtime": 1780407472.9248466,
+    "ast_hash": "02acad53599081a55fa5198edcdfa2a5",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/tests/test_issue_58_specific_exceptions.py": {
+    "mtime": 1780407472.9258466,
+    "ast_hash": "4b775fafd03b00c212704662bd554510",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.understand-anything/meta.json": {
+    "mtime": 1779888017.5568497,
+    "ast_hash": "e329895f46288ba0dc9239c77b43b578",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.understand-anything/knowledge-graph.json": {
+    "mtime": 1779887988.7910583,
+    "ast_hash": "bd04e9966404b20b27eab5959ac08d0e",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.understand-anything/fingerprints.json": {
+    "mtime": 1779888007.3284614,
+    "ast_hash": "dc06d548eda318162ed259d9f6acda2b",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/main.py": {
+    "mtime": 1780303142.0531633,
+    "ast_hash": "5960b18a0c025d03c0521f10f9e0614b",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/services.py": {
+    "mtime": 1787591905.340284,
+    "ast_hash": "27da1105aa0f2aadd829458e43aea4a3",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/badge_manager.py": {
+    "mtime": 1787160117.16816,
+    "ast_hash": "05516985d287cfc9cecc39269c61a773",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/config_manager.py": {
+    "mtime": 1787680738.2305584,
+    "ast_hash": "0c2b3874ee93b2b28a84bf4c4bb55b3d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/logging_config.py": {
+    "mtime": 1780083503.1298442,
+    "ast_hash": "125d8f6828aef3a16d36199b31886d5f",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/process_tracker.py": {
+    "mtime": 1787160117.1689653,
+    "ast_hash": "65b7099c10ca7651a51f27b868c19a1d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/icon_resolver.py": {
+    "mtime": 1780303142.0491633,
+    "ast_hash": "080446bcad0f9c344b06eb98c15e6a12",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/theme_manager.py": {
+    "mtime": 1780303142.0511632,
+    "ast_hash": "e7b7290ee8b5aa2e5d11f7e05072ffbb",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/menu_builder.py": {
+    "mtime": 1780303142.0501633,
+    "ast_hash": "75d6475c2e62aabe889cadb4df639fd5",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/process_output_relay.py": {
+    "mtime": 1787160117.1686933,
+    "ast_hash": "3d9a577a08b04b64180911e10b5e970e",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/core/tray_app.py": {
+    "mtime": 1787160117.1698697,
+    "ast_hash": "80f7a8fe91e86258548a9961a94f0941",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/utils/__init__.py": {
+    "mtime": 1787649196.5393093,
+    "ast_hash": "1e9d2fbfa06596cfa34514e3acb790a9",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/utils/single_instance.py": {
+    "mtime": 1780303142.0751631,
+    "ast_hash": "77647d860c3af138f4dc3e8dfe162913",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/utils/dialogs.py": {
+    "mtime": 1776146391.847009,
+    "ast_hash": "3466a847db7bd44d6dc4a0cdbdf0ae19",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/command_search.py": {
+    "mtime": 1780303142.0601633,
+    "ast_hash": "4564f7dab2d33289ccb3d3a124efdcd3",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/schedule_creator.py": {
+    "mtime": 1787680669.9765844,
+    "ast_hash": "38b657eeaefa25fbd709fbd1536d1376",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/favorites.py": {
+    "mtime": 1780303142.0611632,
+    "ast_hash": "8084e19e69daf6822e574b99d0423e1b",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/app_discovery.py": {
+    "mtime": 1787591060.0519836,
+    "ast_hash": "3f2270f39698b1e504284a7fae730bef",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/command_creator.py": {
+    "mtime": 1780303142.0551631,
+    "ast_hash": "c79621753d475341773ca202d73f90a9",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/file_encryptor.py": {
+    "mtime": 1787639816.6184983,
+    "ast_hash": "0cf61c0f633f85721a331439f26123bf",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/backup_restore.py": {
+    "mtime": 1780303142.0541632,
+    "ast_hash": "a691cb1760b427c50a62f96f7819e79d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/command_executor.py": {
+    "mtime": 1780303142.0551631,
+    "ast_hash": "ca562a39ad9de1ff473f2b7543a57fae",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/import_export.py": {
+    "mtime": 1780303142.0631633,
+    "ast_hash": "fbed80401c8743d994dfdd6cb5f4fe9b",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/command_history.py": {
+    "mtime": 1787680472.0095778,
+    "ast_hash": "0b6db382d1265ee0ca91f286cd658bfa",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/modules/schedule_viewer.py": {
+    "mtime": 1787382337.8673358,
+    "ast_hash": "54d40cbb96b8655292ebfe8ab42e257c",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/ui/__init__.py": {
+    "mtime": 1776146391.838009,
+    "ast_hash": "eb6d9f9bdbcd341cc34277a457d9862d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/ui/command_palette.py": {
+    "mtime": 1780303142.0671632,
+    "ast_hash": "54a0e9d6438ab9f979f5a215e6ac9d46",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/ui/command_manager.py": {
+    "mtime": 1780303142.0661633,
+    "ast_hash": "357b7323b6a277b94257effae6ba7e3d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/ui/settings_dialog.py": {
+    "mtime": 1780303142.0741632,
+    "ast_hash": "60cb78c73fb51e512fc0ed855a8b1582",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/ui/schedule_dialog.py": {
+    "mtime": 1787680669.9785845,
+    "ast_hash": "bf945010e005e2d8bf5eb0e0d8bc873b",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/ui/quick_launch_bar.py": {
+    "mtime": 1780303142.0731633,
+    "ast_hash": "18e8db2c0284e85ed411ab0bf7c006d6",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/src/ui/output_window.py": {
+    "mtime": 1780303142.0721633,
+    "ast_hash": "ef55ac8feff17a505de04f91764d275f",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.codegraph/config.json": {
+    "mtime": 1775036447.08723,
+    "ast_hash": "32cfa5691990b6575f53e6b807a83544",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/CONTRIBUTING.md": {
+    "mtime": 1781156480.538603,
+    "ast_hash": "590b26ab1cda133104ecb5222fcafab3",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/AGENTS.md": {
+    "mtime": 1780408804.621705,
+    "ast_hash": "31a5293e8a1f610cbfb8982ac41c7118",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/README.md": {
+    "mtime": 1781162265.39442,
+    "ast_hash": "79ba87693022481029755a15870d05ff",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/requirements.txt": {
+    "mtime": 1780083503.1288443,
+    "ast_hash": "4f3657a6af525a68eea2c973e03298ed",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/requirements-build.txt": {
+    "mtime": 1787639816.6174982,
+    "ast_hash": "d520bc9900017cdcfe97f818e32ce236",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/config/orchestrator.yml": {
+    "mtime": 1781158097.0999935,
+    "ast_hash": "d6deefd00570acf2a21840e5a8df6bc7",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/contributing.md": {
+    "mtime": 1780407563.2913601,
+    "ast_hash": "98c9c5196840cbf7fb5b2524088e6454",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/configuration.md": {
+    "mtime": 1775809638.8752637,
+    "ast_hash": "70ac833aafde031833b6113e21dd1d52",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/features.md": {
+    "mtime": 1787591060.0509834,
+    "ast_hash": "5a3810b827150b80c853763ec6b16648",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/architecture.md": {
+    "mtime": 1787591905.339284,
+    "ast_hash": "ee70dc918ff9ab06d02f94453005d684",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/packaging.md": {
+    "mtime": 1780303142.0471632,
+    "ast_hash": "7cf5938822e6895e6c6b9428e28eedff",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-002-singleton-config-manager.md": {
+    "mtime": 1779885855.0883973,
+    "ast_hash": "f6a704ecbe719ff5de68029d8bcd8434",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-009-command-execution-strategies.md": {
+    "mtime": 1779886040.2457368,
+    "ast_hash": "2024545204ca719bbb3b83d84d175cc1",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-013-file-encryption.md": {
+    "mtime": 1779993462.955337,
+    "ast_hash": "b153f7da4c107045bdc6fd3406acb23f",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-012-favorites-path-encoding.md": {
+    "mtime": 1779886121.0390146,
+    "ast_hash": "18f1a6b3475a1828d205c57ed01a56af",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-008-single-instance-locking.md": {
+    "mtime": 1779886010.291005,
+    "ast_hash": "126ba998e728ced7d83f86bbcca83510",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-001-configuration-storage-and-platform-paths.md": {
+    "mtime": 1779885833.5785909,
+    "ast_hash": "c8750e9cb464eaf72bca8a607cdcc466",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-014-scheduling-via-cron.md": {
+    "mtime": 1779886167.682598,
+    "ast_hash": "3267ae417235901f4ab9c39b3fd594a5",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-006-menu-builder-decomposition.md": {
+    "mtime": 1779885954.456505,
+    "ast_hash": "f0bb437a196bc8a28aae5e014be585b4",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-015-app-discovery-desktop-files.md": {
+    "mtime": 1787156808.364153,
+    "ast_hash": "15f45ac681b31bba1470c2dafa1cfd7a",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-011-command-palette-and-global-hotkeys.md": {
+    "mtime": 1779886096.252236,
+    "ast_hash": "d771dc5e372fc469cad2bd90c7976764",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-003-dependency-injection-via-appservices.md": {
+    "mtime": 1779885879.503178,
+    "ast_hash": "bffe5076066a60ed90bf4176ef8251db",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/README.md": {
+    "mtime": 1779885807.1658287,
+    "ast_hash": "772d621780c8b482890ee4869f3ff589",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-010-theming-via-qss.md": {
+    "mtime": 1779886065.057515,
+    "ast_hash": "6ccd3ab6606ed2c935ff758ed8a041f9",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-005-atomic-json-writes.md": {
+    "mtime": 1779885928.5077379,
+    "ast_hash": "1564f8d12409d336fe070e5a028b2e13",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-007-icon-resolver-and-cache.md": {
+    "mtime": 1779885984.4292364,
+    "ast_hash": "e297ddc04e48e9fa40d4c764290f295d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/docs/add/ADD-004-command-schema-and-validation.md": {
+    "mtime": 1779885904.9649491,
+    "ast_hash": "b0a01e7b3d5163d3bd5ba50adc746fd8",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/copilot-instructions.md": {
+    "mtime": 1780568210.2190208,
+    "ast_hash": "d48b6e09785b570e9ab4600cf0db8131",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/dependabot.yml": {
+    "mtime": 1778579271.581647,
+    "ast_hash": "eecaa8bd44b59e594a4803c76639959e",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/skills/openspec-archive-change/SKILL.md": {
+    "mtime": 1775117282.9281425,
+    "ast_hash": "8debef1d1f6d9ac2cbe1126493d02c6f",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/skills/openspec-apply-change/SKILL.md": {
+    "mtime": 1775117282.9271424,
+    "ast_hash": "381998ea1c647300a972a2db7992ca4a",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/skills/debug-tray-app/SKILL.md": {
+    "mtime": 1779888924.8849745,
+    "ast_hash": "b5b7a886ce49f976582620e98a2718af",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/skills/build-and-package/SKILL.md": {
+    "mtime": 1779888976.3001385,
+    "ast_hash": "93d91764464187c737f87bba8acae83c",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/skills/write-tests/SKILL.md": {
+    "mtime": 1779888892.9788651,
+    "ast_hash": "58329bed0c6d1e0ff12446aeba50150f",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/skills/work-with-themes/SKILL.md": {
+    "mtime": 1779888945.3940418,
+    "ast_hash": "db8ed9e4d48ee24e23d69ea6c50ed82c",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/skills/openspec-propose/SKILL.md": {
+    "mtime": 1775117282.9291425,
+    "ast_hash": "3148e0c377bfb264cebc72dc5bf2fd95",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/skills/add-feature-module/SKILL.md": {
+    "mtime": 1779888821.5965972,
+    "ast_hash": "032beb8ea0dd5481ba133f79ccde3c0e",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/skills/openspec-explore/SKILL.md": {
+    "mtime": 1775117282.9281425,
+    "ast_hash": "15a31009cb6ff1ed750527f0b9641d26",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/prompts/opsx-propose.prompt.md": {
+    "mtime": 1775117282.9251425,
+    "ast_hash": "54c8d81441a57671450d903206978447",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/prompts/opsx-archive.prompt.md": {
+    "mtime": 1775117282.9251425,
+    "ast_hash": "ff9017090a9eb3643dd810c32915d03b",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/prompts/opsx-explore.prompt.md": {
+    "mtime": 1775117282.9251425,
+    "ast_hash": "8ba1b9da90ec17e3607a8811eec1e02c",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/prompts/opsx-apply.prompt.md": {
+    "mtime": 1775117282.9241424,
+    "ast_hash": "bcfe85835bb9c8bf29ddffa5a12111ba",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/workflows/tests.yml": {
+    "mtime": 1780687128.5632498,
+    "ast_hash": "edfe81e302a2ac2cda2cea4969772bc1",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/workflows/release.yml": {
+    "mtime": 1780303142.0431633,
+    "ast_hash": "53bcdc3f558fe6756fe58776d4ac051a",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/workflows/lint.yml": {
+    "mtime": 1787160117.1658182,
+    "ast_hash": "b2fc90db4cf33936c0bcbe85034ae871",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/.github/workflows/ci.yml": {
+    "mtime": 1780303142.0421634,
+    "ast_hash": "cdc11fbd267ffc20bbd8ab9730c28a53",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/resources/icons/utilities.jpeg": {
+    "mtime": 1775117282.9501426,
+    "ast_hash": "071ebcaa695e43c18219c0cca6b1dc37",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/resources/icons/system.jpeg": {
+    "mtime": 1775117282.9481425,
+    "ast_hash": "4a0164ba13da1113ce96f3cff6bfb53d",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/resources/icons/developer.jpeg": {
+    "mtime": 1775117282.9371426,
+    "ast_hash": "b792ca2ab92f34fbe35579fc6dede3c0",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/resources/icons/networking.jpeg": {
+    "mtime": 1775117282.9471426,
+    "ast_hash": "cbbc7612542c31769e4e6cbd91b53609",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/resources/icons/media.jpeg": {
+    "mtime": 1775117282.9441426,
+    "ast_hash": "f62ad31b4a85a4313c0d12c9a11357cd",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/resources/icons/education.jpeg": {
+    "mtime": 1775117282.9401426,
+    "ast_hash": "91edf6727da71eb61702f3b01ad15e15",
+    "semantic_hash": ""
+  },
+  "/home/dewald/Workspace/personal/github/py-tray-command-launcher/resources/icons/icon.png": {
+    "mtime": 1775117282.9441426,
+    "ast_hash": "02edab16824b46c3e6e99789bb8e208e",
+    "semantic_hash": ""
+  }
+}

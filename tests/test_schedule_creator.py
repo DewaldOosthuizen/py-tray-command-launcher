@@ -11,13 +11,16 @@ if "PyQt6" not in sys.modules:
     sys.modules.setdefault("PyQt6.QtCore", _pyqt6.QtCore)
     sys.modules.setdefault("PyQt6.QtGui", _pyqt6.QtGui)
     sys.modules.setdefault("core.config_manager", MagicMock())
+    _pyqt6.QtWidgets.QDialog.DialogCode = MagicMock()
+    _pyqt6.QtWidgets.QDialog.DialogCode.Accepted = 1
+    _pyqt6.QtWidgets.QDialog.DialogCode.Rejected = 0
 
 import os
 import sys as _sys
 
 _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from modules.schedule_creator import ScheduleCreator
+from modules.schedule_creator import QDialog, ScheduleCreator
 
 
 def test_human_cron_weekdays():
@@ -275,12 +278,7 @@ def test_show_dialog_returns_false_on_command_load_failure():
     creator = ScheduleCreator(svc)
     svc.get_all_commands.side_effect = RuntimeError("load failed")
 
-    with (
-        patch("modules.schedule_creator.QDialog") as mock_dialog_cls,
-        patch("modules.schedule_creator.QMessageBox"),
-    ):
-        mock_dialog = MagicMock()
-        mock_dialog_cls.return_value = mock_dialog
+    with patch("modules.schedule_creator.QMessageBox"):
         result = creator.show_dialog()
 
     assert result is False
@@ -295,12 +293,11 @@ def test_show_dialog_returns_false_on_cancel():
     ]
 
     with (
-        patch("modules.schedule_creator.QDialog") as mock_dialog_cls,
+        patch("modules.schedule_creator.ScheduleDialog") as mock_dialog_cls,
         patch("modules.schedule_creator.QMessageBox"),
     ):
         mock_dialog = MagicMock()
-        # Use the SAME QDialog.DialogCode.Accepted that the patched QDialog provides
-        mock_dialog.exec.return_value = mock_dialog_cls.DialogCode.Rejected
+        mock_dialog.exec.return_value = QDialog.DialogCode.Rejected
         mock_dialog_cls.return_value = mock_dialog
         result = creator.show_dialog()
 
@@ -316,18 +313,18 @@ def test_show_dialog_returns_true_on_accept():
     ]
 
     with (
-        patch("modules.schedule_creator.QDialog") as mock_dialog_cls,
+        patch("modules.schedule_creator.ScheduleDialog") as mock_dialog_cls,
         patch("modules.schedule_creator.QMessageBox"),
         patch.object(creator, "create_schedule", return_value=True),
-        patch("modules.schedule_creator.QComboBox") as mock_combo_cls,
     ):
-        mock_combo = MagicMock()
-        mock_combo.currentText.return_value = "Test → MyCmd"
-        mock_combo_cls.return_value = mock_combo
-
         mock_dialog = MagicMock()
-        # Use the SAME QDialog.DialogCode.Accepted that the patched QDialog provides
-        mock_dialog.exec.return_value = mock_dialog_cls.DialogCode.Accepted
+        mock_dialog.exec.return_value = QDialog.DialogCode.Accepted
+        mock_dialog.get_schedule.return_value = {
+            "command_info": {"group": "Test", "label": "MyCmd", "command": "/bin/true"},
+            "hour": 9,
+            "minute": 0,
+            "days": ["Monday"],
+        }
         mock_dialog_cls.return_value = mock_dialog
         result = creator.show_dialog()
 

@@ -124,6 +124,9 @@ def _make_pyqt6_stub():
             object.__setattr__(self, name, attr)
             return attr
 
+        def setWindowTitle(self, title):
+            pass
+
     class _BoundSignal:
         """Per-instance Qt-signal stand-in: connect()/emit() actually dispatch."""
 
@@ -165,6 +168,9 @@ def _make_pyqt6_stub():
     pyqt6.QtWidgets.QWidget = _QWidget
     pyqt6.QtWidgets.QMainWindow = _QWidget
     pyqt6.QtWidgets.QDialog = _QWidget
+    pyqt6.QtWidgets.QDialog.DialogCode = _StubAttr()
+    pyqt6.QtWidgets.QDialog.DialogCode.Accepted = 1
+    pyqt6.QtWidgets.QDialog.DialogCode.Rejected = 0
     pyqt6.QtWidgets.QFrame = _QWidget
     pyqt6.QtWidgets.QTabWidget = _QWidget
     pyqt6.QtWidgets.QToolBar = _QWidget
@@ -196,7 +202,23 @@ def _make_pyqt6_stub():
     return pyqt6
 
 
-if "PyQt6" not in sys.modules:
+if "PyQt6" in sys.modules:
+    # The real PyQt6 may already be importable (e.g. installed in the user
+    # environment, or pulled in by pytest-qt). Replace it wholesale with our
+    # stub so test modules always see the same mocked surface regardless of
+    # what is physically installed.
+    _stub = _make_pyqt6_stub()
+    # Remove every PyQt6 entry from sys.modules so that subsequent "import
+    # PyQt6" or "from PyQt6.QtWidgets import QDialog" statements resolve to
+    # our stub instead of the real package.
+    for _name in list(sys.modules):
+        if _name == "PyQt6" or _name.startswith("PyQt6."):
+            sys.modules.pop(_name, None)
+    sys.modules["PyQt6"] = _stub
+    sys.modules["PyQt6.QtCore"] = _stub.QtCore
+    sys.modules["PyQt6.QtWidgets"] = _stub.QtWidgets
+    sys.modules["PyQt6.QtGui"] = _stub.QtGui
+elif "PyQt6" not in sys.modules:
     _stub = _make_pyqt6_stub()
     sys.modules["PyQt6"] = _stub
     sys.modules["PyQt6.QtCore"] = _stub.QtCore
@@ -218,6 +240,8 @@ if str(SRC_DIR) not in sys.path:
 # bind to our fully-functional signal stub regardless of collection order.
 import core.badge_manager  # noqa: E402, F401
 import core.process_tracker  # noqa: E402, F401
+import modules.schedule_creator  # noqa: E402, F401
+import ui.schedule_dialog  # noqa: E402, F401
 
 # ---------------------------------------------------------------------------
 # Filesystem helpers
