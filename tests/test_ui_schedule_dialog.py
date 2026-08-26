@@ -30,13 +30,8 @@ class TestScheduleDialog:
     ]
 
     _days = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday",
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday",
     ]
 
     def _make_dialog(self):
@@ -137,7 +132,7 @@ class TestScheduleDialog:
 
             from ui.schedule_dialog import ScheduleDialog
 
-            ScheduleDialog(self._commands)
+            dialog = ScheduleDialog(self._commands)
             assert combo.addItem.call_count == len(self._commands)
 
     # ------------------------------------------------------------------
@@ -172,9 +167,7 @@ class TestScheduleDialog:
         schedule = dialog.get_schedule()
         assert schedule is not None
         assert schedule["command_info"] == {
-            "group": "System",
-            "label": "Backup",
-            "command": "/usr/bin/backup.sh",
+            "group": "System", "label": "Backup", "command": "/usr/bin/backup.sh"
         }
         assert schedule["hour"] == 9
         assert schedule["minute"] == 30
