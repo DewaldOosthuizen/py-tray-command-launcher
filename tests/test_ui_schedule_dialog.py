@@ -132,7 +132,7 @@ class TestScheduleDialog:
 
             from ui.schedule_dialog import ScheduleDialog
 
-            dialog = ScheduleDialog(self._commands)
+            ScheduleDialog(self._commands)
             assert combo.addItem.call_count == len(self._commands)
 
     # ------------------------------------------------------------------
