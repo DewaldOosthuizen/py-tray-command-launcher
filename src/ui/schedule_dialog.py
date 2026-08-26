@@ -13,9 +13,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-# ScheduleCreator is imported lazily inside _update_preview to avoid a
-# circular import with modules.schedule_creator (which imports ScheduleDialog).
-
 
 class ScheduleDialog(QDialog):
     """Dialog for creating a scheduled task / cron job.

@@ -46,7 +46,7 @@ class TestScheduleDialog:
         so get_schedule()'s widget lookups return the right mock per call.
         """
         with (
-            patch("ui.schedule_dialog.QDialog") as _qdialog_cls,
+            patch("ui.schedule_dialog.QDialog"),
             patch("ui.schedule_dialog.QComboBox") as combo_cls,
             patch("ui.schedule_dialog.QTimeEdit") as time_cls,
             patch("ui.schedule_dialog.QCheckBox") as cb_cls,
@@ -56,8 +56,6 @@ class TestScheduleDialog:
             patch("ui.schedule_dialog.QHBoxLayout"),
             patch("ui.schedule_dialog.QGridLayout"),
         ):
-            _qdialog_cls.DialogCode = type("DialogCode", (), {"Accepted": 1, "Rejected": 0})
-            _qdialog_cls.return_value.setWindowTitle = MagicMock()
             combo = MagicMock()
             combo.addItem = MagicMock()
             combo_cls.return_value = combo
@@ -116,7 +114,7 @@ class TestScheduleDialog:
     def test_dialog_populates_command_combo(self):
         """ScheduleDialog adds one combo entry per command."""
         with (
-            patch("ui.schedule_dialog.QDialog") as _qdialog_cls,
+            patch("ui.schedule_dialog.QDialog"),
             patch("ui.schedule_dialog.QComboBox") as combo_cls,
             patch("ui.schedule_dialog.QTimeEdit") as time_cls,
             patch("ui.schedule_dialog.QCheckBox"),
@@ -126,8 +124,6 @@ class TestScheduleDialog:
             patch("ui.schedule_dialog.QHBoxLayout"),
             patch("ui.schedule_dialog.QGridLayout"),
         ):
-            _qdialog_cls.DialogCode = type("DialogCode", (), {"Accepted": 1, "Rejected": 0})
-            _qdialog_cls.return_value.setWindowTitle = MagicMock()
             combo = MagicMock()
             combo.addItem = MagicMock()
             combo_cls.return_value = combo
