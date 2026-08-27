@@ -252,3 +252,64 @@ class TestSettingsSchemaValidation:
             mgr.get_settings()
         warning_msgs = [str(call) for call in mock_logger.warning.call_args_list]
         assert not any("settings.json validation error" in msg for msg in warning_msgs)
+
+
+# ---------------------------------------------------------------------------
+# Config directory isolation (--config flag write isolation)
+# ---------------------------------------------------------------------------
+
+
+class TestConfigDirIsolation:
+    """Verify that save_commands() writes to the overridden path, not config_dir.
+
+    Regression test: if _get_commands_file_for_write() is accidentally changed
+    to always return self.config_dir / "commands.json", this test must fail.
+    """
+
+    def test_save_commands_writes_to_override_path(self, tmp_commands_file, tmp_path):
+        """save_commands on an overridden ConfigManager must write to the override path."""
+        # tmp_commands_file is a real commands.json inside an isolated temp dir.
+        # Construct a fresh ConfigManager wired to a *different* config_dir so we
+        # can detect writes that leak to the default location.
+        other_dir = tmp_path / "other_config"
+        other_dir.mkdir()
+        original_default = other_dir / "commands.json"
+        original_default.write_text(
+            json.dumps({"Original": {"Old": {"command": "old"}}}), encoding="utf-8"
+        )
+
+        mgr = ConfigManager.__new__(ConfigManager)
+        mgr._initialized = False
+        mgr._commands_cache = None
+        mgr._commands_override = None
+        mgr._is_windows = False
+        mgr.config_dir = other_dir
+        mgr.commands_file = original_default
+        mgr.win_commands_file = other_dir / "win-commands.json"
+        mgr.settings_file = other_dir / "settings.json"
+        mgr.history_file = other_dir / "history.json"
+        mgr.favorites_file = other_dir / "favorites.json"
+        mgr.backup_dir = other_dir / "backups"
+        mgr.backup_dir.mkdir(parents=True, exist_ok=True)
+        mgr.defaults_dir = PROJECT_ROOT / "config"
+
+        # The override path already exists (created by the fixture).
+        mgr.set_commands_override(tmp_commands_file)
+
+        new_payload = {
+            "Custom": {"MyCmd": {"command": "my-custom-cmd", "showOutput": True}},
+        }
+
+        mgr.save_commands(new_payload)
+
+        # --- Assert write went to the override path ---
+        assert tmp_commands_file.exists(), "Override file must have been written"
+        on_disk = json.loads(tmp_commands_file.read_text(encoding="utf-8"))
+        assert on_disk == new_payload, "Override file content must match the saved payload"
+
+        # --- Assert write did NOT go to config_dir / "commands.json" ---
+        assert original_default.exists(), "Default commands.json should still exist"
+        default_content = json.loads(original_default.read_text(encoding="utf-8"))
+        assert default_content == {"Original": {"Old": {"command": "old"}}}, (
+            "config_dir / commands.json must be unchanged — writes must not leak to the default dir"
+        )

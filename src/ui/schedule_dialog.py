@@ -13,8 +13,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from modules.schedule_creator import ScheduleCreator
-
 
 class ScheduleDialog(QDialog):
     """Dialog for creating a scheduled task / cron job.
@@ -171,6 +169,8 @@ class ScheduleDialog(QDialog):
         self._update_preview()
 
     def _update_preview(self, *_args) -> None:
+        from modules.schedule_creator import ScheduleCreator
+
         t = self._time_edit.time()
         days = [d for d, cb in self._days_checkboxes.items() if cb.isChecked()]
         if days:
