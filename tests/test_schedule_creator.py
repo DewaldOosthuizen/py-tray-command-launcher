@@ -14,7 +14,6 @@ if "PyQt6" not in sys.modules:
     _pyqt6.QtWidgets.QDialog.DialogCode = MagicMock()
     _pyqt6.QtWidgets.QDialog.DialogCode.Accepted = 1
     _pyqt6.QtWidgets.QDialog.DialogCode.Rejected = 0
-
 import os
 import sys as _sys
 

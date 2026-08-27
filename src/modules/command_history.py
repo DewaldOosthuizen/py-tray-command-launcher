@@ -33,7 +33,7 @@ class CommandHistory:
     def populate_menu(self, menu):
         """Populate the history menu with recent commands."""
         menu.clear()
-        history = config_manager.get_history(refresh=True)
+        history = config_manager.get_history(refresh=False)
 
         if not history:
             menu.addAction("No recent commands").setEnabled(False)
