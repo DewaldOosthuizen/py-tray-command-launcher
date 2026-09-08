@@ -4,8 +4,8 @@ A Python/PyQt6 system tray application for launching custom commands and scripts
 hierarchical menu. Supports file encryption, command scheduling, backup/restore, favorites,
 fuzzy command search, a command palette, a quick-launch bar, and packaging for Linux and Windows.
 
-This file instructs AI agents (Hermes, GitHub Copilot, Codex, etc.) on how to orient themselves
-in this repository efficiently.
+This file instructs AI agents (Hermes, GitHub Copilot, Codex, etc.) on how
+to orient themselves in this repository efficiently.
 
 <!-- graph-tools-start -->
 
@@ -41,6 +41,7 @@ GRAPH_DIR=$(pwd) npx vite --host 127.0.0.1
 ```
 
 For prose questions load the skill:
+
 ```
 skill: understand-chat
 ```
@@ -111,24 +112,11 @@ shim (-e ".[dev]") and must never declare standalone version pins.
 | docs/packaging.md | Build instructions for all package formats |
 | docs/contributing.md | Development setup, code standards, and PR process |
 
-## Packaging & Releases
+## CI / CD
 
-```bash
-./scripts/build-all.sh          # all formats
-./scripts/build-linux.sh        # Linux executable
-./scripts/build-deb.sh          # Debian package
-./scripts/build-appimage.sh     # AppImage
-scripts\build-windows.bat       # Windows .exe (run on Windows)
-```
-
-Releases are automated via GitHub Actions. Push a version tag to trigger the build:
-
-```bash
-git tag v1.2.0 -m "Release v1.2.0"
-git push origin v1.2.0
-```
-
-The workflow builds the AppImage and attaches it to a GitHub Release automatically.
+Documentation for the CI/CD pipeline lives in [docs/index.md](docs/index.md).
+Authoritative rules (verification, review, conventions) live in
+[openspec/config.yaml](openspec/config.yaml).
 
 ## File Encryption — Breaking Change (v2+)
 
