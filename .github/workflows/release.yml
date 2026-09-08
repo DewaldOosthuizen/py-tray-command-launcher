@@ -1,18 +1,142 @@
 name: Release
+#
+# WHAT: Auto-release pipeline. Every push to main is validated, built into an
+#       AppImage, and — if validation passes — released under a CalVer tag
+#       (YYYY.MM.DD, or YYYY.MM.DD.N for same-day re-releases). Replaces the
+#       old model where a human had to manually create+push a "vX.Y.Z" tag to
+#       trigger anything; there is no manual tagging step anymore.
+#
+# WHY DUPLICATE VALIDATION FROM pr_gate.yml? pr_gate.yml validates the PR
+#       *head* commit merged (or not) into main by GitHub's speculative merge
+#       ref. release.yml re-runs the identical checks against the *actual*
+#       commit that is now HEAD of main, after the merge has really happened.
+#       These are not always the same tree (fast-forward merges, race
+#       conditions between two PRs merging close together, admin force-pushes,
+#       etc.), so re-validating the exact commit being released is the only
+#       way to guarantee we never release code that hasn't been checked.
+#
+# FLOW: validate (ruff-lint -> test; pip-audit parallel) -> validation-gate
+#       (summary, fails loudly on any non-success) -> build (AppImage, kept
+#       verbatim from the previous tag-triggered release.yml) -> version-tag
+#       -release (compute next CalVer tag, bump pyproject.toml, commit+push
+#       to main, tag+push tag, create the GitHub Release with the AppImage
+#       attached).
+#
+# CONCURRENCY: keyed on workflow+ref (not commit) so only one release run is
+#              ever in flight for main at a time; a newer push cancels an
+#              older in-progress release rather than racing it for the same
+#              CalVer tag.
+#
+# TRIGGERS: push to main (the normal path) + workflow_dispatch (manual re-run,
+#           e.g. to retry a flaky build without needing a new commit).
 
 on:
   push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]*"
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: write   # needed to create releases and upload assets
+  contents: write   # needed to push the version-bump commit, the tag, and create the release
 
 jobs:
-  build-appimage:
-    name: Build AppImage
+  # ---------------------------------------------------------------------
+  # Validation phase — duplicated from pr_gate.yml intentionally (see
+  # header comment above for rationale). Kept in lock-step with pr_gate.yml;
+  # if you change one, change the other.
+  # ---------------------------------------------------------------------
+  ruff-lint:
+    name: Ruff lint + format check
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install ruff
+      - run: ruff check src/ tests/
+      - run: ruff format --check src/ tests/
 
+  test:
+    name: Test suite (Qt, coverage)
+    needs: ruff-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install Qt system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-xkb1 libxkbcommon-x11-0 libgl1
+        env:
+          DEBIAN_FRONTEND: noninteractive
+      - name: Install package with dev extras
+        run: pip install -e ".[dev]"
+      - name: Run tests with coverage
+        run: pytest
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: .coverage
+
+  pip-audit:
+    name: pip-audit (dependency vulnerability scan)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+      - run: pip install --upgrade "pip>=26.1.2" "setuptools>=83.0.0"
+      - run: pip install pip-audit
+      - run: pip install -e ".[dev]"
+      - run: pip-audit
+
+  validation-gate:
+    name: Validation gate
+    needs: [ruff-lint, test, pip-audit]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail loudly if any required job did not succeed
+        run: |
+          echo "ruff-lint: ${{ needs.ruff-lint.result }}"
+          echo "test:      ${{ needs.test.result }}"
+          echo "pip-audit: ${{ needs.pip-audit.result }}"
+          if [ "${{ needs.ruff-lint.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.pip-audit.result }}" != "success" ]; then
+            echo "One or more validation jobs failed; refusing to release."
+            exit 1
+          fi
+          echo "All validation jobs passed; proceeding to build."
+
+  # ---------------------------------------------------------------------
+  # Build phase — AppImage build steps kept verbatim from the old
+  # tag-triggered release.yml (PyInstaller spec, appimagetool, AppDir
+  # assembly). Only the version/tag source changed (see version-tag-release).
+  # ---------------------------------------------------------------------
+  build:
+    name: Build AppImage
+    needs: validation-gate
+    runs-on: ubuntu-latest
+    outputs:
+      appimage-name: py-tray-command-launcher-x86_64.AppImage
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,26 +201,150 @@ jobs:
           chmod +x AppDir/AppRun
 
       - name: Build AppImage
-        env:
-          VERSION: ${{ github.ref_name }}
         run: |
           ARCH=x86_64 ./tools/appimagetool --appimage-extract-and-run \
-            AppDir "py-tray-command-launcher-${VERSION}-x86_64.AppImage"
+            AppDir "py-tray-command-launcher-x86_64.AppImage"
 
       - name: Verify AppImage
-        env:
-          VERSION: ${{ github.ref_name }}
         run: |
-          test -f "py-tray-command-launcher-${VERSION}-x86_64.AppImage"
-          echo "AppImage size: $(du -h py-tray-command-launcher-${VERSION}-x86_64.AppImage | cut -f1)"
+          test -f "py-tray-command-launcher-x86_64.AppImage"
+          echo "AppImage size: $(du -h py-tray-command-launcher-x86_64.AppImage | cut -f1)"
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: py-tray-command-launcher-x86_64.AppImage
+
+  # ---------------------------------------------------------------------
+  # Version / tag / release phase — CalVer rolling release.
+  # ---------------------------------------------------------------------
+  version-tag-release:
+    name: Version, tag, and release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download AppImage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: appimage
+
+      - name: Determine whether this run should be skipped
+        id: skip_check
+        run: |
+          set -euo pipefail
+          git fetch --tags --force origin
+
+          LAST_TAG=$(git tag -l --sort=-version:refname \
+            | grep -E '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$' \
+            | head -n1 || true)
+
+          if [ -z "$LAST_TAG" ]; then
+            echo "No prior CalVer tag found; proceeding."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TAG_SHA=$(git rev-list -n1 "$LAST_TAG")
+          HEAD_SHA=$(git rev-parse HEAD)
+
+          if [ "$TAG_SHA" = "$HEAD_SHA" ]; then
+            echo "HEAD is already released as $LAST_TAG; skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "HEAD differs from last tag $LAST_TAG; proceeding."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next CalVer tag
+        id: compute_tag
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          BASE="$(date -u +%Y).$(date -u +%m).$(date -u +%d)"
+
+          EXISTING=$(git ls-remote --tags origin \
+            | sed -n "s#.*refs/tags/\(${BASE//./\\.}\(\.[0-9]\+\)\?\)\$#\1#p" \
+            | sort -u || true)
+
+          if [ -z "$EXISTING" ]; then
+            TAG="$BASE"
+          else
+            MAX=0
+            while IFS= read -r t; do
+              if [ "$t" = "$BASE" ]; then
+                N=0
+              else
+                N="${t#${BASE}.}"
+              fi
+              if [ "$N" -gt "$MAX" ] 2>/dev/null; then
+                MAX="$N"
+              fi
+            done <<< "$EXISTING"
+            TAG="${BASE}.$((MAX + 1))"
+          fi
+
+          if ! [[ "$TAG" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$ ]]; then
+            echo "Computed tag '$TAG' failed CalVer regex validation." >&2
+            exit 1
+          fi
+
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}\$"; then
+            echo "Computed tag '$TAG' already exists on origin." >&2
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Computed release tag: $TAG"
+
+      - name: Warn if HEAD is ahead of origin/main (non-fatal)
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          git fetch origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "::warning::HEAD differs from origin/main at release time; releasing HEAD anyway."
+          fi
+
+      - name: Bump pyproject.toml, commit, tag, and push
+        if: steps.skip_check.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.compute_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # pyproject.toml has no `npm version`-equivalent bump command, so
+          # rewrite the single `version = "..."` line under [project] with sed.
+          sed -i "s/^version = .*/version = \"$TAG\"/" pyproject.toml
+          grep -q "version = \"$TAG\"" pyproject.toml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "chore: bump version to $TAG"
+          git push origin main
+
+          git tag -a "$TAG" -m "Release $TAG (CalVer rolling release)"
+          git push origin "$TAG"
+
+      - name: Rename AppImage for release asset
+        if: steps.skip_check.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.compute_tag.outputs.tag }}
+        run: |
+          cp py-tray-command-launcher-x86_64.AppImage \
+             "py-tray-command-launcher-${TAG}-x86_64.AppImage"
 
       - name: Create GitHub Release and upload AppImage
-        uses: softprops/action-gh-release@v2
-        with:
-          name: "py-tray-command-launcher ${{ github.ref_name }}"
-          tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          generate_release_notes: true
-          files: |
-            py-tray-command-launcher-${{ github.ref_name }}-x86_64.AppImage
+        if: steps.skip_check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.compute_tag.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            "py-tray-command-launcher-${TAG}-x86_64.AppImage" \
+            --title "py-tray-command-launcher ${TAG}" \
+            --generate-notes
