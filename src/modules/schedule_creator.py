@@ -8,8 +8,6 @@ import tempfile
 
 from PyQt6.QtWidgets import QDialog, QMessageBox
 
-from ui.schedule_dialog import ScheduleDialog
-
 logger = logging.getLogger(__name__)
 
 
@@ -22,6 +20,7 @@ class ScheduleCreator:
 
     def show_dialog(self) -> bool:
         """Show a dialog to create a scheduled task."""
+        from ui.schedule_dialog import ScheduleDialog
         try:
             commands = self.services.get_all_commands()
         except Exception as e:
