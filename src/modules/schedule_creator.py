@@ -21,6 +21,7 @@ class ScheduleCreator:
     def show_dialog(self) -> bool:
         """Show a dialog to create a scheduled task."""
         from ui.schedule_dialog import ScheduleDialog
+
         try:
             commands = self.services.get_all_commands()
         except Exception as e:

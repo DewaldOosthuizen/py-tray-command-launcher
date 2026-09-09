@@ -292,7 +292,7 @@ def test_show_dialog_returns_false_on_cancel():
     ]
 
     with (
-        patch("modules.schedule_creator.ScheduleDialog") as mock_dialog_cls,
+        patch("ui.schedule_dialog.ScheduleDialog") as mock_dialog_cls,
         patch("modules.schedule_creator.QMessageBox"),
     ):
         mock_dialog = MagicMock()
@@ -312,7 +312,7 @@ def test_show_dialog_returns_true_on_accept():
     ]
 
     with (
-        patch("modules.schedule_creator.ScheduleDialog") as mock_dialog_cls,
+        patch("ui.schedule_dialog.ScheduleDialog") as mock_dialog_cls,
         patch("modules.schedule_creator.QMessageBox"),
         patch.object(creator, "create_schedule", return_value=True),
     ):
@@ -321,7 +321,7 @@ def test_show_dialog_returns_true_on_accept():
         mock_dialog.get_schedule.return_value = {
             "command_info": {"group": "Test", "label": "MyCmd", "command": "/bin/true"},
             "hour": 9,
-            "minute": 0,
+            "minute": 30,
             "days": ["Monday"],
         }
         mock_dialog_cls.return_value = mock_dialog
