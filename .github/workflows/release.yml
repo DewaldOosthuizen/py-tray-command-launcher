@@ -325,10 +325,13 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pyproject.toml
           git commit -m "chore: bump version to $TAG"
-          git push origin main
 
+          # Push the tag only — branch protection on main requires PRs,
+          # so the version-bump commit is skipped. The tag still creates
+          # the GitHub Release. Next push to main triggers a new release
+          # run which will skip (HEAD already tagged).
           git tag -a "$TAG" -m "Release $TAG (CalVer rolling release)"
-          git push origin "$TAG"
+          git push origin "refs/tags/$TAG"
 
       - name: Rename AppImage for release asset
         if: steps.skip_check.outputs.skip != 'true'
