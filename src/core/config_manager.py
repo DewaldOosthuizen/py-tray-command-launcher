@@ -54,7 +54,12 @@ class ConfigManager:
     """
 
     def __init__(self):
-        """Initialise the config manager."""
+        """Initialise the config manager.
+
+        Construction does not perform any file I/O. Call ``initialize()``
+        once the instance is wired up to run one-time setup that requires
+        filesystem access (legacy migration, favourites migration).
+        """
         # Set up paths
         self.base_dir = _get_base_dir()
 
@@ -85,8 +90,8 @@ class ConfigManager:
         self._settings_cache = None
         self._is_windows = os.name == "nt"
 
-        # Mark as initialized
-        self._initialized = True
+        # Not yet initialized — initialize() must be called before any I/O
+        self._initialized = False
 
         # Optional override path set by --config CLI flag. When set, both reads
         # and writes target this path via the resolution chain
@@ -94,6 +99,15 @@ class ConfigManager:
         # -> _get_commands_file_for_read(), ensuring reads and writes stay
         # isolated from the platform-resolved config_dir.
         self._commands_override: Path | None = None
+
+    def initialize(self) -> None:
+        """Run one-time setup that requires filesystem access.
+
+        Safe to call exactly once after construction. Specifically:
+        - Migrates legacy command files into the canonical config location.
+        - Migrates any existing favourites out of commands.json into
+          favorites.json.
+        """
         logger.info(
             "ConfigManager initialized (config dir: %s, commands file: %s)",
             self.config_dir,
@@ -105,6 +119,8 @@ class ConfigManager:
 
         # Migrate existing favorites if needed
         self.migrate_favorites_from_commands()
+
+        self._initialized = True
 
     def get_config_dir(self) -> Path:
         """Return the canonical user config directory."""

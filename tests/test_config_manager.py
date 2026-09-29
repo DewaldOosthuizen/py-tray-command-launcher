@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Tests for ConfigManager.
+
+"""
+Tests for ConfigManager.
 
 Covers:
   - deep_merge behaviour (nested dicts, leaf overwrites, new keys)
@@ -7,6 +9,7 @@ Covers:
   - get_commands with a tmp commands.json
   - set_commands_override respects the override path
   - _validate_commands rejects bad structures
+  - initialize() method
 """
 
 import json
@@ -199,7 +202,7 @@ class TestValidateCommands:
 
 
 # ---------------------------------------------------------------------------
-# _validate_settings_schema  (issue #61)
+# _validate_settings_schema
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -227,7 +230,7 @@ class TestSettingsSchemaValidation:
         with patch("core.config_manager.logger") as mock_logger:
             result = mgr.get_settings()
         # A warning containing "settings.json validation error" must have been issued
-        warning_msgs = [str(call) for call in mock_logger.warning.call_args_list]
+        warning_msgs = [str(arg) for arg in mock_logger.warning.call_args_list]
         assert any("settings.json validation error" in msg for msg in warning_msgs), (
             f"Expected 'settings.json validation error' in warnings, got: {warning_msgs}"
         )
@@ -240,7 +243,7 @@ class TestSettingsSchemaValidation:
         mgr = _make_settings_mgr(tmp_path, valid)
         with patch("core.config_manager.logger") as mock_logger:
             mgr.get_settings()
-        warning_msgs = [str(call) for call in mock_logger.warning.call_args_list]
+        warning_msgs = [str(arg) for arg in mock_logger.warning.call_args_list]
         assert not any("settings.json validation error" in msg for msg in warning_msgs)
 
     def test_settings_schema_validation_skipped_when_schema_absent(self, tmp_path):
@@ -250,7 +253,7 @@ class TestSettingsSchemaValidation:
         mgr = _make_settings_mgr(tmp_path, {"history_limit": "fifty"}, defaults_dir=no_schema_dir)
         with patch("core.config_manager.logger") as mock_logger:
             mgr.get_settings()
-        warning_msgs = [str(call) for call in mock_logger.warning.call_args_list]
+        warning_msgs = [str(arg) for arg in mock_logger.warning.call_args_list]
         assert not any("settings.json validation error" in msg for msg in warning_msgs)
 
 
@@ -312,4 +315,144 @@ class TestConfigDirIsolation:
         default_content = json.loads(original_default.read_text(encoding="utf-8"))
         assert default_content == {"Original": {"Old": {"command": "old"}}}, (
             "config_dir / commands.json must be unchanged — writes must not leak to the default dir"
+        )
+
+
+# ---------------------------------------------------------------------------
+# initialize() method
+# ---------------------------------------------------------------------------
+
+
+class TestInitialize:
+    """Tests for the initialize() method."""
+
+    def test_constructor_does_not_set_initialized_flag(self, tmp_path):
+        """ConfigManager.__init__ must set _initialized=False after migration calls are removed."""
+        # Create a minimal instance with all required attributes set
+        mgr = ConfigManager.__new__(ConfigManager)
+        # Now call __init__ - with the fix, it should NOT set _initialized = True
+        mgr.__init__()
+
+        # After __init__ with the fix, _initialized should be False
+        assert mgr._initialized is False
+
+    def test_initialize_method_exists(self, tmp_path):
+        """ConfigManager must have an initialize() method."""
+        with patch("core.config_manager.logger"):
+            mgr = ConfigManager()
+
+        assert hasattr(mgr, "initialize"), "ConfigManager should have an initialize() method"
+        assert callable(mgr.initialize), "initialize() should be callable"
+
+    def test_initialize_sets_initialized_flag(self):
+        """initialize() must set _initialized=True after migration completes."""
+        mgr = ConfigManager.__new__(ConfigManager)
+        mgr._initialized = False
+        mgr._commands_cache = None
+        mgr._history_cache = None
+        mgr._favorites_cache = None
+        mgr._settings_cache = None
+        mgr._is_windows = False
+        mgr._commands_override = None
+        mgr.config_dir = Path("/tmp/test_config")
+        mgr.backup_dir = Path("/tmp/test_config/backups")
+        mgr.commands_file = Path("/tmp/test_config/commands.json")
+        mgr.win_commands_file = Path("/tmp/test_config/win-commands.json")
+        mgr.history_file = Path("/tmp/test_config/history.json")
+        mgr.favorites_file = Path("/tmp/test_config/favorites.json")
+        mgr.settings_file = Path("/tmp/test_config/settings.json")
+        mgr.defaults_dir = PROJECT_ROOT / "config"
+
+        with patch.object(mgr, "_migrate_legacy_command_files"):
+            with patch.object(mgr, "migrate_favorites_from_commands"):
+                with patch("core.config_manager.logger"):
+                    mgr.initialize()
+
+        assert mgr._initialized is True
+
+    def test_initialize_calls_migrate_legacy_command_files(self):
+        """initialize() must call _migrate_legacy_command_files()."""
+        mgr = ConfigManager.__new__(ConfigManager)
+        mgr._initialized = False
+        mgr._commands_cache = None
+        mgr._history_cache = None
+        mgr._favorites_cache = None
+        mgr._settings_cache = None
+        mgr._is_windows = False
+        mgr._commands_override = None
+        mgr.config_dir = Path("/tmp/test_config")
+        mgr.backup_dir = Path("/tmp/test_config/backups")
+        mgr.commands_file = Path("/tmp/test_config/commands.json")
+        mgr.win_commands_file = Path("/tmp/test_config/win-commands.json")
+        mgr.history_file = Path("/tmp/test_config/history.json")
+        mgr.favorites_file = Path("/tmp/test_config/favorites.json")
+        mgr.settings_file = Path("/tmp/test_config/settings.json")
+        mgr.defaults_dir = PROJECT_ROOT / "config"
+
+        with patch.object(
+            mgr, "_migrate_legacy_command_files", wraps=mgr._migrate_legacy_command_files
+        ) as mock_migrate:
+            with patch.object(mgr, "migrate_favorites_from_commands"):
+                with patch("core.config_manager.logger"):
+                    mgr.initialize()
+
+        mock_migrate.assert_called_once()
+
+    def test_initialize_calls_migrate_favorites_from_commands(self):
+        """initialize() must call migrate_favorites_from_commands()."""
+        mgr = ConfigManager.__new__(ConfigManager)
+        mgr._initialized = False
+        mgr._commands_cache = None
+        mgr._history_cache = None
+        mgr._favorites_cache = None
+        mgr._settings_cache = None
+        mgr._is_windows = False
+        mgr._commands_override = None
+        mgr.config_dir = Path("/tmp/test_config")
+        mgr.backup_dir = Path("/tmp/test_config/backups")
+        mgr.commands_file = Path("/tmp/test_config/commands.json")
+        mgr.win_commands_file = Path("/tmp/test_config/win-commands.json")
+        mgr.history_file = Path("/tmp/test_config/history.json")
+        mgr.favorites_file = Path("/tmp/test_config/favorites.json")
+        mgr.settings_file = Path("/tmp/test_config/settings.json")
+        mgr.defaults_dir = PROJECT_ROOT / "config"
+
+        with patch.object(mgr, "_migrate_legacy_command_files"):
+            with patch.object(
+                mgr, "migrate_favorites_from_commands", wraps=mgr.migrate_favorites_from_commands
+            ) as mock_fav:
+                with patch("core.config_manager.logger"):
+                    mgr.initialize()
+
+        mock_fav.assert_called_once()
+
+    def test_initialize_logs_startup_message(self):
+        """initialize() must log the startup message with config dir and commands file."""
+        mgr = ConfigManager.__new__(ConfigManager)
+        mgr._initialized = False
+        mgr._commands_cache = None
+        mgr._history_cache = None
+        mgr._favorites_cache = None
+        mgr._settings_cache = None
+        mgr._is_windows = False
+        mgr._commands_override = None
+        mgr.config_dir = Path("/tmp/test_config")
+        mgr.backup_dir = Path("/tmp/test_config/backups")
+        mgr.commands_file = Path("/tmp/test_config/commands.json")
+        mgr.win_commands_file = Path("/tmp/test_config/win-commands.json")
+        mgr.history_file = Path("/tmp/test_config/history.json")
+        mgr.favorites_file = Path("/tmp/test_config/favorites.json")
+        mgr.settings_file = Path("/tmp/test_config/settings.json")
+        mgr.defaults_dir = PROJECT_ROOT / "config"
+
+        with patch.object(mgr, "_migrate_legacy_command_files"):
+            with patch.object(mgr, "migrate_favorites_from_commands"):
+                with patch("core.config_manager.logger") as mock_logger:
+                    mgr.initialize()
+
+        # Verify the startup log message was emitted
+        # Find the startup message
+        startup_calls = [str(arg) for arg in mock_logger.info.call_args_list]
+        assert any("ConfigManager initialized" in msg for msg in startup_calls), (
+            f"Expected 'ConfigManager initialized' in log messages, got: {startup_calls}"
         )
