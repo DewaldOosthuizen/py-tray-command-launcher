@@ -5,8 +5,6 @@ import logging
 
 from PyQt6.QtGui import QAction
 
-from core.config_manager import config_manager
-
 logger = logging.getLogger(__name__)
 
 
@@ -27,13 +25,13 @@ class CommandHistory:
             "prompt": prompt,
             "timestamp": datetime.datetime.now().isoformat(),
         }
-        config_manager.add_to_history(history_entry)
+        self.services.config_manager.add_to_history(history_entry)
         logger.debug("Added '%s' to command history", title)
 
     def populate_menu(self, menu):
         """Populate the history menu with recent commands."""
         menu.clear()
-        history = config_manager.get_history(refresh=False)
+        history = self.services.config_manager.get_history(refresh=False)
 
         if not history:
             menu.addAction("No recent commands").setEnabled(False)
@@ -61,6 +59,6 @@ class CommandHistory:
 
     def clear_history(self):
         """Clear the command history."""
-        config_manager.clear_history()
+        self.services.config_manager.clear_history()
         logger.info("Command history cleared")
         self.services.reload_history_commands()

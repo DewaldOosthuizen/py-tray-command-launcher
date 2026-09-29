@@ -31,8 +31,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.config_manager import config_manager
-
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -145,14 +143,15 @@ class _OutputTab(QTextEdit):
 class RichOutputWindow(QMainWindow):
     """Tabbed, ANSI-aware output window."""
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, parent=None, services=None):
         super().__init__(parent)
+        self.services = services
         self.setWindowTitle("Command Output")
         self.setGeometry(100, 100, 900, 600)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         # Resolve display font from settings
-        settings = config_manager.get_settings()
+        settings = self.services.config_manager.get_settings()
         font_cfg = settings.get("output_font", {})
         family = font_cfg.get("family", "monospace") if isinstance(font_cfg, dict) else "monospace"
         size = font_cfg.get("size", 10) if isinstance(font_cfg, dict) else 10
@@ -223,10 +222,10 @@ class RichOutputWindow(QMainWindow):
 
     @classmethod
     def show_output(
-        cls, title: str, output: str, parent: QWidget | None = None
+        cls, title: str, output: str, parent: QWidget | None = None, services=None
     ) -> "RichOutputWindow":
         """Create a stand-alone window showing *output* for *title*."""
-        win = cls(parent)
+        win = cls(parent, services)
         tab = win.open_process_tab(title)
         win.append_output(tab, output)
         return win
@@ -259,9 +258,9 @@ class RichOutputWindow(QMainWindow):
                     w.setFont(font)
             # Persist font choice
             try:
-                settings = config_manager.get_settings()
+                settings = self.services.config_manager.get_settings()
                 settings["output_font"] = {"family": font.family(), "size": font.pointSize()}
-                config_manager.save_settings(settings)
+                self.services.config_manager.save_settings(settings)
             except Exception as exc:
                 logger.warning("Failed to persist output font: %s", exc)
 

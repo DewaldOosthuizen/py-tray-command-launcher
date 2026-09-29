@@ -245,9 +245,12 @@ def test_on_finished_removes_process_and_updates_badge():
     """When a process finishes it is removed from process_tracker and the badge refreshes."""
     app = object.__new__(TrayApp)
     app.app = MagicMock()
+    app.services = MagicMock()
+    app.services.config_manager = MagicMock()
     app.executor = MagicMock()
     app.output_windows = []
     app.process_tracker = ProcessTracker()
+    app.process_tracker.process_count_changed = MagicMock()
 
     process = app.executor.execute_command_process.return_value
 

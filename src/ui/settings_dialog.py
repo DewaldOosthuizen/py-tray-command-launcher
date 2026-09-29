@@ -27,8 +27,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.config_manager import config_manager
-
 logger = logging.getLogger(__name__)
 
 
@@ -37,6 +35,7 @@ class SettingsDialog(QDialog):
 
     def __init__(
         self,
+        services,
         theme_manager,
         parent=None,
         hotkey_callback=None,
@@ -44,6 +43,7 @@ class SettingsDialog(QDialog):
         app_launcher_hotkey_callback=None,
     ):
         super().__init__(parent)
+        self.services = services
         self._theme_manager = theme_manager
         self._hotkey_callback = hotkey_callback
         self._bar_hotkey_callback = bar_hotkey_callback
@@ -51,7 +51,7 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Settings")
         self.setMinimumWidth(420)
 
-        settings = config_manager.get_settings()
+        settings = self.services.config_manager.get_settings()
 
         layout = QVBoxLayout(self)
 
@@ -168,7 +168,7 @@ class SettingsDialog(QDialog):
     def _save(self) -> None:
         """Persist settings and accept the dialog."""
         try:
-            settings = config_manager.get_settings(refresh=True)
+            settings = self.services.config_manager.get_settings(refresh=True)
 
             settings["theme"] = self._theme_combo.currentText()
             settings["hotkey"] = self._hotkey_edit.text().strip()
@@ -192,7 +192,7 @@ class SettingsDialog(QDialog):
             log_cfg["level"] = self._log_level_combo.currentText()
             settings["logging"] = log_cfg
 
-            config_manager.save_settings(settings)
+            self.services.config_manager.save_settings(settings)
             logger.info("Settings saved")
             # Theme already applied via preview; ensure final value is set
             self._theme_manager.apply_theme(settings["theme"])

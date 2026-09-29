@@ -19,7 +19,7 @@ if str(SRC_DIR) not in sys.path:
 
 # [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #38
 # Failure: ModuleNotFoundError: No module named 'PyQt6' — src/modules/backup_restore.py imports PyQt6.QtWidgets but PyQt6 is not installed on this machine (only PyQt5 is). Fix: add sys.modules stubs for PyQt6 before importing the module under test, same pattern as test_file_encryptor.py.
-from modules.backup_restore import BackupRestore
+from modules.backup_restore import BackupRestore  # noqa: E402
 
 
 class TestBackupRestore(unittest.TestCase):
@@ -29,9 +29,9 @@ class TestBackupRestore(unittest.TestCase):
         """Set up test fixtures."""
         self.mock_services = MagicMock()
         self.mock_config_manager = MagicMock()
+        self.mock_services.config_manager = self.mock_config_manager
 
-        with patch("modules.backup_restore.config_manager", self.mock_config_manager):
-            self.backup = BackupRestore(self.mock_services)
+        self.backup = BackupRestore(self.mock_services)
 
     # ------------------------------------------------------------------
     # backup_commands
@@ -40,10 +40,7 @@ class TestBackupRestore(unittest.TestCase):
     def test_backup_commands_calls_config_manager(self):
         """backup_commands should delegate to config_manager.backup_commands."""
         self.mock_config_manager.backup_commands.return_value = "/tmp/commands_backup.json"
-
-        with patch("modules.backup_restore.config_manager", self.mock_config_manager):
-            with patch("modules.backup_restore.QMessageBox"):
-                self.backup.backup_commands()
+        self.backup.backup_commands()
 
         self.mock_config_manager.backup_commands.assert_called_once()
 
@@ -51,9 +48,8 @@ class TestBackupRestore(unittest.TestCase):
         """backup_commands should show an information dialog on success."""
         self.mock_config_manager.backup_commands.return_value = "/tmp/commands_backup.json"
 
-        with patch("modules.backup_restore.config_manager", self.mock_config_manager):
-            with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
-                self.backup.backup_commands()
+        with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
+            self.backup.backup_commands()
 
         mock_msgbox.information.assert_called_once()
 
@@ -61,9 +57,8 @@ class TestBackupRestore(unittest.TestCase):
         """backup_commands should show a warning dialog when backup fails."""
         self.mock_config_manager.backup_commands.return_value = ""
 
-        with patch("modules.backup_restore.config_manager", self.mock_config_manager):
-            with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
-                self.backup.backup_commands()
+        with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
+            self.backup.backup_commands()
 
         mock_msgbox.warning.assert_called_once()
 
@@ -75,9 +70,8 @@ class TestBackupRestore(unittest.TestCase):
         """restore_commands should show an info dialog when no backups exist."""
         self.mock_config_manager.list_backups.return_value = []
 
-        with patch("modules.backup_restore.config_manager", self.mock_config_manager):
-            with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
-                self.backup.restore_commands()
+        with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
+            self.backup.restore_commands()
 
         mock_msgbox.information.assert_called_once()
         self.mock_config_manager.restore_from_backup.assert_not_called()
@@ -88,15 +82,14 @@ class TestBackupRestore(unittest.TestCase):
         self.mock_config_manager.list_backups.return_value = [(backup_path, "2026-04-10 10:00:00")]
         self.mock_config_manager.restore_from_backup.return_value = True
 
-        with patch("modules.backup_restore.config_manager", self.mock_config_manager):
-            with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
-                with patch("modules.backup_restore.QInputDialog") as mock_dialog:
-                    mock_dialog.getItem.return_value = (
-                        "2026-04-10 10:00:00 - commands_20260410_100000.json",
-                        True,
-                    )
-                    mock_msgbox.question.return_value = mock_msgbox.StandardButton.Yes
-                    self.backup.restore_commands()
+        with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
+            with patch("modules.backup_restore.QInputDialog") as mock_dialog:
+                mock_dialog.getItem.return_value = (
+                    "2026-04-10 10:00:00 - commands_20260410_100000.json",
+                    True,
+                )
+                mock_msgbox.question.return_value = mock_msgbox.StandardButton.Yes
+                self.backup.restore_commands()
 
         self.mock_config_manager.restore_from_backup.assert_called_once_with(backup_path)
 
@@ -106,15 +99,14 @@ class TestBackupRestore(unittest.TestCase):
         self.mock_config_manager.list_backups.return_value = [(backup_path, "2026-04-10 10:00:00")]
         self.mock_config_manager.restore_from_backup.return_value = True
 
-        with patch("modules.backup_restore.config_manager", self.mock_config_manager):
-            with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
-                with patch("modules.backup_restore.QInputDialog") as mock_dialog:
-                    mock_dialog.getItem.return_value = (
-                        "2026-04-10 10:00:00 - commands_20260410_100000.json",
-                        True,
-                    )
-                    mock_msgbox.question.return_value = mock_msgbox.StandardButton.Yes
-                    self.backup.restore_commands()
+        with patch("modules.backup_restore.QMessageBox") as mock_msgbox:
+            with patch("modules.backup_restore.QInputDialog") as mock_dialog:
+                mock_dialog.getItem.return_value = (
+                    "2026-04-10 10:00:00 - commands_20260410_100000.json",
+                    True,
+                )
+                mock_msgbox.question.return_value = mock_msgbox.StandardButton.Yes
+                self.backup.restore_commands()
 
         self.mock_services.reload_commands.assert_called_once_with(rebuild_menu=True)
 
@@ -123,11 +115,10 @@ class TestBackupRestore(unittest.TestCase):
         backup_path = "/tmp/commands_20260410_100000.json"
         self.mock_config_manager.list_backups.return_value = [(backup_path, "2026-04-10 10:00:00")]
 
-        with patch("modules.backup_restore.config_manager", self.mock_config_manager):
-            with patch("modules.backup_restore.QMessageBox"):
-                with patch("modules.backup_restore.QInputDialog") as mock_dialog:
-                    mock_dialog.getItem.return_value = ("", False)
-                    self.backup.restore_commands()
+        with patch("modules.backup_restore.QMessageBox"):
+            with patch("modules.backup_restore.QInputDialog") as mock_dialog:
+                mock_dialog.getItem.return_value = ("", False)
+                self.backup.restore_commands()
 
         self.mock_config_manager.restore_from_backup.assert_not_called()
 

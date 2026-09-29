@@ -7,8 +7,6 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QCursor, QIcon
 from PyQt6.QtWidgets import QInputDialog, QMenu, QMessageBox
 
-from core.config_manager import config_manager
-
 logger = logging.getLogger(__name__)
 
 
@@ -78,7 +76,7 @@ class Favorites:
 
             if ok and label:
                 # Add to favorites
-                success = config_manager.add_to_favorites(command_path, label)
+                success = self.services.config_manager.add_to_favorites(command_path, label)
 
                 if success:
                     logger.info("Added '%s' to favorites (ref: %s)", label, command_path)
@@ -96,7 +94,7 @@ class Favorites:
         command_path = _build_command_path(group, label)
 
         # Add to favorites
-        success = config_manager.add_to_favorites(command_path, label)
+        success = self.services.config_manager.add_to_favorites(command_path, label)
 
         if success:
             logger.info("Added '%s' to favorites directly (ref: %s)", label, command_path)
@@ -109,7 +107,7 @@ class Favorites:
 
     def remove_from_favorites(self, label):
         """Remove a command from favorites."""
-        if config_manager.remove_from_favorites(label):
+        if self.services.config_manager.remove_from_favorites(label):
             logger.info("Removed '%s' from favorites", label)
             QMessageBox.information(
                 None,
@@ -134,7 +132,7 @@ class Favorites:
 
     def populate_favorites_menu(self, menu):
         """Populate the favorites menu with favorite commands."""
-        favorites = config_manager.get_favorites()
+        favorites = self.services.config_manager.get_favorites()
 
         # Check if favorites exist
         if not favorites:
@@ -169,7 +167,7 @@ class Favorites:
                     # Fall back to default icon if no icon specified or resolution failed
                     if not icon_path or not os.path.isfile(icon_path):
                         icon_path = os.path.join(
-                            config_manager.get_base_dir(), "resources/icons/icon.png"
+                            self.services.config_manager.get_base_dir(), "resources/icons/icon.png"
                         )
 
                     action = QAction(QIcon(icon_path), label, menu)

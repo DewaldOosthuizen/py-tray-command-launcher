@@ -13,8 +13,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.config_manager import config_manager
-
 
 class CommandCreator:
     """Handles the creation of new commands via a GUI interface."""
@@ -34,7 +32,7 @@ class CommandCreator:
         group_layout.addWidget(QLabel("Group:"))
         group_combo = QComboBox()
 
-        commands = config_manager.get_commands()
+        commands = self.services.config_manager.get_commands()
         groups = list(commands.keys())
         group_combo.addItems(groups)
         group_combo.setEditable(True)
@@ -127,7 +125,7 @@ class CommandCreator:
                 cmd_data["prompt"] = prompt_edit.text()
 
             # Add the command to the config
-            commands = config_manager.get_commands()
+            commands = self.services.config_manager.get_commands()
             if group not in commands:
                 commands[group] = {}
 

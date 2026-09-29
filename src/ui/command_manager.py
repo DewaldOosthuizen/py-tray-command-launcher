@@ -30,8 +30,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.config_manager import config_manager
-
 logger = logging.getLogger(__name__)
 
 
@@ -214,7 +212,7 @@ class CommandManagerDialog(QDialog):
 
     def _load_tree(self):
         self._tree.clear()
-        commands = config_manager.get_commands()
+        commands = self._services.config_manager.get_commands()
         for group_name, group_data in commands.items():
             if not isinstance(group_data, dict):
                 continue
@@ -272,7 +270,7 @@ class CommandManagerDialog(QDialog):
     # ------------------------------------------------------------------
 
     def _add_command(self):
-        commands = config_manager.get_commands()
+        commands = self._services.config_manager.get_commands()
         groups = list(commands.keys())
         dlg = _CommandFormDialog(groups, parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -282,7 +280,7 @@ class CommandManagerDialog(QDialog):
             if group not in commands:
                 commands[group] = {}
             commands[group][d["label"]] = cmd_data
-            config_manager.save_commands(commands)
+            self._services.config_manager.save_commands(commands)
             self._load_tree()
 
     def _edit_command(self):
@@ -295,7 +293,7 @@ class CommandManagerDialog(QDialog):
             QMessageBox.information(self, "Edit", "Select a command (not a group) to edit.")
             return
 
-        commands = config_manager.get_commands()
+        commands = self._services.config_manager.get_commands()
         group_name = meta["group"]
         label = meta["label"]
         item_data = meta.get("data", {})
@@ -317,7 +315,7 @@ class CommandManagerDialog(QDialog):
                 commands[new_group] = {}
             commands[new_group][new_label] = cmd_data
 
-            config_manager.save_commands(commands)
+            self._services.config_manager.save_commands(commands)
             self._load_tree()
 
     def _delete_command(self):
@@ -336,7 +334,7 @@ class CommandManagerDialog(QDialog):
         if reply != QMessageBox.StandardButton.Yes:
             return
 
-        commands = config_manager.get_commands()
+        commands = self._services.config_manager.get_commands()
         if meta.get("type") == "command":
             group_name = meta["group"]
             label = meta["label"]
@@ -360,7 +358,7 @@ class CommandManagerDialog(QDialog):
                 if isinstance(parent, dict) and parts[-1] in parent:
                     del parent[parts[-1]]
 
-        config_manager.save_commands(commands)
+        self._services.config_manager.save_commands(commands)
         self._load_tree()
 
     def _move_up(self):
@@ -379,7 +377,7 @@ class CommandManagerDialog(QDialog):
         if meta.get("type") != "command":
             return
 
-        commands = config_manager.get_commands()
+        commands = self._services.config_manager.get_commands()
         group_name = meta["group"]
         label = meta["label"]
 
@@ -406,7 +404,7 @@ class CommandManagerDialog(QDialog):
             reordered[k] = group[k]
         commands[group_name] = reordered
 
-        config_manager.save_commands(commands)
+        self._services.config_manager.save_commands(commands)
         self._load_tree()
 
     # ------------------------------------------------------------------

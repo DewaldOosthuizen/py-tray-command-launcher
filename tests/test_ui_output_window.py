@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from PyQt6.QtGui import QTextCharFormat
 
@@ -6,9 +6,8 @@ from ui.output_window import RichOutputWindow, _OutputTab, _parse_sgr
 
 
 def test_rich_output_window_instantiates(qtbot):
-    with patch("ui.output_window.config_manager") as mock_cm:
-        mock_cm.get_settings.return_value = {}
-        window = RichOutputWindow()
+    mock_services = MagicMock()
+    window = RichOutputWindow(services=mock_services)
     qtbot.addWidget(window)
     assert window is not None
 
@@ -46,28 +45,25 @@ def test_output_tab_instantiates(qtbot):
 
 def test_open_process_tab(qtbot):
     """open_process_tab creates a new tab and returns an _OutputTab."""
-    with patch("ui.output_window.config_manager") as mock_cm:
-        mock_cm.get_settings.return_value = {}
-        window = RichOutputWindow()
-        qtbot.addWidget(window)
-        tab = window.open_process_tab("Test Process")
+    mock_services = MagicMock()
+    window = RichOutputWindow(services=mock_services)
+    qtbot.addWidget(window)
+    tab = window.open_process_tab("Test Process")
     assert tab is not None
 
 
 def test_append_output(qtbot):
     """append_output forwards text with ANSI sequences to the tab."""
-    with patch("ui.output_window.config_manager") as mock_cm:
-        mock_cm.get_settings.return_value = {}
-        window = RichOutputWindow()
-        qtbot.addWidget(window)
-        tab = window.open_process_tab("Test")
-        window.append_output(tab, "Hello \x1b[1mBold\x1b[0m World")
+    mock_services = MagicMock()
+    window = RichOutputWindow(services=mock_services)
+    qtbot.addWidget(window)
+    tab = window.open_process_tab("Test")
+    window.append_output(tab, "Hello \x1b[1mBold\x1b[0m World")
 
 
 def test_show_output(qtbot):
     """show_output class-method creates a standalone window."""
-    with patch("ui.output_window.config_manager") as mock_cm:
-        mock_cm.get_settings.return_value = {}
-        win = RichOutputWindow.show_output("title", "some output")
+    mock_services = MagicMock()
+    win = RichOutputWindow.show_output("title", "some output", services=mock_services)
     qtbot.addWidget(win)
     assert win is not None
