@@ -31,57 +31,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from utils.hotkey_helpers import to_pynput_str
+
 logger = logging.getLogger(__name__)
-
-
-_PYNPUT_WRAP = {
-    "ctrl",
-    "shift",
-    "alt",
-    "altgr",
-    "cmd",
-    "win",
-    "super",
-    "meta",
-    "space",
-    "enter",
-    "return",
-    "tab",
-    "esc",
-    "escape",
-    "backspace",
-    "delete",
-    "insert",
-    "home",
-    "end",
-    "page_up",
-    "page_down",
-    "up",
-    "down",
-    "left",
-    "right",
-    "f1",
-    "f2",
-    "f3",
-    "f4",
-    "f5",
-    "f6",
-    "f7",
-    "f8",
-    "f9",
-    "f10",
-    "f11",
-    "f12",
-}
-
-
-def _to_pynput_str(hotkey: str) -> str:
-    """Convert 'ctrl+shift+b' to '<ctrl>+<shift>+b' for pynput."""
-    parts = []
-    for k in hotkey.lower().split("+"):
-        k = k.strip()
-        parts.append(f"<{k}>" if (k in _PYNPUT_WRAP or len(k) > 1) else k)
-    return "+".join(parts)
 
 
 class _HotkeyTrigger(QObject):
@@ -276,7 +228,7 @@ class QuickLaunchBar(QWidget):
         try:
             from pynput import keyboard as _kb
 
-            pynput_key = _to_pynput_str(hotkey)
+            pynput_key = to_pynput_str(hotkey)
             self._hotkey_handle = _kb.GlobalHotKeys({pynput_key: self._trigger.triggered.emit})
             self._hotkey_handle.start()
             logger.info("Quick-Launch Bar hotkey registered: %s (%s)", hotkey, pynput_key)

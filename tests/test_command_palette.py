@@ -13,11 +13,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
 
+
 # ---------------------------------------------------------------------------
 # Install a real-class PyQt6 stub BEFORE any src imports
 # ---------------------------------------------------------------------------
-
-
 def _install_real_pyqt6_stub():
     """Replace the MagicMock PyQt6 stub with one that has real base classes."""
     # Capture the existing QWidget stub *before* clearing the modules so that
@@ -185,8 +184,8 @@ def _install_real_pyqt6_stub():
 
     # Fallback: any attribute not explicitly listed returns a _QWidget_base
     # subclass-compatible stub so that:
-    #   • `from PyQt6.QtWidgets import UnknownClass` works without ImportError
-    #   • `class Foo(UnknownClass):` creates a real Python class (not a broken
+    #   - `from PyQt6.QtWidgets import UnknownClass` works without ImportError
+    #   - `class Foo(UnknownClass):` creates a real Python class (not a broken
     #     MagicMock wrapper) that is isinstance-compatible with qt_api.QtWidgets.QWidget
     def _fallback(name):
         return _QWidget_base
@@ -223,13 +222,13 @@ if "modules.app_discovery" not in sys.modules:
     _ad.app_discovery.resolve_icon_pixmap.return_value = None
     sys.modules["modules.app_discovery"] = _ad
 
-from ui.command_palette import CommandPalette, _PaletteWindow, _score, _to_pynput_str
+from ui.command_palette import CommandPalette, _PaletteWindow, _score
+from utils.hotkey_helpers import to_pynput_str
+
 
 # ---------------------------------------------------------------------------
 # Pure-logic: _score
 # ---------------------------------------------------------------------------
-
-
 class TestScoreFunction(unittest.TestCase):
     def test_exact_match_scores_high(self):
         assert _score("Terminal", "Terminal") >= 90
@@ -252,28 +251,24 @@ class TestScoreFunction(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Pure-logic: _to_pynput_str
+# Pure-logic: to_pynput_str
 # ---------------------------------------------------------------------------
-
-
 class TestToPynputStr(unittest.TestCase):
     def test_modifier_keys_get_brackets(self):
-        result = _to_pynput_str("ctrl+shift+space")
+        result = to_pynput_str("ctrl+shift+space")
         assert "<ctrl>" in result and "<shift>" in result and "<space>" in result
 
     def test_single_alpha_no_brackets(self):
-        assert _to_pynput_str("a") == "a"
+        assert to_pynput_str("a") == "a"
 
     def test_multi_char_combo(self):
-        result = _to_pynput_str("ctrl+alt+a")
+        result = to_pynput_str("ctrl+alt+a")
         assert "<ctrl>" in result and "<alt>" in result
 
 
 # ---------------------------------------------------------------------------
 # CommandPalette lifecycle
 # ---------------------------------------------------------------------------
-
-
 class TestCommandPaletteLifecycle(unittest.TestCase):
     def _make_palette(self):
         svc = MagicMock()
