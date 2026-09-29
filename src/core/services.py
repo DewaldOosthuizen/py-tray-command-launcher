@@ -27,14 +27,14 @@ if TYPE_CHECKING:
 class AppServices:
     """Thin service interface passed to all feature modules."""
 
-    config_manager: ConfigManager
-    execute: Callable[[str, str, bool, bool, str | None], None]
-    reload_commands: Callable[..., None]
-    show_output: Callable[[str, str], None]
-    get_all_commands: Callable[[], list]
-    save_commands: Callable[[dict], None]
-    reload_history_commands: Callable[[], None]
-    reload_favorites_commands: Callable[[], None]
-    resolve_icon_path: Callable[[str], str]
-    notify_user: Callable[[str, str], None]
-    process_tracker: ProcessTracker
+    config_manager: ConfigManager  # Central config I/O: load/save commands, settings, history, favorites
+    execute: Callable[[str, str, bool, bool, str | None], None]  # Execute command with confirmation, output, prompt
+    reload_commands: Callable[..., None]  # Reload command menu from disk
+    show_output: Callable[[str, str], None]  # Execute command and display output in RichOutputWindow
+    get_all_commands: Callable[[], list]  # Flat list of all commands across groups
+    save_commands: Callable[[dict], None]  # Persist command dictionary (with backup)
+    reload_history_commands: Callable[[], None]  # Refresh Recent Commands submenu
+    reload_favorites_commands: Callable[[], None]  # Refresh Favorites submenu
+    resolve_icon_path: Callable[[str], str]  # Resolve logical icon path to filesystem path
+    notify_user: Callable[[str, str], None]  # Show tray notification
+    process_tracker: ProcessTracker  # Track running subprocesses, emit process_count_changed
