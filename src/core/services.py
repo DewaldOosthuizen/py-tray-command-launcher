@@ -27,10 +27,16 @@ if TYPE_CHECKING:
 class AppServices:
     """Thin service interface passed to all feature modules."""
 
-    config_manager: ConfigManager  # Central config I/O: load/save commands, settings, history, favorites
-    execute: Callable[[str, str, bool, bool, str | None], None]  # Execute command with confirmation, output, prompt
+    config_manager: (
+        ConfigManager  # Central config I/O: load/save commands, settings, history, favorites
+    )
+    execute: Callable[
+        [str, str, bool, bool, str | None], None
+    ]  # Execute command with confirmation, output, prompt
     reload_commands: Callable[..., None]  # Reload command menu from disk
-    show_output: Callable[[str, str], None]  # Execute command and display output in RichOutputWindow
+    show_output: Callable[
+        [str, str], None
+    ]  # Execute command and display output in RichOutputWindow
     get_all_commands: Callable[[], list]  # Flat list of all commands across groups
     save_commands: Callable[[dict], None]  # Persist command dictionary (with backup)
     reload_history_commands: Callable[[], None]  # Refresh Recent Commands submenu
