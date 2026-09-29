@@ -54,13 +54,21 @@ class TestPYNPUTWRAP:
             assert key in _PYNPUT_WRAP
 
     def test_contains_special_keys(self):
-        for key in ("space", "enter", "return", "tab", "esc", "escape",
-                     "backspace", "delete", "insert"):
+        for key in (
+            "space",
+            "enter",
+            "return",
+            "tab",
+            "esc",
+            "escape",
+            "backspace",
+            "delete",
+            "insert",
+        ):
             assert key in _PYNPUT_WRAP
 
     def test_contains_navigation_keys(self):
-        for key in ("home", "end", "page_up", "page_down",
-                     "up", "down", "left", "right"):
+        for key in ("home", "end", "page_up", "page_down", "up", "down", "left", "right"):
             assert key in _PYNPUT_WRAP
 
     def test_contains_function_keys(self):

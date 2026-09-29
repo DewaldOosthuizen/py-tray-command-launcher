@@ -48,57 +48,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from utils.hotkey_helpers import to_pynput_str
+
 logger = logging.getLogger(__name__)
-
-
-_PYNPUT_WRAP = {
-    "ctrl",
-    "shift",
-    "alt",
-    "altgr",
-    "cmd",
-    "win",
-    "super",
-    "meta",
-    "space",
-    "enter",
-    "return",
-    "tab",
-    "esc",
-    "escape",
-    "backspace",
-    "delete",
-    "insert",
-    "home",
-    "end",
-    "page_up",
-    "page_down",
-    "up",
-    "down",
-    "left",
-    "right",
-    "f1",
-    "f2",
-    "f3",
-    "f4",
-    "f5",
-    "f6",
-    "f7",
-    "f8",
-    "f9",
-    "f10",
-    "f11",
-    "f12",
-}
-
-
-def _to_pynput_str(hotkey: str) -> str:
-    """Convert 'ctrl+shift+space' to '<ctrl>+<shift>+<space>' for pynput."""
-    parts = []
-    for k in hotkey.lower().split("+"):
-        k = k.strip()
-        parts.append(f"<{k}>" if (k in _PYNPUT_WRAP or len(k) > 1) else k)
-    return "+".join(parts)
 
 
 class _HotkeyTrigger(QObject):
@@ -496,9 +448,9 @@ class CommandPalette:
 
         hotkey_map = {}
         if cmd_hotkey:
-            hotkey_map[_to_pynput_str(cmd_hotkey)] = self._trigger.cmd_triggered.emit
+            hotkey_map[to_pynput_str(cmd_hotkey)] = self._trigger.cmd_triggered.emit
         if app_hotkey:
-            hotkey_map[_to_pynput_str(app_hotkey)] = self._trigger.app_triggered.emit
+            hotkey_map[to_pynput_str(app_hotkey)] = self._trigger.app_triggered.emit
 
         if not hotkey_map:
             return False
