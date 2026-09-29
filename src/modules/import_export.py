@@ -9,8 +9,6 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 
-from core.config_manager import config_manager
-
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +22,7 @@ class ImportExport:
     def export_command_group(self):
         """Export a command group to a JSON file."""
         # Get list of command groups
-        commands = config_manager.get_commands()
+        commands = self.services.config_manager.get_commands()
         groups = list(commands.keys())
 
         if not groups:
@@ -51,7 +49,7 @@ class ImportExport:
                     file_path += ".json"
 
                 # Export the group
-                success = config_manager.export_command_group(group, file_path)
+                success = self.services.config_manager.export_command_group(group, file_path)
 
                 if success:
                     QMessageBox.information(
@@ -86,13 +84,13 @@ class ImportExport:
             )
 
             # Import the group
-            command_paths = config_manager.get_command_paths()
+            command_paths = self.services.config_manager.get_command_paths()
             logger.debug(
                 "Import using commands file: %s (config dir: %s)",
                 command_paths["active_commands_file"],
                 command_paths["config_dir"],
             )
-            success = config_manager.import_command_group(file_path, overwrite)
+            success = self.services.config_manager.import_command_group(file_path, overwrite)
 
             if success:
                 QMessageBox.information(

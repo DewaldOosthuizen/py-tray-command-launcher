@@ -2,10 +2,9 @@
 
 """Tests for favorites module.
 
-Tests call the real public methods (add_to_favorites_directly,
-remove_from_favorites, populate_favorites_menu) while patching
-modules.favorites.config_manager and QMessageBox so that no filesystem I/O
-or GUI dialogs appear.
+Tests construct Favorites with a mock_services object where
+mock_services.config_manager is pre-configured, following the
+self.services.config_manager DI pattern.
 """
 
 import sys
@@ -20,7 +19,7 @@ if str(SRC_DIR) not in sys.path:
 
 # [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #38
 # Failure: ModuleNotFoundError: No module named 'PyQt6' — src/modules/favorites.py imports PyQt6.QtWidgets but PyQt6 is not installed. Fix: add sys.modules stubs for PyQt6 before importing.
-from modules.favorites import Favorites
+from modules.favorites import Favorites  # noqa: E402
 
 
 class TestFavorites(unittest.TestCase):
@@ -30,10 +29,10 @@ class TestFavorites(unittest.TestCase):
         """Set up test fixtures."""
         self.mock_services = MagicMock()
         self.mock_config_manager = MagicMock()
+        self.mock_services.config_manager = self.mock_config_manager
         self.mock_config_manager.get_favorites.return_value = {}
 
-        with patch("modules.favorites.config_manager", self.mock_config_manager):
-            self.favorites = Favorites(self.mock_services)
+        self.favorites = Favorites(self.mock_services)
 
     # ------------------------------------------------------------------
     # add_to_favorites_directly
@@ -43,9 +42,8 @@ class TestFavorites(unittest.TestCase):
         """add_to_favorites_directly should call config_manager.add_to_favorites."""
         self.mock_config_manager.add_to_favorites.return_value = True
 
-        with patch("modules.favorites.config_manager", self.mock_config_manager):
-            with patch("modules.favorites.QMessageBox"):
-                self.favorites.add_to_favorites_directly("System", "Terminal")
+        with patch("modules.favorites.QMessageBox"):
+            self.favorites.add_to_favorites_directly("System", "Terminal")
 
         self.mock_config_manager.add_to_favorites.assert_called_once_with(
             "System.Terminal", "Terminal"
@@ -55,9 +53,8 @@ class TestFavorites(unittest.TestCase):
         """add_to_favorites_directly should trigger reload when addition succeeds."""
         self.mock_config_manager.add_to_favorites.return_value = True
 
-        with patch("modules.favorites.config_manager", self.mock_config_manager):
-            with patch("modules.favorites.QMessageBox"):
-                self.favorites.add_to_favorites_directly("System", "Terminal")
+        with patch("modules.favorites.QMessageBox"):
+            self.favorites.add_to_favorites_directly("System", "Terminal")
 
         self.mock_services.reload_favorites_commands.assert_called_once()
 
@@ -65,9 +62,8 @@ class TestFavorites(unittest.TestCase):
         """add_to_favorites_directly should not reload when config_manager returns False."""
         self.mock_config_manager.add_to_favorites.return_value = False
 
-        with patch("modules.favorites.config_manager", self.mock_config_manager):
-            with patch("modules.favorites.QMessageBox"):
-                self.favorites.add_to_favorites_directly("System", "Terminal")
+        with patch("modules.favorites.QMessageBox"):
+            self.favorites.add_to_favorites_directly("System", "Terminal")
 
         self.mock_services.reload_favorites_commands.assert_not_called()
 
@@ -79,9 +75,8 @@ class TestFavorites(unittest.TestCase):
         """remove_from_favorites should call config_manager.remove_from_favorites."""
         self.mock_config_manager.remove_from_favorites.return_value = True
 
-        with patch("modules.favorites.config_manager", self.mock_config_manager):
-            with patch("modules.favorites.QMessageBox"):
-                self.favorites.remove_from_favorites("Terminal")
+        with patch("modules.favorites.QMessageBox"):
+            self.favorites.remove_from_favorites("Terminal")
 
         self.mock_config_manager.remove_from_favorites.assert_called_once_with("Terminal")
 
@@ -89,9 +84,8 @@ class TestFavorites(unittest.TestCase):
         """remove_from_favorites should trigger reload when removal succeeds."""
         self.mock_config_manager.remove_from_favorites.return_value = True
 
-        with patch("modules.favorites.config_manager", self.mock_config_manager):
-            with patch("modules.favorites.QMessageBox"):
-                self.favorites.remove_from_favorites("Terminal")
+        with patch("modules.favorites.QMessageBox"):
+            self.favorites.remove_from_favorites("Terminal")
 
         self.mock_services.reload_favorites_commands.assert_called_once()
 
@@ -99,9 +93,8 @@ class TestFavorites(unittest.TestCase):
         """remove_from_favorites should not reload when removal fails."""
         self.mock_config_manager.remove_from_favorites.return_value = False
 
-        with patch("modules.favorites.config_manager", self.mock_config_manager):
-            with patch("modules.favorites.QMessageBox"):
-                self.favorites.remove_from_favorites("NonExistent")
+        with patch("modules.favorites.QMessageBox"):
+            self.favorites.remove_from_favorites("NonExistent")
 
         self.mock_services.reload_favorites_commands.assert_not_called()
 
@@ -120,11 +113,10 @@ class TestFavorites(unittest.TestCase):
         self.mock_services.resolve_icon_path.return_value = None
         self.mock_config_manager.get_base_dir.return_value = str(PROJECT_ROOT)
 
-        with patch("modules.favorites.config_manager", self.mock_config_manager):
-            with patch("modules.favorites.QIcon", return_value=MagicMock()):
-                with patch("modules.favorites.QAction", return_value=MagicMock()):
-                    with patch("modules.favorites.os.path.isfile", return_value=False):
-                        self.favorites.populate_favorites_menu(mock_menu)
+        with patch("modules.favorites.QIcon", return_value=MagicMock()):
+            with patch("modules.favorites.QAction", return_value=MagicMock()):
+                with patch("modules.favorites.os.path.isfile", return_value=False):
+                    self.favorites.populate_favorites_menu(mock_menu)
 
         # At least one addAction call per favorite entry
         self.assertGreaterEqual(mock_menu.addAction.call_count, 2)
@@ -134,11 +126,10 @@ class TestFavorites(unittest.TestCase):
         mock_menu = MagicMock()
         self.mock_config_manager.get_favorites.return_value = {}
 
-        with patch("modules.favorites.config_manager", self.mock_config_manager):
-            with patch("modules.favorites.QAction") as mock_qaction_cls:
-                mock_qaction = MagicMock()
-                mock_qaction_cls.return_value = mock_qaction
-                self.favorites.populate_favorites_menu(mock_menu)
+        with patch("modules.favorites.QAction") as mock_qaction_cls:
+            mock_qaction = MagicMock()
+            mock_qaction_cls.return_value = mock_qaction
+            self.favorites.populate_favorites_menu(mock_menu)
 
         self.mock_config_manager.get_favorites.assert_called()
         # "No Favorites" should be the first QAction created

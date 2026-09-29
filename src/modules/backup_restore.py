@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import os
 
 from PyQt6.QtWidgets import (
@@ -7,7 +8,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 
-from core.config_manager import config_manager
+logger = logging.getLogger(__name__)
 
 
 class BackupRestore:
@@ -19,7 +20,7 @@ class BackupRestore:
 
     def backup_commands(self):
         """Create a backup of the current commands."""
-        backup_file = config_manager.backup_commands()
+        backup_file = self.services.config_manager.backup_commands()
         if backup_file:
             QMessageBox.information(
                 None,
@@ -31,7 +32,7 @@ class BackupRestore:
 
     def restore_commands(self):
         """Restore commands from a backup."""
-        backups = config_manager.list_backups()
+        backups = self.services.config_manager.list_backups()
 
         if not backups:
             QMessageBox.information(None, "No Backups", "No command backups found.")
@@ -59,7 +60,7 @@ class BackupRestore:
                 == QMessageBox.StandardButton.Yes
             ):
                 # Perform restore
-                success = config_manager.restore_from_backup(backup_file)
+                success = self.services.config_manager.restore_from_backup(backup_file)
 
                 if success:
                     QMessageBox.information(

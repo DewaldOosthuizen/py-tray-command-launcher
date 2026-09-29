@@ -246,7 +246,7 @@ class TrayApp:
         """Execute a command, show output in RichOutputWindow, and update badge."""
         process = self.executor.execute_command_process(self.app, command)
 
-        output_win = RichOutputWindow(self.app.activeWindow())
+        output_win = RichOutputWindow(self.app.activeWindow(), self.services)
         tab = output_win.open_process_tab(title)
         self.output_windows.append(output_win)
         output_win.destroyed.connect(lambda _, w=output_win: self._on_output_window_closed(w))
@@ -406,6 +406,7 @@ class TrayApp:
     def _open_settings(self):
         """Open the Settings dialog."""
         dlg = SettingsDialog(
+            self.services,
             self.theme_manager,
             parent=None,
             hotkey_callback=self._reregister_hotkey,

@@ -305,14 +305,15 @@ def _build_dialog_direct(settings_override=None):
 
     mock_cm = MagicMock()
     mock_cm.get_settings.return_value = dict(settings)
+    mock_services = MagicMock()
+    mock_services.config_manager = mock_cm
     mock_theme_mgr = MagicMock()
 
-    with patch("ui.settings_dialog.config_manager", mock_cm):
-        dlg = SettingsDialog(mock_theme_mgr)
+    dlg = SettingsDialog(mock_services, mock_theme_mgr)
     dlg.accept = MagicMock()
     dlg.reject = MagicMock()
 
-    return dlg, mock_cm, mock_theme_mgr
+    return dlg, mock_cm, mock_services, mock_theme_mgr
 
 
 class TestSettingsDialogPreview(unittest.TestCase):
@@ -320,20 +321,20 @@ class TestSettingsDialogPreview(unittest.TestCase):
 
     def test_preview_theme_calls_theme_manager_apply(self):
         """_preview_theme('light') calls theme_manager.apply_theme('light')."""
-        dlg, cm, theme_mgr = _build_dialog_direct()
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
         dlg._preview_theme("light")
         theme_mgr.apply_theme.assert_called_with("light")
 
     def test_preview_theme_called_for_all_themes(self):
         """_preview_theme works for dark, light, and system without error."""
-        dlg, cm, theme_mgr = _build_dialog_direct()
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
         for t in ("dark", "light", "system"):
             dlg._preview_theme(t)
         assert theme_mgr.apply_theme.call_count == 3
 
     def test_preview_theme_passes_through_theme_name(self):
         """Whatever string is passed to _preview_theme reaches apply_theme."""
-        dlg, cm, theme_mgr = _build_dialog_direct()
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
         dlg._preview_theme("custom-theme")
         theme_mgr.apply_theme.assert_called_with("custom-theme")
 
@@ -343,14 +344,14 @@ class TestSettingsDialogCancel(unittest.TestCase):
 
     def test_cancel_restores_original_theme(self):
         """_cancel reverts to _original_theme."""
-        dlg, cm, theme_mgr = _build_dialog_direct()
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
         dlg._original_theme = "light"
         dlg._cancel()
         theme_mgr.apply_theme.assert_called_with("light")
 
     def test_cancel_calls_reject(self):
         """_cancel calls dialog.reject()."""
-        dlg, cm, theme_mgr = _build_dialog_direct()
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
         dlg._cancel()
         dlg.reject.assert_called()
 
@@ -360,59 +361,53 @@ class TestSettingsDialogSave(unittest.TestCase):
 
     def test_save_calls_config_manager_save_settings(self):
         """_save calls config_manager.save_settings with a dict."""
-        dlg, cm, theme_mgr = _build_dialog_direct()
-        mock_cm = MagicMock()
-        mock_cm.get_settings.return_value = {
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
+        mock_services.config_manager.get_settings.return_value = {
             "theme": "dark",
             "quick_launch_bar": {},
             "logging": {},
         }
 
-        with patch("ui.settings_dialog.config_manager", mock_cm):
-            dlg._save()
+        dlg._save()
 
-        mock_cm.save_settings.assert_called_once()
+        mock_services.config_manager.save_settings.assert_called_once()
 
     def test_save_writes_theme_from_combo(self):
         """_save stores the selected theme in saved settings."""
-        dlg, cm, theme_mgr = _build_dialog_direct()
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
         dlg._theme_combo.setCurrentIndex(dlg._theme_combo.findText("light"))
-        mock_cm = MagicMock()
-        mock_cm.get_settings.return_value = {
+        mock_services.config_manager.get_settings.return_value = {
             "theme": "dark",
             "quick_launch_bar": {},
             "logging": {},
         }
 
-        with patch("ui.settings_dialog.config_manager", mock_cm):
-            dlg._save()
+        dlg._save()
 
-        saved = mock_cm.save_settings.call_args[0][0]
+        saved = mock_services.config_manager.save_settings.call_args[0][0]
         assert saved["theme"] == "light"
 
     def test_save_writes_hotkey_from_edit(self):
         """_save stores the hotkey text in saved settings."""
-        dlg, cm, theme_mgr = _build_dialog_direct()
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
         dlg._hotkey_edit._text = "ctrl+shift+x"
-        mock_cm = MagicMock()
-        mock_cm.get_settings.return_value = {
+        mock_services.config_manager.get_settings.return_value = {
             "theme": "dark",
             "quick_launch_bar": {},
             "logging": {},
         }
 
-        with patch("ui.settings_dialog.config_manager", mock_cm):
-            dlg._save()
+        dlg._save()
 
-        saved = mock_cm.save_settings.call_args[0][0]
+        saved = mock_services.config_manager.save_settings.call_args[0][0]
         assert saved["hotkey"] == "ctrl+shift+x"
 
     def test_dialog_prepopulates_theme_from_config(self):
         """Config theme value 'dark' should be reflected in dlg._theme_combo."""
-        dlg, cm, theme_mgr = _build_dialog_direct({"theme": "dark"})
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct({"theme": "dark"})
         assert dlg._theme_combo.currentText() == "dark"
 
     def test_dialog_prepopulates_hotkey_from_config(self):
         """Config hotkey should be reflected in dlg._hotkey_edit."""
-        dlg, cm, theme_mgr = _build_dialog_direct({"hotkey": "ctrl+alt+p"})
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct({"hotkey": "ctrl+alt+p"})
         assert dlg._hotkey_edit.text() == "ctrl+alt+p"

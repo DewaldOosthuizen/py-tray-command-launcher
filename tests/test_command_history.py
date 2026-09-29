@@ -20,7 +20,7 @@ if str(SRC_DIR) not in sys.path:
 
 # [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #38
 # Failure: ModuleNotFoundError: No module named 'PyQt6' — src/modules/command_history.py imports PyQt6.QtGui but PyQt6 is not installed. Fix: add sys.modules stubs for PyQt6 before importing.
-from modules.command_history import CommandHistory
+from modules.command_history import CommandHistory  # noqa: E402
 
 
 class TestCommandHistory(unittest.TestCase):
@@ -30,10 +30,8 @@ class TestCommandHistory(unittest.TestCase):
         """Set up test fixtures."""
         self.mock_services = MagicMock()
         self.mock_config_manager = MagicMock()
+        self.mock_services.config_manager = self.mock_config_manager
         self.mock_config_manager.get_history.return_value = []
-
-        with patch("modules.command_history.config_manager", self.mock_config_manager):
-            self.history = CommandHistory(self.mock_services)
 
     # ------------------------------------------------------------------
     # add_to_history
@@ -41,10 +39,10 @@ class TestCommandHistory(unittest.TestCase):
 
     def test_add_command_to_history(self):
         """add_to_history should persist the command via config_manager."""
-        with patch("modules.command_history.config_manager", self.mock_config_manager):
-            self.history.add_to_history(
-                title="List Files", command="ls -la", confirm=False, show_output=False, prompt=None
-            )
+        self.history = CommandHistory(self.mock_services)
+        self.history.add_to_history(
+            title="List Files", command="ls -la", confirm=False, show_output=False, prompt=None
+        )
 
         self.mock_config_manager.add_to_history.assert_called_once()
         entry = self.mock_config_manager.add_to_history.call_args[0][0]
@@ -54,11 +52,11 @@ class TestCommandHistory(unittest.TestCase):
 
     def test_add_command_logs_debug_message(self):
         """add_to_history should emit a debug or info log message."""
+        self.history = CommandHistory(self.mock_services)
         with patch("modules.command_history.logger") as mock_logger:
-            with patch("modules.command_history.config_manager", self.mock_config_manager):
-                self.history.add_to_history(
-                    title="Test", command="test", confirm=False, show_output=False, prompt=None
-                )
+            self.history.add_to_history(
+                title="Test", command="test", confirm=False, show_output=False, prompt=None
+            )
 
         self.assertTrue(
             mock_logger.debug.called or mock_logger.info.called,
@@ -71,15 +69,15 @@ class TestCommandHistory(unittest.TestCase):
 
     def test_clear_history(self):
         """clear_history should call config_manager.clear_history."""
-        with patch("modules.command_history.config_manager", self.mock_config_manager):
-            self.history.clear_history()
+        self.history = CommandHistory(self.mock_services)
+        self.history.clear_history()
 
         self.mock_config_manager.clear_history.assert_called_once()
 
     def test_clear_history_reloads_commands(self):
         """clear_history should trigger a history reload via services."""
-        with patch("modules.command_history.config_manager", self.mock_config_manager):
-            self.history.clear_history()
+        self.history = CommandHistory(self.mock_services)
+        self.history.clear_history()
 
         self.mock_services.reload_history_commands.assert_called_once()
 
@@ -107,9 +105,9 @@ class TestCommandHistory(unittest.TestCase):
             },
         ]
 
+        self.history = CommandHistory(self.mock_services)
         with patch("modules.command_history.QAction", return_value=MagicMock()):
-            with patch("modules.command_history.config_manager", self.mock_config_manager):
-                self.history.populate_menu(mock_menu)
+            self.history.populate_menu(mock_menu)
 
         # At least 2 addAction calls for the history entries (plus "Clear History")
         self.assertGreaterEqual(mock_menu.addAction.call_count, 2)
@@ -119,8 +117,8 @@ class TestCommandHistory(unittest.TestCase):
         mock_menu = MagicMock()
         self.mock_config_manager.get_history.return_value = []
 
-        with patch("modules.command_history.config_manager", self.mock_config_manager):
-            self.history.populate_menu(mock_menu)
+        self.history = CommandHistory(self.mock_services)
+        self.history.populate_menu(mock_menu)
 
         self.mock_config_manager.get_history.assert_called()
 
@@ -155,9 +153,9 @@ class TestCommandHistory(unittest.TestCase):
             created_titles.append(title)
             return MagicMock()
 
+        self.history = CommandHistory(self.mock_services)
         with patch("modules.command_history.QAction", side_effect=capture_qaction):
-            with patch("modules.command_history.config_manager", self.mock_config_manager):
-                self.history.populate_menu(mock_menu)
+            self.history.populate_menu(mock_menu)
 
         self.assertIn("Second", created_titles)
         self.assertIn("First", created_titles)
@@ -172,10 +170,9 @@ class TestCommandHistory(unittest.TestCase):
         mock_menu = MagicMock()
         self.mock_config_manager.get_history.return_value = []
 
-        with patch("modules.command_history.QAction", return_value=MagicMock()):
-            with patch("modules.command_history.config_manager", self.mock_config_manager):
-                self.history.populate_menu(mock_menu)
-                self.history.populate_menu(mock_menu)
+        self.history = CommandHistory(self.mock_services)
+        self.history.populate_menu(mock_menu)
+        self.history.populate_menu(mock_menu)
 
         # get_history should have been called exactly twice (once per populate_menu)
         self.assertEqual(self.mock_config_manager.get_history.call_count, 2)
