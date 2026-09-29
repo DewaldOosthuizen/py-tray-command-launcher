@@ -53,6 +53,8 @@ class ConfigPathConsistencyTests(unittest.TestCase):
                 return_value=base_dir,
             ) as mock_get_base_dir:
                 manager = config_module.ConfigManager()
+                # With issue #119, migration happens in initialize(), not __init__
+                manager.initialize()
                 self.assertTrue(
                     mock_get_base_dir.called,
                     "ConfigManager should call core.config_manager._get_base_dir "

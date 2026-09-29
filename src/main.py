@@ -70,6 +70,9 @@ if __name__ == "__main__":
     if args.config:
         config_manager.set_commands_override(Path(args.config))
 
+    # Run one-time filesystem setup (legacy migration, favourites migration)
+    config_manager.initialize()
+
     force_unlock = args.force_unlock
     instance_checker = SingleInstanceChecker(key=key, pidfile=pidfile)
 
