@@ -17,8 +17,6 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #38
-# Failure: ModuleNotFoundError: No module named 'PyQt6' — src/modules/import_export.py imports PyQt6.QtWidgets but PyQt6 is not installed. Fix: add sys.modules stubs for PyQt6 before importing.
 from modules.import_export import ImportExport  # noqa: E402
 
 

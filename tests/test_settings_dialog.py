@@ -11,7 +11,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 def _install_real_pyqt6_stub():

@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock, patch
-
 from ui.command_manager import CommandManagerDialog, _CommandFormDialog
 
 
