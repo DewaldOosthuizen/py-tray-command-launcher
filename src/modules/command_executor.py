@@ -24,8 +24,11 @@ class CommandExecutor:
         external input here.
         """
         logger.info("Executing shell command: %s", command)
-        proc = subprocess.Popen(command, shell=True)  # noqa: S602 — intentional: user-authored command, see method docstring
-        logger.debug("Process started (PID %d)", proc.pid)
+        try:
+            proc = subprocess.Popen(command, shell=True)  # noqa: S602 — intentional: user-authored command, see method docstring
+            logger.debug("Process started (PID %d)", proc.pid)
+        except OSError as exc:
+            logger.error("Failed to start command '%s': %s", command, exc)
 
     def execute_command_process(self, app, command):
         """Start a shell command as a tracked QProcess and return the running handle.

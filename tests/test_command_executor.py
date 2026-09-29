@@ -76,8 +76,9 @@ class TestCommandExecutor(unittest.TestCase):
         # logger.error should have been called with the command and exception details
         mock_logger.error.assert_called_once()
         call_args = mock_logger.error.call_args[0]
-        self.assertIn("nonexistent-cmd", call_args[0])
-        self.assertIn("Failed to start command", call_args[1])
+        # call_args[0] = format string, call_args[1] = command, call_args[2] = exception
+        self.assertEqual(call_args[1], "nonexistent-cmd")
+        self.assertIn("Failed to start command", str(call_args[2]))
 
     def test_execute_command_handles_fileNotFoundError(self):
         """execute_command should catch FileNotFoundError (subclass of OSError)."""
@@ -92,8 +93,8 @@ class TestCommandExecutor(unittest.TestCase):
         mock_popen.assert_called_once_with("some-command", shell=True)
         mock_logger.error.assert_called_once()
         call_args = mock_logger.error.call_args[0]
-        self.assertIn("some-command", call_args[0])
-        self.assertIn("No such file or directory", call_args[1])
+        self.assertEqual(call_args[1], "some-command")
+        self.assertIn("No such file or directory", str(call_args[2]))
 
     # ------------------------------------------------------------------
     # execute_command_process (QProcess path)
