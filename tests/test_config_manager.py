@@ -9,7 +9,7 @@ Covers:
   - get_commands with a tmp commands.json
   - set_commands_override respects the override path
   - _validate_commands rejects bad structures
-  - initialize() method for issue #119
+  - initialize() method
 """
 
 import json
@@ -202,7 +202,7 @@ class TestValidateCommands:
 
 
 # ---------------------------------------------------------------------------
-# _validate_settings_schema  (issue #61)
+# _validate_settings_schema
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -319,12 +319,12 @@ class TestConfigDirIsolation:
 
 
 # ---------------------------------------------------------------------------
-# initialize() method (issue #119)
+# initialize() method
 # ---------------------------------------------------------------------------
 
 
 class TestInitialize:
-    """Tests for the initialize() method introduced in issue #119."""
+    """Tests for the initialize() method."""
 
     def test_constructor_does_not_set_initialized_flag(self, tmp_path):
         """ConfigManager.__init__ must set _initialized=False after migration calls are removed."""
