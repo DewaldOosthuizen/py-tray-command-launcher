@@ -3,8 +3,8 @@
 """Tests for command_history module.
 
 Tests call the real public methods (add_to_history, populate_menu,
-clear_history) while patching modules.command_history.config_manager so
-that no filesystem I/O is performed.
+clear_history) to verify the correct delegation to config_manager and
+services.
 """
 
 import datetime
@@ -18,8 +18,6 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-# [ORCHESTRATOR NOTE] Pre-existing failure — unrelated to issue #38
-# Failure: ModuleNotFoundError: No module named 'PyQt6' — src/modules/command_history.py imports PyQt6.QtGui but PyQt6 is not installed. Fix: add sys.modules stubs for PyQt6 before importing.
 from modules.command_history import CommandHistory  # noqa: E402
 
 
