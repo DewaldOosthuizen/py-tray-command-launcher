@@ -15,6 +15,7 @@ if str(SRC_DIR) not in sys.path:
 
 from core import config_manager as config_module  # noqa: E402
 
+
 @unittest.skipIf(
     sys.platform == "win32",
     "Tests rely on XDG/HOME-based config paths which are not used on Windows",
