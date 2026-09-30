@@ -292,11 +292,7 @@ class TestQuickLaunchBarPinnedSchema:
 
     def test_pinned_string_entry_fails_validation(self, tmp_path):
         """String-shaped pinned entries (stale/incorrect format) must fail validation."""
-        settings = {
-            "quick_launch_bar": {
-                "pinned": ["some-command"]
-            }
-        }
+        settings = {"quick_launch_bar": {"pinned": ["some-command"]}}
         mgr = _make_settings_mgr(tmp_path, settings)
         with patch("core.config_manager.logger") as mock_logger:
             result = mgr.get_settings()
@@ -318,9 +314,7 @@ class TestQuickLaunchBarPinnedSchema:
             mgr = _make_settings_mgr(tmp_path, settings)
             with patch("core.config_manager.logger") as mock_logger:
                 mgr.get_settings()
-            warning_msgs = [
-                str(arg) for arg in mock_logger.warning.call_args_list
-            ]
+            warning_msgs = [str(arg) for arg in mock_logger.warning.call_args_list]
             assert any("settings.json validation error" in msg for msg in warning_msgs), (
                 f"Expected validation warning for {bad_entry}, got: {warning_msgs}"
             )

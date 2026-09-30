@@ -61,6 +61,41 @@ class TestCommandExecutor(unittest.TestCase):
         debug_messages = " ".join(str(c) for c in mock_logger.debug.call_args_list)
         self.assertIn("99", debug_messages)
 
+    def test_execute_command_handles_oserror(self):
+        """execute_command should catch OSError from Popen, log at ERROR, and not raise."""
+        with patch(
+            "modules.command_executor.subprocess.Popen",
+            side_effect=OSError("Failed to start command"),
+        ) as mock_popen:
+            with patch("modules.command_executor.logger") as mock_logger:
+                # Should not raise
+                self.executor.execute_command("nonexistent-cmd")
+
+        # Popen should have been called
+        mock_popen.assert_called_once_with("nonexistent-cmd", shell=True)
+        # logger.error should have been called with the command and exception details
+        mock_logger.error.assert_called_once()
+        call_args = mock_logger.error.call_args[0]
+        # call_args[0] = format string, call_args[1] = command, call_args[2] = exception
+        self.assertEqual(call_args[1], "nonexistent-cmd")
+        self.assertIn("Failed to start command", str(call_args[2]))
+
+    def test_execute_command_handles_fileNotFoundError(self):
+        """execute_command should catch FileNotFoundError (subclass of OSError)."""
+        with patch(
+            "modules.command_executor.subprocess.Popen",
+            side_effect=FileNotFoundError("No such file or directory: 'bash'"),
+        ) as mock_popen:
+            with patch("modules.command_executor.logger") as mock_logger:
+                # Should not raise
+                self.executor.execute_command("some-command")
+
+        mock_popen.assert_called_once_with("some-command", shell=True)
+        mock_logger.error.assert_called_once()
+        call_args = mock_logger.error.call_args[0]
+        self.assertEqual(call_args[1], "some-command")
+        self.assertIn("No such file or directory", str(call_args[2]))
+
     # ------------------------------------------------------------------
     # execute_command_process (QProcess path)
     # ------------------------------------------------------------------
