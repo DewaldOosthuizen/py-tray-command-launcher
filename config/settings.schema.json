@@ -45,7 +45,16 @@
         },
         "pinned": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "object",
+            "required": ["label", "command"],
+            "properties": {
+              "label": { "type": "string" },
+              "command": { "type": "string" },
+              "confirm": { "type": "boolean" },
+              "showOutput": { "type": "boolean" }
+            }
+          }
         },
         "hotkey": { "type": "string" }
       }
