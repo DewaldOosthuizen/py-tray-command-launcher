@@ -8,7 +8,7 @@ _pyqt6 = MagicMock()
 sys.modules.setdefault("PyQt6", _pyqt6)
 sys.modules.setdefault("PyQt6.QtWidgets", _pyqt6.QtWidgets)
 sys.modules.setdefault("PyQt6.QtCore", _pyqt6.QtCore)
-sys.modules.setdefault("PyQt6.QtCore", _pyqt6.QtGui)
+sys.modules.setdefault("PyQt6.QtGui", _pyqt6.QtGui)
 sys.modules.setdefault("core.config_manager", MagicMock())
 
 import os
