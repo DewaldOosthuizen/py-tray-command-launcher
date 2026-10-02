@@ -210,6 +210,134 @@ def test_execute_prompt_posix_uses_shlex_quote():
 
 
 # --------------------------------------------------------------------------- #
+# Extracted helper methods (_record_history, _get_prompt_input,             #
+# _substitute_prompt, _route_execution)                                    #
+# --------------------------------------------------------------------------- #
+
+
+def test_record_history_adds_entry():
+    """_record_history delegates to config_manager.add_to_history with correct fields."""
+    app = _make_app()
+    with patch("core.tray_app.config_manager") as cm:
+        app._record_history("echo hi", "Term", False, False, "")
+    cm.add_to_history.assert_called_once()
+    entry = cm.add_to_history.call_args[0][0]
+    assert entry["command"] == "echo hi"
+    assert entry["title"] == "Term"
+    assert entry["confirm"] is False
+    assert entry["showOutput"] is False
+    assert entry["prompt"] == ""
+    assert "timestamp" in entry
+
+
+def test_get_prompt_input_ok():
+    """_get_prompt_input returns (value, True) when the dialog is accepted with text."""
+    app = _make_app()
+    with patch("core.tray_app.QInputDialog") as dialog:
+        dialog.getText.return_value = ("hello", True)
+        value, ok = app._get_prompt_input("Enter value")
+    assert value == "hello"
+    assert ok is True
+
+
+def test_get_prompt_input_cancelled():
+    """_get_prompt_input returns (None, False) when the dialog is cancelled."""
+    app = _make_app()
+    with patch("core.tray_app.QInputDialog") as dialog:
+        dialog.getText.return_value = ("", False)
+        value, ok = app._get_prompt_input("Enter value")
+    assert value is None
+    assert ok is False
+
+
+def test_get_prompt_input_empty():
+    """_get_prompt_input returns (None, False) when input is empty (ok=True)."""
+    app = _make_app()
+    with patch("core.tray_app.QInputDialog") as dialog:
+        dialog.getText.return_value = ("", True)
+        value, ok = app._get_prompt_input("Enter value")
+    assert value is None
+    assert ok is False
+
+
+def test_substitute_prompt_posix():
+    """_substitute_prompt uses shlex.quote on POSIX (os.name != 'nt')."""
+    app = _make_app()
+    app._get_prompt_input = MagicMock(return_value=("value", True))
+    with (
+        patch("core.tray_app.os") as mock_os,
+        patch("core.tray_app.shlex") as mock_shlex,
+    ):
+        mock_os.name = "posix"
+        mock_shlex.quote.return_value = "'value'"
+        command, ok = app._substitute_prompt("echo {promptInput}", "Enter value")
+    assert command == "echo 'value'"
+    assert ok is True
+    mock_shlex.quote.assert_called_once_with("value")
+
+
+def test_substitute_prompt_windows():
+    """_substitute_prompt uses subprocess.list2cmdline on Windows (os.name == 'nt')."""
+    app = _make_app()
+    app._get_prompt_input = MagicMock(return_value=("a b", True))
+    with (
+        patch("core.tray_app.os") as mock_os,
+        patch("core.tray_app.subprocess") as mock_sub,
+    ):
+        mock_os.name = "nt"
+        mock_sub.list2cmdline.return_value = '"a b"'
+        command, ok = app._substitute_prompt("echo {promptInput}", "Enter value")
+    assert command == 'echo "a b"'
+    assert ok is True
+    mock_sub.list2cmdline.assert_called_once_with(["a b"])
+
+
+def test_substitute_prompt_cancelled():
+    """_substitute_prompt returns original command with ok=False when input is cancelled."""
+    app = _make_app()
+    app._get_prompt_input = MagicMock(return_value=(None, False))
+    command, ok = app._substitute_prompt("echo {promptInput}", "Enter value")
+    assert command == "echo {promptInput}"
+    assert ok is False
+
+
+def test_route_execution_confirm_declined():
+    """_route_execution aborts before execution when confirmation is declined."""
+    app = _make_app()
+    app.show_command_output = MagicMock()
+    with patch("core.tray_app.confirm_execute", return_value=False):
+        app._route_execution("Term", "echo hi", True, False, "")
+    app.executor.execute_command.assert_not_called()
+    app.show_command_output.assert_not_called()
+
+
+def test_route_execution_show_output():
+    """_route_execution routes to show_command_output when show_output is True."""
+    app = _make_app()
+    app.show_command_output = MagicMock()
+    app._route_execution("Status", "git status", False, True, "")
+    app.show_command_output.assert_called_once_with("Status", "git status")
+    app.executor.execute_command.assert_not_called()
+
+
+def test_route_execution_direct():
+    """_route_execution routes to executor.execute_command when show_output is False."""
+    app = _make_app()
+    app._route_execution("Term", "echo hi", False, False, "")
+    app.executor.execute_command.assert_called_once_with("echo hi")
+
+
+def test_route_execution_prompt_cancelled():
+    """_route_execution aborts when _substitute_prompt reports cancellation."""
+    app = _make_app()
+    app.show_command_output = MagicMock()
+    app._substitute_prompt = MagicMock(return_value=("echo {promptInput}", False))
+    app._route_execution("Term", "echo {promptInput}", False, False, "Enter value")
+    app.executor.execute_command.assert_not_called()
+    app.show_command_output.assert_not_called()
+
+
+# --------------------------------------------------------------------------- #
 # _on_process_count_changed()                                                   #
 # --------------------------------------------------------------------------- #
 
