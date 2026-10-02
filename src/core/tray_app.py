@@ -200,43 +200,60 @@ class TrayApp:
 
     def execute(self, title, command, confirm, show_output, prompt):
         """Execute a command with optional confirmation and input prompt."""
-        history_entry = {
-            "command": command,
-            "title": title,
-            "confirm": confirm,
-            "showOutput": show_output,
-            "prompt": prompt,
-            "timestamp": datetime.datetime.now().isoformat(),
-        }
-        config_manager.add_to_history(history_entry)
+        self._record_history(command, title, confirm, show_output, prompt)
+        self._route_execution(title, command, confirm, show_output, prompt)
+        self.reload_history_commands()
+        self.reload_favorites_commands()
 
+    def _record_history(self, command, title, confirm, show_output, prompt):
+        """Record a history entry via config_manager."""
+        config_manager.add_to_history(
+            {
+                "command": command,
+                "title": title,
+                "confirm": confirm,
+                "showOutput": show_output,
+                "prompt": prompt,
+                "timestamp": datetime.datetime.now().isoformat(),
+            }
+        )
+
+    def _get_prompt_input(self, prompt):
+        """Show input dialog. Returns (value, ok) or (None, False)."""
+        input_value, ok = QInputDialog.getText(None, "Input Required", prompt)
+        if not ok or not input_value:
+            return None, False
+        return input_value, True
+
+    def _substitute_prompt(self, command, prompt):
+        """Replace {promptInput} with OS-quoted user input.
+
+        Returns (command, ok) where ok=False if the user cancelled or
+        entered empty text.
+        """
+        input_value, ok = self._get_prompt_input(prompt)
+        if not ok:
+            return command, False
+        if os.name == "nt":
+            safe_input = subprocess.list2cmdline([input_value])
+        else:
+            safe_input = shlex.quote(input_value)
+        command = command.replace("{promptInput}", safe_input)
+        return command, True
+
+    def _route_execution(self, title, command, confirm, show_output, prompt):
+        """Gate on confirmation, substitute prompts, then route execution."""
         if confirm:
             if not confirm_execute(command):
                 return
-
         if prompt:
-            input_value, ok = QInputDialog.getText(None, "Input Required", prompt)
-            if not ok or not input_value:
+            command, ok = self._substitute_prompt(command, prompt)
+            if not ok:
                 return
-            # On Windows, shell=True routes through cmd.exe which does not
-            # recognise POSIX single-quoting; use Windows-native quoting there.
-            if os.name == "nt":
-                safe_input = subprocess.list2cmdline([input_value])
-            else:
-                safe_input = shlex.quote(input_value)
-            command = command.replace(
-                "{promptInput}", safe_input
-            )  # security: shlex.quote (POSIX) / list2cmdline (Windows) prevent
-            #   shell injection via user-typed prompt input — S602 accepted on
-            #   execute_command; input is sanitised before it arrives there
-
         if show_output:
             self.show_command_output(title, command)
         else:
             self.executor.execute_command(command)
-
-        self.reload_history_commands()
-        self.reload_favorites_commands()
 
     def notify_user(self, title: str, message: str) -> None:
         """Show a tray notification."""
