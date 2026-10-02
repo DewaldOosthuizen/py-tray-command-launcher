@@ -290,80 +290,37 @@ class ScheduleViewer:
             return day_map.get(day_week, day_week)
 
     def edit_schedule(self, schedule, parent_dialog):
-        """Edit an existing cron schedule — delete old entry and re-create via ScheduleCreator."""
+        """Edit an existing cron schedule — create new entry first, then delete old."""
         from modules.schedule_creator import ScheduleCreator
 
         name = schedule.get("name", "")
         reply = QMessageBox.question(
             parent_dialog,
             "Edit Schedule",
-            f"Editing '{name}' will delete the current entry and open the creation dialog "
-            "so you can set new parameters.\n\nContinue?",
+            f"Editing '{name}' will open the creation dialog so you can set new "
+            "parameters. The old entry is only removed after the new one is saved.\n\nContinue?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        try:
-            self._delete_linux_cron_job(schedule)
-        except Exception as e:
-            QMessageBox.critical(parent_dialog, "Error", f"Could not remove old entry:\n{e}")
-            return
         sc = ScheduleCreator(self.services)
         if sc.show_dialog():
-            self.refresh_dialog(parent_dialog)
-        else:
-            # Creation was cancelled or failed after we already deleted the old entry.
-            # Re-install the old cron line so the user does not lose their schedule.
+            # New entry created successfully — now safe to remove the old one.
             try:
-                self._reinstall_cron_job(schedule)
+                self._delete_linux_cron_job(schedule)
             except Exception as e:
                 QMessageBox.critical(
                     parent_dialog,
                     "Error",
-                    f"Editing was cancelled and the original schedule could not be restored:\n{e}",
+                    f"The new schedule was created, but the old entry could not be removed:\n{e}\n\n"
+                    "You may have duplicate entries in your crontab. Please check manually.",
                 )
-            else:
-                QMessageBox.information(
-                    parent_dialog,
-                    "Edit Cancelled",
-                    f"Schedule editing was cancelled. The original schedule '{name}' has been restored.",
-                )
-                self.refresh_dialog(parent_dialog)
-
-    def _reinstall_cron_job(self, schedule):
-        """Re-install a previously deleted cron entry back to the crontab.
-
-        This is used to restore a schedule when editing is cancelled after the
-        old entry was already deleted. The stored cron_line from the schedule
-        dict is written back to the crontab.
-        """
-        cron_line = schedule.get("cron_line", "")
-        if not cron_line:
-            raise ValueError("Schedule has no cron_line stored")
-
-        name = schedule.get("name", "")
-        comment = f"# py-tray-command-launcher: {name}"
-
-        result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
-        current_crontab = result.stdout if result.returncode == 0 else ""
-
-        # Check if the entry is already present
-        if comment in current_crontab and cron_line in current_crontab:
-            return  # Already installed, nothing to do
-
-        new_crontab = current_crontab.rstrip("\n") + "\n" + comment + "\n" + cron_line + "\n"
-
-        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".cron") as f:
-            f.write(new_crontab)
-            temp_file = f.name
-
-        try:
-            install = subprocess.run(["crontab", temp_file], capture_output=True, text=True)
-            if install.returncode != 0:
-                raise RuntimeError(install.stderr.strip() or "crontab install failed")
-        finally:
-            os.unlink(temp_file)
+            self.refresh_dialog(parent_dialog)
+        else:
+            # Creation was cancelled or failed — old schedule is untouched,
+            # no restore needed.
+            return
 
     def delete_schedule(self, schedule, parent_dialog):
         """Delete a scheduled task."""
@@ -415,27 +372,55 @@ class ScheduleViewer:
         current_crontab = result.stdout if result.returncode == 0 else ""
 
         comment_marker = f"# py-tray-command-launcher: {schedule.get('name')}"
-        schedule.get("cron_line", "")
+        target_cron_line = schedule.get("cron_line", "")
 
-        # Remove the matching comment + cron line pair.
-        # After finding the marker comment, always remove the very next
-        # non-empty, non-comment line so orphaned cron entries cannot
-        # accumulate when the stored cron_line doesn't match exactly.
+        # Remove the comment + cron line pair that matches BOTH the marker
+        # and the stored cron_line. The marker is buffered (held back from
+        # output) until the following cron line is verified — if the cron
+        # line does not match target_cron_line (and a target is specified),
+        # both the marker and cron line are preserved so that entries sharing
+        # the same label are not corrupted. This is required in the edit flow
+        # where a newly-created entry shares the same comment marker as the
+        # old entry being deleted.
         lines = current_crontab.split("\n")
         new_lines = []
-        skip_next = False
+        pending_marker = None
         for line in lines:
-            if line.strip() == comment_marker:
-                skip_next = True
-                continue
-            if skip_next:
-                # Skip the next non-empty, non-comment line (the cron entry)
-                if line.strip() and not line.strip().startswith("#"):
-                    skip_next = False
-                    continue
-                # Pass blank lines and other comments through unchanged;
-                # they are not the cron entry we want to remove.
-            new_lines.append(line)
+            stripped = line.strip()
+            if pending_marker is not None:
+                if stripped and not stripped.startswith("#"):
+                    # This is the cron line following the buffered marker.
+                    if target_cron_line and stripped != target_cron_line:
+                        # Not our target entry — preserve both marker and cron line.
+                        new_lines.append(pending_marker)
+                        new_lines.append(line)
+                    # else: matches target (or no target specified) — drop both.
+                    pending_marker = None
+                elif stripped.startswith("#") and stripped == comment_marker:
+                    # Another marker for the same label — flush pending marker,
+                    # then buffer the new one and keep looking for its cron line.
+                    new_lines.append(pending_marker)
+                    pending_marker = line
+                elif stripped.startswith("#"):
+                    # Unrelated comment — flush pending marker, keep this comment.
+                    new_lines.append(pending_marker)
+                    new_lines.append(line)
+                    pending_marker = None
+                else:
+                    # Blank line — flush pending marker, keep blank line.
+                    new_lines.append(pending_marker)
+                    new_lines.append(line)
+                    pending_marker = None
+            elif stripped == comment_marker:
+                # Found a marker — buffer it; do not append to output yet.
+                pending_marker = line
+            else:
+                new_lines.append(line)
+
+        # Flush any trailing buffered marker (marker at end of crontab with
+        # no cron line following it).
+        if pending_marker is not None:
+            new_lines.append(pending_marker)
 
         new_crontab = "\n".join(new_lines)
 
