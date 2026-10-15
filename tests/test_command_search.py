@@ -441,17 +441,20 @@ def test_populate_tree_with_non_empty_query(mock_services):
 
 
 def test_high_scoring_items_first(mock_services):
-    """An exact label match appears before a longer partial match."""
+    """Higher-scoring results are sorted ahead of earlier lower-scoring ones."""
     mock_services.get_all_commands.return_value = [
-        {"group": "System", "label": "Terminal", "command": "gnome-terminal"},
         {
             "group": "System",
             "label": "Terminal Settings",
             "command": "terminal-settings",
         },
+        {"group": "System", "label": "Terminal", "command": "gnome-terminal"},
     ]
 
-    with _patch_all():
+    with _patch_all(), patch(
+        "modules.command_search._score",
+        side_effect=lambda _query, text: 100 if text == "System Terminal" else 50,
+    ):
         CommandSearch(mock_services).show_dialog()
         _TrackedLineEdit.instances[0].setText("Terminal")
 
