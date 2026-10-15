@@ -386,13 +386,7 @@ def _patch_all():
         # This must be done BEFORE importing CommandSearch
         import modules.command_search
 
-        original_qt_key = getattr(modules.command_search, "Qt", None)
-        if original_qt_key is not None:
-            modules.command_search.Qt = _QtNamespace()
-
-        # Keep Qt patched with test constants so key presses outside the
-        # `with` block still compare against the stubbed constants.
-        pass
+        stack.enter_context(patch.object(modules.command_search, "Qt", _QtNamespace()))
 
         yield
 
