@@ -327,8 +327,8 @@ class ScheduleCreator:
             return False
         if "\n" in command or "\r" in command:
             return False
-        rejected = set("; &|$` ( ) { } < > * ? \\\\ !")  # includes space? keep
-        # Remove spaces from rejected set just in case
+        rejected = set("; &|$`(){ }<> *?!\\")
+        # Remove accidental space
         rejected.discard(" ")
         for ch in command:
             if ch in rejected:
