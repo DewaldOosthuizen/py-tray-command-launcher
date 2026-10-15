@@ -10,9 +10,8 @@ via signal emission and direct widget attribute access.
 
 from __future__ import annotations
 
-from contextlib import contextmanager, ExitStack
+from contextlib import ExitStack, contextmanager
 from unittest.mock import MagicMock, patch
-import sys
 
 # IMPORTANT: conftest's _StubAttr.__eq__ always returns True, so Qt.Key
 # comparisons like `key in (Qt.Key.Key_Return, Qt.Key.Key_Enter)` would
@@ -368,23 +367,20 @@ def _patch_all():
         # Patch Qt.Key on the modules.command_search module
         # This must be done BEFORE importing CommandSearch
         import modules.command_search
-        original_qt_key = getattr(modules.command_search, 'Qt', None)
+
+        original_qt_key = getattr(modules.command_search, "Qt", None)
         if original_qt_key is not None:
-            setattr(modules.command_search, 'Qt', _QtNamespace())
-        
-        def restore_qt_key():
-            if original_qt_key is not None:
-                setattr(modules.command_search, 'Qt', original_qt_key)
-        
-        # Register cleanup
-        stack.callback(restore_qt_key)
+            modules.command_search.Qt = _QtNamespace()
+
+        # Keep Qt patched with test constants so key presses outside the
+        # `with` block still compare against the stubbed constants.
+        pass
 
         yield
 
 
 # Import CommandSearch after our patches are defined, but before any test runs.
 from modules.command_search import CommandSearch
-
 
 # ---------------------------------------------------------------------------
 # Tests
