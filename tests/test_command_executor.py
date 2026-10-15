@@ -96,6 +96,59 @@ class TestCommandExecutor(unittest.TestCase):
         self.assertEqual(call_args[1], "some-command")
         self.assertIn("No such file or directory", str(call_args[2]))
 
+    def test_execute_command_immediate_failure_missing_executable(self):
+        with patch(
+            "modules.command_executor.subprocess.Popen",
+            side_effect=FileNotFoundError("No such file"),
+        ):
+            with patch("modules.command_executor.logger"):
+                self.executor.execute_command("missing-cmd")
+        self.mock_services.notify_user.assert_called_once()
+
+    def test_execute_command_immediate_failure_permission_denied(self):
+        with patch(
+            "modules.command_executor.subprocess.Popen",
+            side_effect=PermissionError("Permission denied"),
+        ):
+            with patch("modules.command_executor.logger"):
+                self.executor.execute_command("secret-cmd")
+        self.mock_services.notify_user.assert_called_once()
+
+    def test_execute_command_poll_immediate_failure(self):
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = 127
+        mock_proc.returncode = 127
+        with patch("modules.command_executor.subprocess.Popen", return_value=mock_proc):
+            with patch("modules.command_executor.logger") as mock_logger:
+                self.executor.execute_command("badcmd")
+        mock_logger.error.assert_called()
+        msg = " ".join(str(c) for c in mock_logger.error.call_args_list)
+        self.assertIn("127", msg)
+        self.mock_services.notify_user.assert_called_once()
+
+    def test_execute_command_poll_still_running_not_flagged(self):
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = None
+        mock_proc.returncode = None
+        with patch("modules.command_executor.subprocess.Popen", return_value=mock_proc):
+            with patch("modules.command_executor.logger") as mock_logger:
+                self.executor.execute_command("longcmd")
+        mock_logger.error.assert_not_called()
+        self.mock_services.notify_user.assert_not_called()
+
+    def test_execute_command_poll_fast_success_not_flagged(self):
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = 42
+        mock_proc.returncode = 0
+        with patch("modules.command_executor.subprocess.Popen", return_value=mock_proc):
+            with patch("modules.command_executor.logger") as mock_logger:
+                self.executor.execute_command("fastcmd")
+        mock_logger.error.assert_not_called()
+        self.mock_services.notify_user.assert_not_called()
+
     # ------------------------------------------------------------------
     # execute_command_process (QProcess path)
     # ------------------------------------------------------------------
