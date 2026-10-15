@@ -212,15 +212,7 @@ class _TrackedLineEdit:
         return self._text
 
     def keyPressEvent(self, event):
-        """Handle key events when they propagate to the base class.
-
-        This is called when show_dialog() sets search_box.keyPressEvent = _key_press
-        and _key_press falls through to the base class handler for non-special keys.
-        Escape is a special case - it should call dialog.reject() to mimic QDialog.
-        """
-        key = event.key()
-        if key == _QT_KEY_ESCAPE and _TrackedDialog.instances:
-            _TrackedDialog.instances[0].reject()
+        """Stand in for the base handler used by non-special key events."""
 
     @property
     def textChanged(self):
