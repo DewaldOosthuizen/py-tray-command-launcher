@@ -238,6 +238,23 @@ class _TrackedLineEdit:
         cls.text_changed_slots.clear()
 
 
+class _TrackedTreeWidgetItem:
+    """Stub for QTreeWidgetItem that preserves text and UserRole data."""
+
+    def __init__(self, texts=None, *args, **kwargs):
+        self._texts = list(texts or [])
+        self._data = {}
+
+    def setData(self, column, role, value):
+        self._data[(column, role)] = value
+
+    def data(self, column, role):
+        return self._data.get((column, role))
+
+    def text(self, column):
+        return self._texts[column]
+
+
 class _TrackedPushButton:
     """Stub for QPushButton whose clicked signal dispatches and whose click()
     triggers it.  Instances are tracked so tests can find Execute vs Close.
@@ -338,6 +355,7 @@ class _TrackedDialog:
 _PATCH_TARGETS = [
     ("modules.command_search.QDialog", _TrackedDialog),
     ("modules.command_search.QTreeWidget", _TrackedTreeWidget),
+    ("modules.command_search.QTreeWidgetItem", _TrackedTreeWidgetItem),
     ("modules.command_search.QLineEdit", _TrackedLineEdit),
     ("modules.command_search.QPushButton", _TrackedPushButton),
     ("modules.command_search.QSplitter", _TrackedSplitter),
@@ -393,52 +411,69 @@ def test_populate_tree_with_non_empty_query(mock_services):
     """
     with _patch_all():
         CommandSearch(mock_services).show_dialog()
+        _TrackedLineEdit.instances[0].setText("Terminal")
 
     assert len(_TrackedTreeWidget.added_items) >= 1
 
 
 def test_high_scoring_items_first(mock_services):
-    """Exact match ('Terminal') appears before a partial match ('Editor')."""
+    """An exact label match appears before a longer partial match."""
+    mock_services.get_all_commands.return_value = [
+        {"group": "System", "label": "Terminal", "command": "gnome-terminal"},
+        {
+            "group": "System",
+            "label": "Terminal Settings",
+            "command": "terminal-settings",
+        },
+    ]
+
     with _patch_all():
         CommandSearch(mock_services).show_dialog()
+        _TrackedLineEdit.instances[0].setText("Terminal")
 
-    # The initial _populate("") adds all 3 commands.  Re-score with "Terminal":
-    # Terminal scores high, Editor scores lower (substring only), Status is
-    # excluded by the filter (score <= 30 and no substring match).
-    _TrackedLineEdit.text_changed_slots[0]("Terminal")
-
-    assert len(_TrackedTreeWidget.added_items) >= 1
+    assert len(_TrackedTreeWidget.added_items) == 2
     assert _TrackedTreeWidget.added_items[0].text(0) == "Terminal"
+    assert _TrackedTreeWidget.added_items[1].text(0) == "Terminal Settings"
 
 
 def test_enter_key_executes_selected_command(mock_services):
     """Pressing Enter on the search box calls services.execute() with the
     selected command's data and then accepts the dialog.
     """
+    mock_services.get_all_commands.return_value = [
+        {
+            "group": "System",
+            "label": "Terminal",
+            "command": "gnome-terminal",
+            "confirm": True,
+            "showOutput": True,
+            "prompt": "session name",
+        },
+    ]
+
     with _patch_all():
         CommandSearch(mock_services).show_dialog()
+        line_edit = _TrackedLineEdit.instances[0]
+        tree = _TrackedTreeWidget.instances[0]
+        dialog = _TrackedDialog.instances[0]
 
-    line_edit = _TrackedLineEdit.instances[0]
-    tree = _TrackedTreeWidget.instances[0]
-    dialog = _TrackedDialog.instances[0]
+        # Populate with "Terminal".
+        line_edit.setText("Terminal")
 
-    # Populate with "Terminal".
-    line_edit.setText("Terminal")
+        # Select the first (Terminal) item.
+        tree.setCurrentItem(_TrackedTreeWidget.added_items[0])
 
-    # Select the first (Terminal) item.
-    tree.setCurrentItem(_TrackedTreeWidget.added_items[0])
-
-    # Simulate Enter key press.
-    key_event = MagicMock()
-    key_event.key.return_value = _QT_KEY_ENTER
-    line_edit.keyPressEvent(key_event)
+        # Simulate Enter key press.
+        key_event = MagicMock()
+        key_event.key.return_value = _QT_KEY_ENTER
+        line_edit.keyPressEvent(key_event)
 
     mock_services.execute.assert_called_once_with(
         "Terminal",
         "gnome-terminal",
-        False,
-        False,
-        None,
+        True,
+        True,
+        "session name",
     )
     dialog.accept.assert_called_once()
 
@@ -449,13 +484,12 @@ def test_escape_key_hides_dialog(mock_services):
     """
     with _patch_all():
         CommandSearch(mock_services).show_dialog()
+        line_edit = _TrackedLineEdit.instances[0]
+        dialog = _TrackedDialog.instances[0]
 
-    line_edit = _TrackedLineEdit.instances[0]
-    dialog = _TrackedDialog.instances[0]
-
-    key_event = MagicMock()
-    key_event.key.return_value = _QT_KEY_ESCAPE
-    line_edit.keyPressEvent(key_event)
+        key_event = MagicMock()
+        key_event.key.return_value = _QT_KEY_ESCAPE
+        line_edit.keyPressEvent(key_event)
 
     dialog.reject.assert_called_once()
     mock_services.execute.assert_not_called()
@@ -467,10 +501,9 @@ def test_close_button_rejects_dialog(mock_services):
     """
     with _patch_all():
         CommandSearch(mock_services).show_dialog()
-
-    dialog = _TrackedDialog.instances[0]
-    close_btn = _TrackedPushButton.instances[-1]  # Close is the second button.
-    close_btn.click()
+        dialog = _TrackedDialog.instances[0]
+        close_btn = _TrackedPushButton.instances[-1]  # Close is the second button.
+        close_btn.click()
 
     dialog.reject.assert_called_once()
     mock_services.execute.assert_not_called()
@@ -482,17 +515,16 @@ def test_execute_button_calls_execute(mock_services):
     """
     with _patch_all():
         CommandSearch(mock_services).show_dialog()
+        execute_btn = _TrackedPushButton.instances[0]  # Execute is the first button.
+        line_edit = _TrackedLineEdit.instances[0]
+        tree = _TrackedTreeWidget.instances[0]
+        dialog = _TrackedDialog.instances[0]
 
-    execute_btn = _TrackedPushButton.instances[0]  # Execute is the first button.
-    line_edit = _TrackedLineEdit.instances[0]
-    tree = _TrackedTreeWidget.instances[0]
-    dialog = _TrackedDialog.instances[0]
+        # Populate and select.
+        line_edit.setText("Terminal")
+        tree.setCurrentItem(_TrackedTreeWidget.added_items[0])
 
-    # Populate and select.
-    line_edit.setText("Terminal")
-    tree.setCurrentItem(_TrackedTreeWidget.added_items[0])
-
-    execute_btn.click()
+        execute_btn.click()
 
     mock_services.execute.assert_called_once_with(
         "Terminal",
@@ -516,6 +548,5 @@ def test_no_match_query_shows_empty_tree(mock_services):
     """A query with no plausible match leaves the results tree empty."""
     with _patch_all():
         CommandSearch(mock_services).show_dialog()
-
-    _TrackedLineEdit.text_changed_slots[0]("zzzzzz")
+        _TrackedLineEdit.instances[0].setText("zzzzzz")
     assert len(_TrackedTreeWidget.added_items) == 0
