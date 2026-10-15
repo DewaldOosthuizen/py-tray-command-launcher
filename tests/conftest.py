@@ -179,6 +179,7 @@ def _make_pyqt6_stub():
     pyqt6.QtWidgets.QPushButton = _QWidget
     pyqt6.QtWidgets.QLineEdit = _QWidget
     pyqt6.QtWidgets.QTreeWidget = _QWidget
+
     class _TreeWidgetItem:
         """Stub for QTreeWidgetItem that round-trips setData()/data() for
         Qt.ItemDataRole.UserRole so show_dialog() tests can store and retrieve
