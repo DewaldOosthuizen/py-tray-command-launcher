@@ -345,6 +345,7 @@ class TestPromptInputSanitisation(unittest.TestCase):
 
         tray_app = object.__new__(TrayApp)
         tray_app.executor = CommandExecutor.__new__(CommandExecutor)
+        tray_app.executor.services = MagicMock()
         tray_app.reload_history_commands = MagicMock()
         tray_app.reload_favorites_commands = MagicMock()
 

@@ -13,8 +13,12 @@ class CommandExecutor:
         """Initialize with an AppServices instance."""
         self.services = services
 
-    def execute_command(self, command):
+    def execute_command(self, command: str) -> None:
         """Execute a shell command via subprocess.
+
+        Contract: accepts a ``command`` string, returns ``None``, and never
+        raises.  Launch or immediate-execution failures are logged at ERROR
+        and surfaced to the user through ``self.services.notify_user``.
 
         NOTE: shell=True is intentional — this is a user-defined command
         launcher whose commands are authored by the user in commands.json.
@@ -29,6 +33,23 @@ class CommandExecutor:
             logger.debug("Process started (PID %d)", proc.pid)
         except OSError as exc:
             logger.error("Failed to start command '%s': %s", command, exc)
+            self.services.notify_user(
+                title="Command failed", message=f"Failed to start command '{command}': {exc}"
+            )
+            return
+
+        # Detect immediate shell-level failures (e.g. missing executable,
+        # permission denied) without blocking or sleeping.
+        if proc.poll() is not None and proc.returncode != 0:
+            logger.error(
+                "Command '%s' exited immediately with code %s",
+                command,
+                proc.returncode,
+            )
+            self.services.notify_user(
+                title="Command failed",
+                message=f"Command '{command}' exited immediately (exit code {proc.returncode})",
+            )
 
     def execute_command_process(self, app, command):
         """Start a shell command as a tracked QProcess and return the running handle.
