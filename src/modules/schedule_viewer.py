@@ -359,6 +359,10 @@ class ScheduleViewer:
     def _delete_windows_task(self, schedule):
         """Delete a Windows scheduled task."""
         task_name = schedule.get("name")
+        from modules.schedule_creator import ScheduleCreator
+
+        if not task_name or not ScheduleCreator.validate_command(str(task_name)):
+            raise ValueError("Invalid task name")
         subprocess.run(
             ["schtasks", "/delete", "/tn", task_name, "/f"],
             capture_output=True,
@@ -373,6 +377,13 @@ class ScheduleViewer:
 
         comment_marker = f"# py-tray-command-launcher: {schedule.get('name')}"
         target_cron_line = schedule.get("cron_line", "")
+
+        from modules.schedule_creator import ScheduleCreator
+
+        if schedule.get("name") and not ScheduleCreator.validate_command(str(schedule.get("name"))):
+            raise ValueError("Invalid task name")
+        if target_cron_line and not ScheduleCreator._validate_cron_expression(target_cron_line):
+            raise ValueError("Invalid cron line")
 
         # Remove the comment + cron line pair that matches BOTH the marker
         # and the stored cron_line. The marker is buffered (held back from

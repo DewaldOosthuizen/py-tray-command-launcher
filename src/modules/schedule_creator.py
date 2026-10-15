@@ -2,6 +2,7 @@
 
 import logging
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -42,6 +43,14 @@ class ScheduleCreator:
     def create_schedule(self, command_info, hour, minute, selected_days):
         """Create a scheduled task based on the platform."""
         try:
+            command = command_info.get("command", "")
+            if not self.validate_command(command):
+                QMessageBox.critical(
+                    None,
+                    "Error",
+                    "Invalid command: contains disallowed shell metacharacters",
+                )
+                return False
             if sys.platform == "win32":
                 return self._create_windows_task(command_info, hour, minute, selected_days)
             else:
@@ -114,7 +123,11 @@ class ScheduleCreator:
         """Create a Linux cron job in the current user's crontab (never uses pkexec/sudo)."""
         command = command_info["command"]
 
-        # Convert days to cron format (0=Sunday, 1=Monday, etc.)
+        if not self.validate_command(command):
+            QMessageBox.critical(
+                None, "Error", "Invalid command: contains disallowed shell metacharacters"
+            )
+            return False
         cron_days = {
             "Sunday": "0",
             "Monday": "1",
@@ -303,7 +316,29 @@ class ScheduleCreator:
         command = " ".join(parts[5:]).strip()
         if not command:
             return False
+        if not ScheduleCreator.validate_command(command):
+            return False
 
+        return True
+
+    @staticmethod
+    def validate_command(command) -> bool:
+        if not isinstance(command, str) or not command.strip():
+            return False
+        if "\n" in command or "\r" in command:
+            return False
+        rejected = set("; &|$` ( ) { } < > * ? \\\\ !")  # includes space? keep
+        # Remove spaces from rejected set just in case
+        rejected.discard(" ")
+        for ch in command:
+            if ch in rejected:
+                return False
+        try:
+            tokens = shlex.split(command, posix=True)
+        except ValueError:
+            return False
+        if not tokens:
+            return False
         return True
 
     @staticmethod
