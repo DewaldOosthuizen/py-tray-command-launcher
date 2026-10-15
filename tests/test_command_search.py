@@ -451,9 +451,12 @@ def test_high_scoring_items_first(mock_services):
         {"group": "System", "label": "Terminal", "command": "gnome-terminal"},
     ]
 
-    with _patch_all(), patch(
-        "modules.command_search._score",
-        side_effect=lambda _query, text: 100 if text == "System Terminal" else 50,
+    with (
+        _patch_all(),
+        patch(
+            "modules.command_search._score",
+            side_effect=lambda _query, text: 100 if text == "System Terminal" else 50,
+        ),
     ):
         CommandSearch(mock_services).show_dialog()
         _TrackedLineEdit.instances[0].setText("Terminal")
