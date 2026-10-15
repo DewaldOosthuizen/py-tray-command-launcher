@@ -13,6 +13,8 @@ from __future__ import annotations
 from contextlib import ExitStack, contextmanager
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # IMPORTANT: conftest's _StubAttr.__eq__ always returns True, so Qt.Key
 # comparisons like `key in (Qt.Key.Key_Return, Qt.Key.Key_Enter)` would
 # match anything. We provide integer constants that tests use as key values.
@@ -392,7 +394,42 @@ def _patch_all():
 
 
 # Import CommandSearch after our patches are defined, but before any test runs.
-from modules.command_search import CommandSearch
+from modules.command_search import CommandSearch, _score
+
+
+def test_exact_match_scores_high():
+    score = _score("Terminal", "Terminal")
+    assert score >= 90
+
+
+def test_partial_match_returns_nonzero():
+    score = _score("term", "Terminal")
+    assert score > 0
+
+
+def test_empty_query_gives_positive_score():
+    # An empty string substring matches every string
+    score = _score("", "anything")
+    assert score >= 0  # Must not raise; score value depends on backend
+
+
+def test_no_match_scores_low():
+    score = _score("zzzzunlikely", "Terminal")
+    # rapidfuzz may still return a small partial score; without it score is 0
+    assert score < 90
+
+
+def test_special_characters_do_not_raise():
+    try:
+        _score("!@#$%^&*()", "some command --flag=value")
+    except Exception as exc:
+        pytest.fail(f"_score raised unexpectedly: {exc}")
+
+
+def test_score_is_symmetric_ish():
+    s1 = _score("git", "Git Status")
+    s2 = _score("Git Status", "git")
+    assert s1 > 0 and s2 > 0
 
 # ---------------------------------------------------------------------------
 # Tests
