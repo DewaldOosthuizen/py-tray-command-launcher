@@ -550,3 +550,15 @@ def test_no_match_query_shows_empty_tree(mock_services):
         CommandSearch(mock_services).show_dialog()
         _TrackedLineEdit.instances[0].setText("zzzzzz")
     assert len(_TrackedTreeWidget.added_items) == 0
+
+
+def test_patch_all_restores_module_qt_namespace():
+    """The helper must not leak test-only Qt constants into other tests."""
+    import modules.command_search as command_search_module
+
+    original_qt = command_search_module.Qt
+
+    with _patch_all():
+        assert command_search_module.Qt is not original_qt
+
+    assert command_search_module.Qt is original_qt
