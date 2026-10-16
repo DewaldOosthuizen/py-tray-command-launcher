@@ -485,17 +485,16 @@ def test_search_preserves_raw_query_case_sensitive_ranking_and_cache_keys():
     assert command_search_cache_info().misses == 2
 
 
-def test_search_cache_hits_case_normalized_queries():
+def test_search_cache_does_not_merge_case_distinct_queries():
     commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
     clear_command_search_cache()
 
-    first_results = search_commands("terminal", commands)
+    search_commands("terminal", commands)
     first_info = command_search_cache_info()
-    second_results = search_commands("TERMINAL", commands)
+    search_commands("TERMINAL", commands)
     second_info = command_search_cache_info()
 
-    assert first_results == second_results
-    assert second_info.hits == first_info.hits + 1
+    assert second_info.misses == first_info.misses + 1
 
 
 def test_search_cache_does_not_merge_queries_with_distinct_whitespace():
@@ -508,6 +507,14 @@ def test_search_cache_does_not_merge_queries_with_distinct_whitespace():
     after_whitespace_variant = command_search_cache_info()
 
     assert after_whitespace_variant.misses == before_whitespace_variant.misses + 1
+
+
+def test_whitespace_only_query_keeps_raw_search_semantics():
+    commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
+
+    with patch("modules.command_search._score", return_value=0):
+        assert search_commands_uncached("  ", commands) == []
+        assert search_commands("  ", commands) == []
 
 
 def test_cached_results_use_current_payload_and_distinguish_searchable_snapshots():

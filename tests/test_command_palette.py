@@ -434,6 +434,7 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
             patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem),
             patch("core.menu_builder.QMenu", return_value=MagicMock()),
         ):
+            win._cmd_list.addItem.reset_mock()
             win._populate_commands("")
             original_payloads = [
                 call.args[0].command for call in win._cmd_list.addItem.call_args_list
