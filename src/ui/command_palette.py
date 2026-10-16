@@ -48,7 +48,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from utils.hotkey_helpers import to_pynput_str
+from utils.hotkey_helpers import safe_unregister, to_pynput_str
 
 logger = logging.getLogger(__name__)
 
@@ -482,10 +482,4 @@ class CommandPalette:
 
     def unregister_hotkey(self) -> None:
         """Remove all registered global hotkeys."""
-        if self._hotkey_listener is None:
-            return
-        try:
-            self._hotkey_listener.stop()
-        except Exception:  # noqa: S110 — intentional: hotkey listener stop is best-effort; failure is non-fatal
-            pass
-        self._hotkey_listener = None
+        self._hotkey_listener = safe_unregister(self._hotkey_listener, timeout=2.0)

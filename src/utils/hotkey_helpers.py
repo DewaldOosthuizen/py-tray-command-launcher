@@ -50,3 +50,29 @@ def to_pynput_str(hotkey: str) -> str:
         k = k.strip()
         parts.append(f"<{k}>" if (k in _PYNPUT_WRAP or len(k) > 1) else k)
     return "+".join(parts)
+
+
+def safe_unregister(handle, timeout: float = 2.0):
+    """Stop *handle* (if any), attempt a bounded join, then return None."""
+    if handle is None:
+        return None
+    try:
+        handle.stop()
+    except Exception:  # noqa: S110
+        pass
+    try:
+        join = getattr(handle, "join", None)
+        if callable(join):
+            join(timeout=timeout)
+    except Exception:  # noqa: S110
+        pass
+    return None
+
+
+def safe_register(existing_handle, factory, timeout: float = 2.0):
+    """Stop existing handle (if any) then call factory() to create a new one.
+
+    Returns the new handle returned by factory().
+    """
+    safe_unregister(existing_handle, timeout=timeout)
+    return factory()

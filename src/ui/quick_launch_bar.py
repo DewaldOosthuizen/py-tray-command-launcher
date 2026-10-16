@@ -31,7 +31,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from utils.hotkey_helpers import to_pynput_str
+from utils.hotkey_helpers import safe_unregister, to_pynput_str
 
 logger = logging.getLogger(__name__)
 
@@ -242,12 +242,4 @@ class QuickLaunchBar(QWidget):
 
     def unregister_hotkey(self) -> None:
         """Unregister the current bar hotkey, if any."""
-        if self._hotkey_handle is None:
-            return
-        try:
-            self._hotkey_handle.stop()
-            logger.debug("Quick-Launch Bar hotkey unregistered")
-        except Exception as exc:
-            logger.debug("Error unregistering bar hotkey: %s", exc)
-        finally:
-            self._hotkey_handle = None
+        self._hotkey_handle = safe_unregister(self._hotkey_handle, timeout=2.0)
