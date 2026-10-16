@@ -189,6 +189,10 @@ class MenuBuilder:
                 # Add command item to menu
                 self._add_command_to_menu(menu, label, item, parent_icon_path, group_name)
 
+    def resolve_command_reference(self, group, label, item):
+        """Public entry point used by AppServices; see ``_resolve_command_reference``."""
+        return self._resolve_command_reference(group, label, item)
+
     def _resolve_command_reference(self, group, label, item):
         """Resolve a command reference to get the actual command data.
 

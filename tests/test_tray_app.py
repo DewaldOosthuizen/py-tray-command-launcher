@@ -445,3 +445,19 @@ def test_setup_tray_icon_calls_set_window_icon():
     app.cleanup = MagicMock()
     app._setup_tray_icon()
     app.app.setWindowIcon.assert_called_once()
+
+
+def test_reload_menus_are_noops_before_tray_menu_is_built():
+    """Regression: executing a command (e.g. via hotkey/palette) before the lazy
+    tray menu was first opened raised AttributeError in a Qt slot -> app abort."""
+    app = object.__new__(TrayApp)  # real reload_* methods, not the mocks of _make_app
+    app.favorites_menu = None
+    app.history_menu = None
+    app.get_favorites = MagicMock()
+    app.get_history = MagicMock()
+
+    app.reload_favorites_commands()
+    app.reload_history_commands()
+
+    app.get_favorites.assert_not_called()
+    app.get_history.assert_not_called()

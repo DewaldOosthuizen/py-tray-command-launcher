@@ -41,6 +41,9 @@ class AppServices:
     save_commands: Callable[[dict], None]  # Persist command dictionary (with backup)
     reload_history_commands: Callable[[], None]  # Refresh Recent Commands submenu
     reload_favorites_commands: Callable[[], None]  # Refresh Favorites submenu
+    resolve_command_reference: Callable[
+        [str, str, dict], dict
+    ]  # Resolve a {"ref": ...} entry to the command it points at
     resolve_icon_path: Callable[[str], str]  # Resolve logical icon path to filesystem path
     notify_user: Callable[[str, str], None]  # Show tray notification
     process_tracker: ProcessTracker  # Track running subprocesses, emit process_count_changed

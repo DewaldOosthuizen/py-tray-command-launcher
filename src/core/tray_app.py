@@ -129,6 +129,7 @@ class TrayApp:
             save_commands=self.save_commands,
             reload_history_commands=self.reload_history_commands,
             reload_favorites_commands=self.reload_favorites_commands,
+            resolve_command_reference=self.resolve_command_reference,
             resolve_icon_path=self._resolve_icon_path,
             notify_user=self.notify_user,
             process_tracker=self.process_tracker,
@@ -139,7 +140,7 @@ class TrayApp:
 
     def _build_modules(self) -> None:
         """Initialise lazy feature-module slots (constructed on first use)."""
-        self.history_menu: list = []
+        self.history_menu = None
         self.favorites_menu = None
         self.history = None
         self.creator = None
@@ -455,11 +456,23 @@ class TrayApp:
             self.command_menu = {}
 
     def reload_history_commands(self):
-        """Reload the history commands."""
+        """Reload the history commands (no-op until the lazy tray menu exists)."""
+        if self.history_menu is None:
+            return
         self.get_history().populate_menu(self.history_menu)
 
+    def resolve_command_reference(self, group, label, item):
+        """Resolve a ``ref`` entry (e.g. a favorite) to the command it points at."""
+        return MenuBuilder(self).resolve_command_reference(group, label, item)
+
     def reload_favorites_commands(self):
-        """Reload the favorites menu with current favorites."""
+        """Reload the favorites menu with current favorites.
+
+        The submenu only exists once the lazy tray menu has been built; until
+        then there is nothing to refresh (it is populated on first build).
+        """
+        if self.favorites_menu is None:
+            return
         self.favorites_menu.clear()
         self.get_favorites().populate_favorites_menu(self.favorites_menu)
 
