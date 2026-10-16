@@ -74,7 +74,7 @@ class MenuBuilder:
         # Add favorites menu
         favorites_menu = QMenu("Favorites", menu)
         favorites_menu.setIcon(QIcon(self.tray_app.icon_file))
-        self.tray_app.favorites.populate_favorites_menu(favorites_menu)
+        self.tray_app.get_favorites().populate_favorites_menu(favorites_menu)
         self.tray_app.favorites_menu = favorites_menu
         menu.addMenu(favorites_menu)
 
@@ -91,16 +91,16 @@ class MenuBuilder:
         # Commands group
         commands_menu = QMenu("Commands", menu)
         commands_menu.setIcon(QIcon(self.tray_app.icon_file))
-        commands_menu.addAction("Quick Launch (Palette)", self.tray_app.palette.show_palette)
-        commands_menu.addAction("App Launcher", self.tray_app.palette.show_app_launcher)
-        commands_menu.addAction("Search Commands", self.tray_app.search.show_dialog)
+        commands_menu.addAction("Quick Launch (Palette)", self.tray_app.get_palette().show_palette)
+        commands_menu.addAction("App Launcher", self.tray_app.get_palette().show_app_launcher)
+        commands_menu.addAction("Search Commands", self.tray_app.get_search().show_dialog)
         commands_menu.addAction("Manage Commands", self.tray_app._open_command_manager)
         commands_menu.addAction("Edit commands file", self.tray_app.open_commands_json)
         commands_menu.addAction(
             "Reload Commands", lambda: self.tray_app.reload_commands(rebuild_menu=True)
         )
         commands_menu.addAction("Reload History Commands", self.tray_app.reload_history_commands)
-        commands_menu.addAction("Add to Favorites", self.tray_app.favorites.add_to_favorites)
+        commands_menu.addAction("Add to Favorites", self.tray_app.get_favorites().add_to_favorites)
         menu.addMenu(commands_menu)
 
         # Tools group
@@ -111,36 +111,38 @@ class MenuBuilder:
         import_export_menu = QMenu("Import/Export", tools_menu)
         import_export_menu.setIcon(QIcon(self.tray_app.icon_file))
         import_export_menu.addAction(
-            "Import Command Group", self.tray_app.importExport.import_command_group
+            "Import Command Group", self.tray_app.get_import_export().import_command_group
         )
         import_export_menu.addAction(
-            "Export Command Group", self.tray_app.importExport.export_command_group
+            "Export Command Group", self.tray_app.get_import_export().export_command_group
         )
         tools_menu.addMenu(import_export_menu)
 
         # Backup/Restore submenu
         backup_restore_menu = QMenu("Backup/Restore", tools_menu)
         backup_restore_menu.setIcon(QIcon(self.tray_app.icon_file))
-        backup_restore_menu.addAction("Backup Commands", self.tray_app.backup.backup_commands)
-        backup_restore_menu.addAction("Restore Commands", self.tray_app.backup.restore_commands)
+        backup_restore_menu.addAction("Backup Commands", self.tray_app.get_backup().backup_commands)
+        backup_restore_menu.addAction(
+            "Restore Commands", self.tray_app.get_backup().restore_commands
+        )
         tools_menu.addMenu(backup_restore_menu)
 
         # Encryption submenu
         encryption_menu = QMenu("Encrypt/Decrypt", tools_menu)
         encryption_menu.setIcon(QIcon(self.tray_app.icon_file))
         encryption_menu.addAction(
-            "Encrypt File/Folder", self.tray_app.file_encryptor.encrypt_file_or_folder
+            "Encrypt File/Folder", self.tray_app.get_file_encryptor().encrypt_file_or_folder
         )
         encryption_menu.addAction(
-            "Decrypt File/Folder", self.tray_app.file_encryptor.decrypt_file_or_folder
+            "Decrypt File/Folder", self.tray_app.get_file_encryptor().decrypt_file_or_folder
         )
         tools_menu.addMenu(encryption_menu)
 
         # Add Create Schedule option
-        tools_menu.addAction("Create Schedule", self.tray_app.schedule_creator.show_dialog)
+        tools_menu.addAction("Create Schedule", self.tray_app.get_schedule_creator().show_dialog)
 
         # Add View Schedules option
-        tools_menu.addAction("View Schedules", self.tray_app.schedule_viewer.show_dialog)
+        tools_menu.addAction("View Schedules", self.tray_app.get_schedule_viewer().show_dialog)
 
         menu.addMenu(tools_menu)
         menu.addAction("Settings", self.tray_app._open_settings)
