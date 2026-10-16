@@ -169,3 +169,46 @@ before being handed to the scheduler. Shell control operators
 and newlines/CR) are rejected. The command payload is **not** shell-quoted,
 so it runs as a normal argv command. Task names and comment markers are the
 only scheduler-facing strings escaped with `shlex.quote`.
+
+
+### Windows (schtasks)
+
+On Windows, `ScheduleCreator` invokes `schtasks /create ... /sc weekly` to
+register the command as a weekly task.
+
+Command syntax (`_create_windows_task`):
+
+```text
+schtasks /create /tn "<TaskName>" /tr "<command>" /sc weekly /d <DAYS> /st HH:MM /f
+```
+
+Examples:
+
+```text
+schtasks /create /tn "PyTrayLauncher_Notepad" /tr "notepad.exe" /sc weekly /d MON,TUE,WED,THU,FRI /st 09:00 /f
+schtasks /create /tn "PyTrayLauncher_Run_Script" /tr "python script.py" /sc weekly /d MON /st 18:30 /f
+```
+
+Day/time variations: `/d` accepts comma-separated day abbreviations (`MON`..`SUN`);
+`/st` is 24-hour `HH:MM`. Only weekly schedules (`/sc weekly`) are created.
+
+Placeholders and fields:
+
+- `/tn` — task name derived from the command label (`PyTrayLauncher_<Label>`),
+  spaces replaced with underscores; must pass `validate_command`.
+- `/tr` — the command string exactly as stored in `commands.json` (must not
+  contain rejected shell-control characters; not shell-quoted).
+- `/sc weekly` — fixed schedule type.
+- `/d` — comma-separated day abbreviations (`MON`..`SUN`).
+- `/st` — start time in 24-hour `HH:MM`.
+- `/f` — overwrite existing task with the same name.
+
+Limitations:
+
+- Commands cannot use shell operators (`;`, `&`, `|`, etc.); see `ScheduleCreator.validate_command`.
+- `{promptInput}` is not expanded for scheduled entries; the command runs verbatim.
+- Only weekly schedules are supported.
+- Creating tasks may require appropriate privileges depending on system policy.
+- Cross-reference: `src/modules/schedule_creator.py` (Linux/cron and Windows paths),
+  `src/ui/schedule_dialog.py`, `docs/features.md`, and `config/commands.schema.json`.
+

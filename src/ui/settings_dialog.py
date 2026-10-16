@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QGroupBox,
+    QLabel,
     QLineEdit,
     QMessageBox,
     QSpinBox,
@@ -146,6 +147,13 @@ class SettingsDialog(QDialog):
         logging_form.addRow("Log level:", self._log_level_combo)
 
         layout.addWidget(logging_box)
+
+        # --- Scheduling help --------------------------------------------
+        help_label = QLabel(
+            'See <a href="docs/configuration.md#safe-scheduling">'
+            "docs/configuration.md#safe-scheduling</a> for safe scheduling constraints."
+        )
+        layout.addWidget(help_label)
 
         # --- Buttons ----------------------------------------------------
         buttons = QDialogButtonBox(
