@@ -223,6 +223,12 @@ if "modules.app_discovery" not in sys.modules:
     sys.modules["modules.app_discovery"] = _ad
 
 from ui.command_palette import CommandPalette, _PaletteWindow, _score
+from modules.command_search import (
+    clear_command_search_cache,
+    command_search_cache_info,
+    search_commands,
+    search_commands_uncached,
+)
 from utils.hotkey_helpers import to_pynput_str
 
 
@@ -326,6 +332,44 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         win._cmd_list.count.return_value = 0
         win._populate_commands("terminal")
         assert win._cmd_list.addItem.call_count >= 1
+
+    def test_populate_commands_uses_shared_cached_search_and_current_payloads(self):
+        p, svc = self._make_palette()
+        win = _PaletteWindow(p)
+        win._cmd_list.count.return_value = 0
+        commands = svc.get_all_commands.return_value
+        clear_command_search_cache()
+        expected = search_commands_uncached("terminal", commands)
+
+        win._populate_commands("terminal")
+        first_info = command_search_cache_info()
+        win._populate_commands("terminal")
+        second_info = command_search_cache_info()
+
+        rendered = [
+            call.args[0].setData.call_args.args[1]
+            for call in win._cmd_list.addItem.call_args_list[-len(expected) :]
+        ]
+        self.assertEqual(rendered, [command for _, command in expected])
+        self.assertEqual(search_commands("terminal", commands), expected)
+        self.assertEqual(second_info.hits, first_info.hits + 1)
+
+    def test_open_palette_observes_replaced_command_snapshot(self):
+        p, svc = self._make_palette()
+        win = _PaletteWindow(p)
+        win._cmd_list.count.return_value = 0
+        clear_command_search_cache()
+        win._populate_commands("terminal")
+
+        replacement = [{"group": "Tools", "label": "Terminal", "command": "new-terminal"}]
+        svc.get_all_commands.return_value = replacement
+        win._populate_commands("terminal")
+
+        rendered = [
+            call.args[0].setData.call_args.args[1]
+            for call in win._cmd_list.addItem.call_args_list[-1:]
+        ]
+        self.assertEqual(rendered, replacement)
 
     def test_enter_key_triggers_execute(self):
         """eventFilter triggers _execute on Enter."""

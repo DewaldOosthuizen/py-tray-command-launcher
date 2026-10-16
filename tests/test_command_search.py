@@ -386,7 +386,15 @@ def _patch_all():
 
 
 # Import CommandSearch after our patches are defined, but before any test runs.
-from modules.command_search import CommandSearch, _score
+from modules.command_search import (
+    COMMAND_SEARCH_CACHE_SIZE,
+    CommandSearch,
+    _score,
+    clear_command_search_cache,
+    command_search_cache_info,
+    search_commands,
+    search_commands_uncached,
+)
 
 
 def test_exact_match_scores_high():
@@ -422,6 +430,57 @@ def test_score_is_symmetric_ish():
     s1 = _score("git", "Git Status")
     s2 = _score("Git Status", "git")
     assert s1 > 0 and s2 > 0
+
+
+def test_cached_search_matches_uncached_for_query_variants():
+    commands = [
+        {"group": "System", "label": "Terminal", "command": "terminal-v1"},
+        {"group": "System", "label": "Terminal Settings", "command": "settings"},
+        {"group": "Git", "label": "Status", "command": "git status"},
+    ]
+
+    for query in ("terminal", "TERMINAL", " terminal", "term set", "", "zzzzunlikely"):
+        assert search_commands(query, commands) == search_commands_uncached(query, commands)
+
+
+def test_search_cache_hits_case_normalized_queries():
+    commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
+    clear_command_search_cache()
+
+    first_results = search_commands("terminal", commands)
+    first_info = command_search_cache_info()
+    second_results = search_commands("TERMINAL", commands)
+    second_info = command_search_cache_info()
+
+    assert first_results == second_results
+    assert second_info.hits == first_info.hits + 1
+
+
+def test_cached_results_use_current_payload_and_distinguish_searchable_snapshots():
+    original = [{"group": "System", "label": "Terminal", "command": "old"}]
+    updated = [{"group": "System", "label": "Terminal", "command": "new"}]
+    renamed = [{"group": "System", "label": "Console", "command": "new"}]
+    clear_command_search_cache()
+
+    assert search_commands("terminal", original)[0][1] is original[0]
+    assert search_commands("terminal", updated)[0][1] is updated[0]
+    assert search_commands("terminal", renamed) == []
+
+
+def test_search_cache_is_bounded_and_evicts_least_recently_used():
+    commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
+    clear_command_search_cache()
+    search_commands("first", commands)
+    for index in range(COMMAND_SEARCH_CACHE_SIZE):
+        search_commands(f"query-{index}", commands)
+
+    before = command_search_cache_info()
+    search_commands("first", commands)
+    after = command_search_cache_info()
+
+    assert before.currsize == COMMAND_SEARCH_CACHE_SIZE
+    assert after.currsize <= COMMAND_SEARCH_CACHE_SIZE
+    assert after.misses == before.misses + 1
 
 
 # ---------------------------------------------------------------------------
@@ -464,6 +523,30 @@ def test_high_scoring_items_first(mock_services):
     assert len(_TrackedTreeWidget.added_items) == 2
     assert _TrackedTreeWidget.added_items[0].text(0) == "Terminal"
     assert _TrackedTreeWidget.added_items[1].text(0) == "Terminal Settings"
+
+
+def test_dialog_repeated_query_uses_cached_scores(mock_services):
+    commands = [
+        {"group": "System", "label": "Terminal", "command": "terminal"},
+        {"group": "System", "label": "Terminal Settings", "command": "settings"},
+    ]
+    mock_services.get_all_commands.return_value = commands
+    clear_command_search_cache()
+
+    with (
+        _patch_all(),
+        patch("modules.command_search._score", wraps=_score) as scoring,
+    ):
+        CommandSearch(mock_services).show_dialog()
+        line_edit = _TrackedLineEdit.instances[0]
+        line_edit.setText("Terminal")
+        initial_score_calls = scoring.call_count
+        first_info = command_search_cache_info()
+        line_edit.setText("Terminal")
+        second_info = command_search_cache_info()
+
+    assert scoring.call_count == initial_score_calls
+    assert second_info.hits == first_info.hits + 1
 
 
 def test_enter_key_executes_selected_command(mock_services):
