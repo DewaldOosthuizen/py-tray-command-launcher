@@ -469,17 +469,22 @@ class TestReencryptToCurrentStandard(unittest.TestCase):
 
 class TestV1IteratorBounds(unittest.TestCase):
     def test_v1_out_of_range_iterations_rejected(self):
+        import base64
         import struct
+
         from cryptography.fernet import Fernet
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-        import base64
 
         password = "pw"
         salt = os.urandom(16)
-        enc = Fernet(base64.urlsafe_b64encode(
-            PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000).derive(password.encode())
-        )).encrypt(b"x")
+        enc = Fernet(
+            base64.urlsafe_b64encode(
+                PBKDF2HMAC(
+                    algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000
+                ).derive(password.encode())
+            )
+        ).encrypt(b"x")
         with tempfile.TemporaryDirectory() as tmp:
             plain = os.path.join(tmp, "f.txt")
             enc_file = plain + ".enc"
@@ -499,11 +504,19 @@ class TestV1IteratorBounds(unittest.TestCase):
 
 
 class TestV2Corrupt(unittest.TestCase):
-    def _make_v2(self, password, salt, iterations=600000, tamper=False, bad_magic=False, bad_version=False):
-        import struct, hmac, hashlib
+    def _make_v2(
+        self, password, salt, iterations=600000, tamper=False, bad_magic=False, bad_version=False
+    ):
+        import hashlib
+        import hmac
+        import struct
+
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-        auth_key = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=b"py-tray-fe-auth", iterations=100000).derive(password.encode())
+
+        auth_key = PBKDF2HMAC(
+            algorithm=hashes.SHA256(), length=32, salt=b"py-tray-fe-auth", iterations=100000
+        ).derive(password.encode())
         magic = b"XXXX" if bad_magic else b"PTCL"
         ver = 0x03 if bad_version else 0x02
         header = magic + bytes([ver]) + struct.pack(">I", iterations) + salt
@@ -514,13 +527,19 @@ class TestV2Corrupt(unittest.TestCase):
 
     def test_bad_magic_version_hmac(self):
         import base64
+
         from cryptography.fernet import Fernet
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
         password = "pw"
         salt = os.urandom(16)
         original = b"data"
-        key = base64.urlsafe_b64encode(PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=600000).derive(password.encode()))
+        key = base64.urlsafe_b64encode(
+            PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=600000).derive(
+                password.encode()
+            )
+        )
         enc = Fernet(key).encrypt(original)
         with tempfile.TemporaryDirectory() as tmp:
             plain = os.path.join(tmp, "f.txt")
@@ -534,7 +553,9 @@ class TestV2Corrupt(unittest.TestCase):
                 worker.progress_updated = MagicMock()
                 worker.status_updated = MagicMock()
                 res = {}
-                worker.finished_signal.emit.side_effect = lambda s, m: res.update(success=s, message=m)
+                worker.finished_signal.emit.side_effect = lambda s, m, _res=res: _res.update(
+                    success=s, message=m
+                )
                 worker.run()
                 self.assertFalse(res["success"])
                 self.assertIn("corrupt", res["message"].lower())
@@ -543,12 +564,18 @@ class TestV2Corrupt(unittest.TestCase):
 class TestTruncatedCiphertext(unittest.TestCase):
     def test_truncated_enc_no_partial_plaintext(self):
         import base64
+
         from cryptography.fernet import Fernet
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
         password = "pw"
         salt = os.urandom(16)
-        key = base64.urlsafe_b64encode(PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=600000).derive(password.encode()))
+        key = base64.urlsafe_b64encode(
+            PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=600000).derive(
+                password.encode()
+            )
+        )
         enc = Fernet(key).encrypt(b"secret")
         with tempfile.TemporaryDirectory() as tmp:
             plain = os.path.join(tmp, "f.txt")
@@ -556,8 +583,13 @@ class TestTruncatedCiphertext(unittest.TestCase):
             salt_file = plain + ".salt"
             Path(enc_file).write_bytes(enc[:10])
             # write V2 salt
-            import struct, hmac, hashlib
-            auth_key = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=b"py-tray-fe-auth", iterations=100000).derive(password.encode())
+            import hashlib
+            import hmac
+            import struct
+
+            auth_key = PBKDF2HMAC(
+                algorithm=hashes.SHA256(), length=32, salt=b"py-tray-fe-auth", iterations=100000
+            ).derive(password.encode())
             header = b"PTCL" + bytes([2]) + struct.pack(">I", 600000) + salt
             tag = hmac.new(auth_key, header, hashlib.sha256).digest()
             Path(salt_file).write_bytes(header + tag)
