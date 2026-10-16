@@ -188,7 +188,12 @@ class SingleInstanceChecker:
             return True
 
         if not self.shared_memory.attach():
-            return False
+            # The observed segment may have disappeared after create() failed;
+            # retry exclusive creation once before reporting contention.
+            if not self.shared_memory.create(1):
+                return False
+            self._publish_pid_atomically(os.getpid())
+            return True
         try:
             stale = self._is_stale_lock()
         finally:
