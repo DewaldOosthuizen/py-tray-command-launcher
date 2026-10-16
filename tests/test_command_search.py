@@ -701,9 +701,12 @@ def test_dialog_uses_rebuilt_configuration_for_added_edited_removed_and_renamed_
         for command in rendered_commands
     )
     assert replacement[0] in edited_results
-    assert next(command for command in edited_results if command["label"] == "EditableEntry")[
-        "command"
-    ] == "edited-command"
+    assert (
+        next(command for command in edited_results if command["label"] == "EditableEntry")[
+            "command"
+        ]
+        == "edited-command"
+    )
     assert replacement[1] in added_results
     assert replacement[2] in renamed_results
 

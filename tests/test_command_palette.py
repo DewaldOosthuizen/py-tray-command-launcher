@@ -455,9 +455,7 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
             ]
             win._cmd_list.addItem.reset_mock()
             win._populate_commands("BrandNewFeature")
-            added_payloads = [
-                call.args[0].command for call in win._cmd_list.addItem.call_args_list
-            ]
+            added_payloads = [call.args[0].command for call in win._cmd_list.addItem.call_args_list]
             win._cmd_list.addItem.reset_mock()
             win._populate_commands("NewVioletCommand")
             renamed_payloads = [
