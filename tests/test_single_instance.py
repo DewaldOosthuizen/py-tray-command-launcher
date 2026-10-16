@@ -235,17 +235,18 @@ class TestAcquireLock:
             ("dead", "45678", OSError(errno.ESRCH, "no process"), True),
             ("permission denied", "45678", OSError(errno.EPERM, "denied"), False),
             ("ambiguous error", "45678", OSError(errno.EIO, "probe failed"), False),
+            ("out-of-range pid", "9" * 100, OverflowError("pid out of range"), False),
         ]
-        for name, value, error, expected_stale in cases:
+        for name, value, error, expected_acquired in cases:
             pidfile.write_text(value)
             registry = _SharedMemoryRegistry(exists=True)
             checker = _make_registered_checker(registry, pidfile=str(pidfile))
             with patch("utils.single_instance.os.kill", side_effect=error):
-                assert checker.acquire_lock() is expected_stale, name
+                assert checker.acquire_lock() is expected_acquired, name
 
     def test_malformed_and_unreadable_pid_are_not_recovered(self, tmp_path):
         pidfile = tmp_path / "app.pid"
-        registry = _SharedMemoryRegistry(exists=True)
+        registry = _SharedMemoryRegistry(exists=True, references=1)
         checker = _make_registered_checker(registry, pidfile=str(pidfile))
         pidfile.write_text("not-a-pid")
         assert checker.acquire_lock() is False
@@ -263,18 +264,33 @@ class TestAcquireLock:
         checker = _make_checker(pidfile=str(pidfile))
         checker.shared_memory.create.return_value = True
 
+        original_replace = os.replace
+
         def verify_replace(temp_path, destination):
             temp_path = Path(temp_path)
             assert temp_path.parent == pidfile.parent
             assert temp_path.read_text() == str(os.getpid())
             assert Path(destination).read_text() == "prior-complete-pid"
-            os.replace(temp_path, destination)
+            original_replace(temp_path, destination)
 
         with patch("utils.single_instance.os.replace", side_effect=verify_replace) as replace:
             assert checker.acquire_lock() is True
         replace.assert_called_once()
         assert pidfile.read_text() == str(os.getpid())
         assert list(tmp_path.iterdir()) == [pidfile]
+
+    def test_replace_failure_keeps_prior_pid_and_cleans_temporary_file(self, tmp_path, caplog):
+        pidfile = tmp_path / "app.pid"
+        pidfile.write_text("prior-complete-pid")
+        checker = _make_checker(pidfile=str(pidfile))
+        checker.shared_memory.create.return_value = True
+
+        with patch("utils.single_instance.os.replace", side_effect=OSError("rename failed")):
+            assert checker.acquire_lock() is True
+
+        assert pidfile.read_text() == "prior-complete-pid"
+        assert list(tmp_path.iterdir()) == [pidfile]
+        assert "rename failed" in caplog.text
 
     def test_contended_acquisition_does_not_replace_pid(self, tmp_path):
         pidfile = tmp_path / "app.pid"
@@ -354,7 +370,7 @@ class TestHeadlessDetection:
 # ---------------------------------------------------------------------------
 
 
-class TestCleanupLogging:
+class TestForceUnlockLifecycle:
     def test_force_unlock_clears_orphan_from_unattached_checker(self, tmp_path):
         pidfile = tmp_path / "orphan.pid"
         pidfile.write_text("old-pid")
@@ -392,4 +408,4 @@ class TestCleanupLogging:
         checker.cleanup()
 
         assert registry.exists is False
-        assert pidfile.read_text() == "owner-pid"
+        assert pidfile.read_text() == str(os.getpid())

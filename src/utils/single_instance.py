@@ -7,8 +7,10 @@ This module provides functionality to ensure only one instance of the applicatio
 runs at a time using Qt's QSharedMemory mechanism.
 """
 
+import errno
 import logging
 import os
+import tempfile
 
 from PyQt6.QtCore import QSharedMemory
 from PyQt6.QtWidgets import QMessageBox
@@ -25,112 +27,193 @@ class SingleInstanceChecker:
     """
 
     def __init__(self, key="py-tray-command-launcher-single-instance-final", pidfile=None):
-        """
-        Initialize the single instance checker.
+        """Initialize a checker for a shared-memory instance key.
+
         Args:
-            key (str): Unique identifier for the shared memory segment
-            pidfile (str, optional): Path to a file to store the PID of the running instance
+            key (str): Unique identifier for the shared-memory segment.
+            pidfile (str, optional): Path for owner PID metadata.
+
+        Returns:
+            None
+
+        Raises:
+            Exceptions from the Qt shared-memory constructor are propagated.
         """
         self.key = key
         self.shared_memory = QSharedMemory(key)
         self.pidfile = pidfile
 
     def is_pid_running(self, pid):
-        """
-        Check if a process with the given PID is running.
+        """Return whether a PID is running or cannot be proven absent.
+
+        Args:
+            pid: Process identifier to probe.
+
+        Returns:
+            bool: False only for an invalid identifier or a confirmed missing process.
+                Permission and other probe errors are treated as running.
         """
         try:
             pid = int(pid)
-            if pid <= 0:
-                return False
-        except Exception:
+        except (TypeError, ValueError):
             return False
+        if pid <= 0:
+            return False
+
         try:
             os.kill(pid, 0)
-        except OSError:
-            return False
-        else:
+        except OSError as exc:
+            return exc.errno != errno.ESRCH
+        except Exception:
             return True
+        return True
 
     def _is_stale_lock(self):
-        """Return True if the PID file names a process that is no longer running.
+        """Return whether attached shared-memory metadata names a dead process.
 
-        QSharedMemory segments survive a crash on Linux, so a segment alone does
-        not prove another instance is alive. Without a readable PID we cannot
-        tell, so the lock is treated as genuine.
+        A PID is stale only when it is readable, syntactically valid, and the OS
+        confirms that the process does not exist. Missing, malformed, and
+        unreadable metadata is inconclusive and therefore remains live.
         """
-        if not self.pidfile:
+        if not self.shared_memory.isAttached() or not self.pidfile:
             return False
         try:
-            with open(self.pidfile) as f:
-                pid = f.read().strip()
-        except OSError:
+            with open(self.pidfile, encoding="utf-8") as pid_file:
+                pid = pid_file.read().strip()
+            parsed_pid = int(pid)
+        except (OSError, TypeError, ValueError):
             return False
-        return bool(pid) and not self.is_pid_running(pid)
+        if parsed_pid <= 0:
+            return False
+        return not self.is_pid_running(parsed_pid)
+
+    def _publish_pid_atomically(self, pid):
+        """Publish a PID after lock acquisition without exposing partial data.
+
+        The temporary file is created beside the destination so ``os.replace``
+        remains atomic on the filesystem containing the PID file.
+
+        Args:
+            pid (int): PID of the process that acquired the shared-memory lock.
+
+        Returns:
+            None
+
+        Raises:
+            No exception is raised for filesystem errors; they are logged and
+            the acquired shared-memory lock remains authoritative.
+        """
+        if not self.pidfile:
+            return
+
+        temporary_path = None
+        directory = os.path.dirname(os.path.abspath(self.pidfile))
+        prefix = f".{os.path.basename(self.pidfile)}."
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=directory, prefix=prefix, delete=False
+            ) as pid_file:
+                temporary_path = pid_file.name
+                pid_file.write(str(pid))
+                pid_file.flush()
+            os.replace(temporary_path, self.pidfile)
+            temporary_path = None
+        except OSError as exc:
+            logger.warning("Could not write PID file %s: %s", self.pidfile, exc)
+        finally:
+            if temporary_path:
+                try:
+                    os.unlink(temporary_path)
+                except OSError as exc:
+                    logger.debug("Could not remove temporary PID file %s: %s", temporary_path, exc)
 
     def force_unlock(self):
+        """Release this checker's shared-memory reference, if one can be attached.
+
+        Attaching and detaching removes an orphaned segment when this is the
+        final reference, but leaves a segment used by a live owner untouched.
+        PID metadata is intentionally retained until a new owner wins creation.
+
+        Returns:
+            None
+
+        Raises:
+            Exceptions from Qt shared-memory operations are propagated.
         """
-        Remove the PID file and detach shared memory (force unlock).
-        """
+        if not self.shared_memory.isAttached():
+            self.shared_memory.attach()
         if self.shared_memory.isAttached():
             self.shared_memory.detach()
-        if self.pidfile:
-            try:
-                os.remove(self.pidfile)
-            except OSError as exc:
-                logger.debug(
-                    "Could not remove PID file %s during force_unlock: %s", self.pidfile, exc
-                )
 
     def is_another_instance_running(self):
-        """
-        Check if another instance of the application is already running.
+        """Check existing lock metadata while attached to its shared segment.
+
+        This is an observation only; it never grants ownership. Call
+        :meth:`acquire_lock` to arbitrate ownership through exclusive creation.
 
         Returns:
-            bool: True if another instance is running, False otherwise
-        """
-        # Try to attach to existing shared memory
-        if self.shared_memory.attach():
-            # Detaching as the last attachee also removes an orphaned segment.
-            self.shared_memory.detach()
-            if self._is_stale_lock():
-                logger.warning("Recovered stale single-instance lock left by a crashed process")
-                return False
-            return True
+            bool: True when the segment has a live or inconclusive owner, False
+                when absent or confirmed stale.
 
-        # No existing shared memory found - no other instance running
-        return False
+        Raises:
+            Exceptions from Qt shared-memory operations are propagated.
+        """
+        if not self.shared_memory.attach():
+            return False
+        try:
+            stale = self._is_stale_lock()
+        finally:
+            self.shared_memory.detach()
+
+        if stale:
+            logger.warning("Recovered stale single-instance lock left by a crashed process")
+            return False
+        return True
 
     def acquire_lock(self):
-        """
-        Acquire the single instance lock by creating shared memory.
+        """Acquire the lock using shared-memory creation as the sole authority.
+
+        Creation is attempted before PID metadata is consulted. If an existing
+        segment is confirmed stale while attached, it is detached before one
+        exclusive retry; losing that retry leaves the winner's metadata intact.
 
         Returns:
-            bool: True if lock was acquired (first instance), False otherwise
+            bool: True if this checker created the segment, otherwise False.
+
+        Raises:
+            Exceptions from Qt shared-memory operations are propagated.
         """
-        # First check if another instance is running
-        if self.is_another_instance_running():
+        if self.shared_memory.create(1):
+            self._publish_pid_atomically(os.getpid())
+            return True
+
+        if not self.shared_memory.attach():
+            return False
+        try:
+            stale = self._is_stale_lock()
+        finally:
+            self.shared_memory.detach()
+
+        if not stale:
             return False
 
-        # Try to create new shared memory segment
-        if self.shared_memory.create(1):
-            # Successfully created - we are the first instance
-            if self.pidfile:
-                try:
-                    with open(self.pidfile, "w") as f:
-                        f.write(str(os.getpid()))
-                except OSError as exc:
-                    logger.warning("Could not write PID file %s: %s", self.pidfile, exc)
-            return True
-        # Failed to create - another instance is running
-        return False
+        if not self.shared_memory.create(1):
+            return False
+
+        logger.warning("Recovered stale single-instance lock left by a crashed process")
+        self._publish_pid_atomically(os.getpid())
+        return True
 
     def show_already_running_message(self):
         """
         Show a message dialog informing user that another instance is running.
 
         Returns:
-            bool: True if user clicked OK to close, False otherwise
+            bool: True when the caller should exit, False when the caller should retry.
+
+        Raises:
+            Qt shared-memory errors are propagated; dialog errors are logged and
+            treated as a request to exit.
         """
         # Check if running in headless mode
         qt_platform = os.environ.get("QT_QPA_PLATFORM", "").lower()
@@ -141,18 +224,21 @@ class SingleInstanceChecker:
         pid_info = ""
         stale_lock = False
         existing_pid = None
-        if self.pidfile:
+        if self.pidfile and self.shared_memory.attach():
             try:
-                with open(self.pidfile) as f:
-                    existing_pid = f.read().strip()
-                if existing_pid:
-                    if self.is_pid_running(existing_pid):
-                        pid_info = f" (PID: {existing_pid})"
-                    else:
-                        pid_info = f" (stale lock, PID: {existing_pid})"
-                        stale_lock = True
-            except Exception:  # noqa: S110 — intentional: PID file read is best-effort; failure falls back to no pid_info
-                pass
+                try:
+                    with open(self.pidfile, encoding="utf-8") as pid_file:
+                        existing_pid = pid_file.read().strip()
+                    if existing_pid:
+                        stale_lock = self._is_stale_lock()
+                        if stale_lock:
+                            pid_info = f" (stale lock, PID: {existing_pid})"
+                        elif self.is_pid_running(existing_pid):
+                            pid_info = f" (PID: {existing_pid})"
+                except OSError:
+                    pass
+            finally:
+                self.shared_memory.detach()
         message = f"Another instance of py-tray-command-launcher is already running{pid_info}."
         if is_headless:
             logger.warning(message)
@@ -199,16 +285,16 @@ class SingleInstanceChecker:
             return True
 
     def cleanup(self):
-        """
-        Clean up shared memory resources.
+        """Detach this checker's shared-memory reference during shutdown.
 
-        Note: QSharedMemory automatically handles cleanup when the process exits,
-        but this method can be called for explicit cleanup if needed.
+        The PID file is retained because it is non-authoritative without a
+        segment and removing it could race with a replacement owner.
+
+        Returns:
+            None
+
+        Raises:
+            Exceptions from Qt shared-memory operations are propagated.
         """
         if self.shared_memory.isAttached():
             self.shared_memory.detach()
-        if self.pidfile:
-            try:
-                os.remove(self.pidfile)
-            except OSError as exc:
-                logger.debug("Could not remove PID file %s during cleanup: %s", self.pidfile, exc)

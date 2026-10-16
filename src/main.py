@@ -97,17 +97,12 @@ if __name__ == "__main__":
 
     # Retry logic for force unlock from GUI
     while True:
-        if instance_checker.is_another_instance_running():
-            retry = not instance_checker.show_already_running_message()
-            if retry:
-                continue
-            sys.exit(0)
-        if not instance_checker.acquire_lock():
-            retry = not instance_checker.show_already_running_message()
-            if retry:
-                continue
-            sys.exit(0)
-        break
+        if instance_checker.acquire_lock():
+            break
+        retry = not instance_checker.show_already_running_message()
+        if retry:
+            continue
+        sys.exit(0)
 
     configure_logging(config_manager.get_configured_log_level())
     logger.info("Application startup complete; launching tray application")
