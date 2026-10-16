@@ -8,9 +8,12 @@ Covers:
   - force_unlock / cleanup OSError logging (not silently swallowed)
 """
 
+import errno
 import os
 import sys
+import threading
 import types
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -66,6 +69,58 @@ def _make_checker(key="test-key", pidfile=None):
     return checker
 
 
+class _SharedMemoryRegistry:
+    """Model Qt shared-memory ownership and last-detach cleanup."""
+
+    def __init__(self, exists=False, references=0):
+        self.lock = threading.Lock()
+        self.exists = exists
+        self.references = references
+
+
+class _SharedMemory:
+    def __init__(self, registry):
+        self.registry = registry
+        self.attached = False
+
+    def create(self, size):
+        del size
+        with self.registry.lock:
+            if self.registry.exists:
+                return False
+            self.registry.exists = True
+            self.registry.references = 1
+            self.attached = True
+            return True
+
+    def attach(self):
+        with self.registry.lock:
+            if not self.registry.exists:
+                return False
+            self.registry.references += 1
+            self.attached = True
+            return True
+
+    def detach(self):
+        with self.registry.lock:
+            if not self.attached:
+                return False
+            self.registry.references -= 1
+            self.attached = False
+            if self.registry.references == 0:
+                self.registry.exists = False
+            return True
+
+    def isAttached(self):
+        return self.attached
+
+
+def _make_registered_checker(registry, pidfile=None):
+    checker = _make_checker(pidfile=pidfile)
+    checker.shared_memory = _SharedMemory(registry)
+    return checker
+
+
 # ---------------------------------------------------------------------------
 # is_pid_running
 # ---------------------------------------------------------------------------
@@ -113,7 +168,9 @@ class TestAcquireLock:
         checker.shared_memory.attach.return_value = False
         checker.shared_memory.create.return_value = True
 
-        with patch("builtins.open", side_effect=OSError("disk full")):
+        with patch(
+            "utils.single_instance.tempfile.NamedTemporaryFile", side_effect=OSError("disk full")
+        ):
             with patch("utils.single_instance.logger") as mock_logger:
                 result = checker.acquire_lock()
 
@@ -124,7 +181,9 @@ class TestAcquireLock:
 
     def test_returns_false_when_already_locked(self):
         checker = _make_checker(key="lock-taken")
+        checker.shared_memory.create.return_value = False
         checker.shared_memory.attach.return_value = True
+        checker._is_stale_lock = MagicMock(return_value=False)
 
         result = checker.acquire_lock()
 
@@ -139,16 +198,114 @@ class TestAcquireLock:
         assert checker.is_another_instance_running() is True
 
     def test_dead_pid_in_pidfile_is_recovered_as_stale(self, tmp_path):
-        """Regression: a crashed instance leaves its shared-memory segment behind;
-        the next launch must not report 'already running'."""
+        """A crashed owner can be replaced only after the orphan is detached."""
         pidfile = tmp_path / "app.pid"
         pidfile.write_text("999999999")
+        registry = _SharedMemoryRegistry(exists=True)
+        checker = _make_registered_checker(registry, pidfile=str(pidfile))
+        with patch.object(checker, "is_pid_running", return_value=False):
+            assert checker.acquire_lock() is True
+        assert pidfile.read_text() == str(os.getpid())
+        assert registry.exists is True
+        assert registry.references == 1
+
+    def test_losing_stale_recovery_preserves_contenders_pid(self, tmp_path):
+        pidfile = tmp_path / "app.pid"
+        pidfile.write_text("999999999")
+        registry = _SharedMemoryRegistry(exists=True)
+        checker = _make_registered_checker(registry, pidfile=str(pidfile))
+
+        def contender_wins(_pid):
+            with registry.lock:
+                registry.references += 1
+            pidfile.write_text("424242")
+            return False
+
+        with patch.object(checker, "is_pid_running", side_effect=contender_wins):
+            assert checker.acquire_lock() is False
+
+        assert pidfile.read_text() == "424242"
+        assert registry.exists is True
+        assert registry.references == 1
+
+    def test_probe_only_treats_confirmed_missing_process_as_stale(self, tmp_path):
+        pidfile = tmp_path / "app.pid"
+        cases = [
+            ("live", str(os.getpid()), None, False),
+            ("dead", "45678", OSError(errno.ESRCH, "no process"), True),
+            ("permission denied", "45678", OSError(errno.EPERM, "denied"), False),
+            ("ambiguous error", "45678", OSError(errno.EIO, "probe failed"), False),
+        ]
+        for name, value, error, expected_stale in cases:
+            pidfile.write_text(value)
+            registry = _SharedMemoryRegistry(exists=True)
+            checker = _make_registered_checker(registry, pidfile=str(pidfile))
+            with patch("utils.single_instance.os.kill", side_effect=error):
+                assert checker.acquire_lock() is expected_stale, name
+
+    def test_malformed_and_unreadable_pid_are_not_recovered(self, tmp_path):
+        pidfile = tmp_path / "app.pid"
+        registry = _SharedMemoryRegistry(exists=True)
+        checker = _make_registered_checker(registry, pidfile=str(pidfile))
+        pidfile.write_text("not-a-pid")
+        assert checker.acquire_lock() is False
+        assert registry.exists is True
+
+        pidfile.unlink()
+        checker = _make_registered_checker(registry, pidfile=str(pidfile))
+        with patch("builtins.open", side_effect=PermissionError("unreadable")):
+            assert checker.acquire_lock() is False
+        assert registry.exists is True
+
+    def test_pid_is_atomically_replaced_only_after_create_wins(self, tmp_path):
+        pidfile = tmp_path / "app.pid"
+        pidfile.write_text("prior-complete-pid")
         checker = _make_checker(pidfile=str(pidfile))
-        checker.shared_memory.attach.return_value = True
         checker.shared_memory.create.return_value = True
 
-        assert checker.is_another_instance_running() is False
-        assert checker.acquire_lock() is True
+        def verify_replace(temp_path, destination):
+            temp_path = Path(temp_path)
+            assert temp_path.parent == pidfile.parent
+            assert temp_path.read_text() == str(os.getpid())
+            assert Path(destination).read_text() == "prior-complete-pid"
+            os.replace(temp_path, destination)
+
+        with patch("utils.single_instance.os.replace", side_effect=verify_replace) as replace:
+            assert checker.acquire_lock() is True
+        replace.assert_called_once()
+        assert pidfile.read_text() == str(os.getpid())
+        assert list(tmp_path.iterdir()) == [pidfile]
+
+    def test_contended_acquisition_does_not_replace_pid(self, tmp_path):
+        pidfile = tmp_path / "app.pid"
+        pidfile.write_text("winner-pid")
+        checker = _make_checker(pidfile=str(pidfile))
+        checker.shared_memory.create.return_value = False
+        checker.shared_memory.attach.return_value = False
+
+        with patch("utils.single_instance.os.replace") as replace:
+            assert checker.acquire_lock() is False
+        replace.assert_not_called()
+        assert pidfile.read_text() == "winner-pid"
+
+    def test_concurrent_acquisition_has_one_winner_and_keeps_its_pid(self, tmp_path):
+        pidfile = tmp_path / "app.pid"
+        registry = _SharedMemoryRegistry()
+        barrier = threading.Barrier(8)
+
+        def acquire():
+            checker = _make_registered_checker(registry, pidfile=str(pidfile))
+            barrier.wait()
+            return checker, checker.acquire_lock()
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = list(executor.map(lambda _: acquire(), range(8)))
+
+        winners = [checker for checker, success in results if success]
+        assert len(winners) == 1
+        assert pidfile.read_text() == str(os.getpid())
+        assert registry.exists is True
+        assert registry.references == 1
 
 
 # ---------------------------------------------------------------------------
@@ -198,24 +355,41 @@ class TestHeadlessDetection:
 
 
 class TestCleanupLogging:
-    def test_force_unlock_logs_oserror(self, tmp_path):
-        pidfile = str(tmp_path / "lock.pid")
-        checker = _make_checker(key="cleanup-fu", pidfile=pidfile)
-        checker.shared_memory.isAttached.return_value = False
+    def test_force_unlock_clears_orphan_from_unattached_checker(self, tmp_path):
+        pidfile = tmp_path / "orphan.pid"
+        pidfile.write_text("old-pid")
+        registry = _SharedMemoryRegistry(exists=True)
+        checker = _make_registered_checker(registry, pidfile=str(pidfile))
 
-        with patch("os.remove", side_effect=OSError("already gone")):
-            with patch("utils.single_instance.logger") as mock_logger:
-                checker.force_unlock()
+        checker.force_unlock()
 
-        mock_logger.debug.assert_called_once()
+        assert checker.shared_memory.isAttached() is False
+        assert registry.exists is False
+        assert pidfile.read_text() == "old-pid"
+        assert checker.acquire_lock() is True
+        assert pidfile.read_text() == str(os.getpid())
 
-    def test_cleanup_logs_oserror(self, tmp_path):
-        pidfile = str(tmp_path / "lock2.pid")
-        checker = _make_checker(key="cleanup-cl", pidfile=pidfile)
-        checker.shared_memory.isAttached.return_value = False
+    def test_force_unlock_does_not_break_live_owner(self, tmp_path):
+        pidfile = tmp_path / "live.pid"
+        pidfile.write_text("live-owner")
+        registry = _SharedMemoryRegistry(exists=True, references=1)
+        checker = _make_registered_checker(registry, pidfile=str(pidfile))
 
-        with patch("os.remove", side_effect=OSError("gone")):
-            with patch("utils.single_instance.logger") as mock_logger:
-                checker.cleanup()
+        checker.force_unlock()
 
-        mock_logger.debug.assert_called_once()
+        assert registry.exists is True
+        assert registry.references == 1
+        assert pidfile.read_text() == "live-owner"
+        assert checker.acquire_lock() is False
+
+    def test_cleanup_detaches_without_unlinking_pid(self, tmp_path):
+        pidfile = tmp_path / "owner.pid"
+        pidfile.write_text("owner-pid")
+        registry = _SharedMemoryRegistry()
+        checker = _make_registered_checker(registry, pidfile=str(pidfile))
+        assert checker.acquire_lock() is True
+
+        checker.cleanup()
+
+        assert registry.exists is False
+        assert pidfile.read_text() == "owner-pid"
