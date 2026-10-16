@@ -456,6 +456,18 @@ def test_search_cache_hits_case_normalized_queries():
     assert second_info.hits == first_info.hits + 1
 
 
+def test_search_cache_does_not_merge_queries_with_distinct_whitespace():
+    commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
+    clear_command_search_cache()
+
+    search_commands("terminal", commands)
+    before_whitespace_variant = command_search_cache_info()
+    search_commands(" terminal", commands)
+    after_whitespace_variant = command_search_cache_info()
+
+    assert after_whitespace_variant.misses == before_whitespace_variant.misses + 1
+
+
 def test_cached_results_use_current_payload_and_distinguish_searchable_snapshots():
     original = [{"group": "System", "label": "Terminal", "command": "old"}]
     updated = [{"group": "System", "label": "Terminal", "command": "new"}]
@@ -464,14 +476,22 @@ def test_cached_results_use_current_payload_and_distinguish_searchable_snapshots
 
     assert search_commands("terminal", original)[0][1] is original[0]
     assert search_commands("terminal", updated)[0][1] is updated[0]
-    assert search_commands("terminal", renamed) == []
+    before_renamed_search = command_search_cache_info()
+    renamed_results = search_commands("terminal", renamed)
+    after_renamed_search = command_search_cache_info()
+
+    assert renamed_results
+    assert all(command is renamed[0] for _, command in renamed_results)
+    assert after_renamed_search.misses == before_renamed_search.misses + 1
 
 
 def test_search_cache_is_bounded_and_evicts_least_recently_used():
     commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
     clear_command_search_cache()
     search_commands("first", commands)
-    for index in range(COMMAND_SEARCH_CACHE_SIZE):
+    search_commands("second", commands)
+    search_commands("first", commands)
+    for index in range(COMMAND_SEARCH_CACHE_SIZE - 1):
         search_commands(f"query-{index}", commands)
 
     before = command_search_cache_info()
@@ -480,7 +500,10 @@ def test_search_cache_is_bounded_and_evicts_least_recently_used():
 
     assert before.currsize == COMMAND_SEARCH_CACHE_SIZE
     assert after.currsize <= COMMAND_SEARCH_CACHE_SIZE
-    assert after.misses == before.misses + 1
+    assert after.hits == before.hits + 1
+
+    search_commands("second", commands)
+    assert command_search_cache_info().misses == after.misses + 1
 
 
 # ---------------------------------------------------------------------------
@@ -547,6 +570,29 @@ def test_dialog_repeated_query_uses_cached_scores(mock_services):
 
     assert scoring.call_count == initial_score_calls
     assert second_info.hits == first_info.hits + 1
+
+
+def test_open_dialog_uses_replaced_command_snapshot(mock_services):
+    original = [{"group": "System", "label": "Terminal", "command": "old"}]
+    replacement = [
+        {"group": "Tools", "label": "Console", "command": "new"},
+        {"group": "Tools", "label": "New Entry", "command": "new-entry"},
+    ]
+    mock_services.get_all_commands.return_value = original
+    clear_command_search_cache()
+
+    with _patch_all():
+        CommandSearch(mock_services).show_dialog()
+        line_edit = _TrackedLineEdit.instances[0]
+        line_edit.setText("terminal")
+        mock_services.get_all_commands.return_value = replacement
+        line_edit.setText("")
+        rendered_commands = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+
+    assert rendered_commands == replacement
 
 
 def test_enter_key_executes_selected_command(mock_services):

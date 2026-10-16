@@ -15,6 +15,7 @@ from functools import partial
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QMenu
 
+from modules.command_search import clear_command_search_cache
 from utils.dialogs import show_error_and_raise
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,8 @@ class MenuBuilder:
             menu: The QMenu to add items to
             command_menu: Dictionary of commands from config
         """
+        clear_command_search_cache()
+
         # Check if commands is a dictionary
         if not isinstance(command_menu, dict):
             show_error_and_raise(

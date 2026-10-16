@@ -14,7 +14,7 @@ import sys
 import time
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, root)
+sys.path.insert(0, os.path.join(root, "src"))
 
 MARKER = "TRAY_ICON_SHOWN"
 TIMEOUT = 30.0
