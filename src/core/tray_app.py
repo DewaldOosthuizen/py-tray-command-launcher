@@ -135,31 +135,95 @@ class TrayApp:
         self.process_tracker.process_count_changed.connect(self._on_process_count_changed)
 
     def _build_modules(self) -> None:
-        """Construct all feature module instances."""
+        """Initialise lazy feature-module slots (constructed on first use)."""
         self.history_menu: list = []
-        self.history = CommandHistory(self.services)
-        self.creator = CommandCreator(self.services)
-        self.executor = CommandExecutor(self.services)
-        self.search = CommandSearch(self.services)
-        self.backup = BackupRestore(self.services)
-        self.importExport = ImportExport(self.services)
-        self.favorites = Favorites(self.services)
-        self.file_encryptor = FileEncryptor(self.services)
-        self.schedule_creator = ScheduleCreator(self.services)
-        self.schedule_viewer = ScheduleViewer(self.services)
+        self.favorites_menu = None
+        self.history = None
+        self.creator = None
+        self.executor = None
+        self.search = None
+        self.backup = None
+        self.importExport = None
+        self.favorites = None
+        self.file_encryptor = None
+        self.schedule_creator = None
+        self.schedule_viewer = None
 
     def _build_ui(self) -> None:
-        """Construct UI widgets and register hotkeys."""
-        settings = config_manager.get_settings()
+        """Initialise lazy UI widget slots (constructed on first use)."""
+        self.palette = None
+        self.quick_launch_bar = None
 
-        self.palette = CommandPalette(self.services)
-        hotkey = settings.get("hotkey", "ctrl+shift+space")
-        app_launcher_hotkey = settings.get("app_launcher_hotkey", "ctrl+alt+a")
-        self.palette.register_hotkeys(hotkey, app_launcher_hotkey)
+    # ------------------------------------------------------------------ #
+    # Lazy factory accessors                                               #
+    # ------------------------------------------------------------------ #
 
-        self.quick_launch_bar = QuickLaunchBar(self.services, self.icon_file)
-        bar_hotkey = settings.get("quick_launch_bar", {}).get("hotkey", "ctrl+shift+b")
-        self.quick_launch_bar.register_hotkey(bar_hotkey)
+    def get_history(self):
+        if self.history is None:
+            self.history = CommandHistory(self.services)
+        return self.history
+
+    def get_creator(self):
+        if self.creator is None:
+            self.creator = CommandCreator(self.services)
+        return self.creator
+
+    def get_executor(self):
+        if self.executor is None:
+            self.executor = CommandExecutor(self.services)
+        return self.executor
+
+    def get_search(self):
+        if self.search is None:
+            self.search = CommandSearch(self.services)
+        return self.search
+
+    def get_backup(self):
+        if self.backup is None:
+            self.backup = BackupRestore(self.services)
+        return self.backup
+
+    def get_import_export(self):
+        if self.importExport is None:
+            self.importExport = ImportExport(self.services)
+        return self.importExport
+
+    def get_favorites(self):
+        if self.favorites is None:
+            self.favorites = Favorites(self.services)
+        return self.favorites
+
+    def get_file_encryptor(self):
+        if self.file_encryptor is None:
+            self.file_encryptor = FileEncryptor(self.services)
+        return self.file_encryptor
+
+    def get_schedule_creator(self):
+        if self.schedule_creator is None:
+            self.schedule_creator = ScheduleCreator(self.services)
+        return self.schedule_creator
+
+    def get_schedule_viewer(self):
+        if self.schedule_viewer is None:
+            self.schedule_viewer = ScheduleViewer(self.services)
+        return self.schedule_viewer
+
+    def get_palette(self):
+        if self.palette is None:
+            settings = config_manager.get_settings()
+            self.palette = CommandPalette(self.services)
+            hotkey = settings.get("hotkey", "ctrl+shift+space")
+            app_launcher_hotkey = settings.get("app_launcher_hotkey", "ctrl+alt+a")
+            self.palette.register_hotkeys(hotkey, app_launcher_hotkey)
+        return self.palette
+
+    def get_quick_launch_bar(self):
+        if self.quick_launch_bar is None:
+            settings = config_manager.get_settings()
+            self.quick_launch_bar = QuickLaunchBar(self.services, self.icon_file)
+            bar_hotkey = settings.get("quick_launch_bar", {}).get("hotkey", "ctrl+shift+b")
+            self.quick_launch_bar.register_hotkey(bar_hotkey)
+        return self.quick_launch_bar
 
     def _build_menu(self) -> None:
         """Build the tray context menu and attach it to the tray icon."""
@@ -375,12 +439,12 @@ class TrayApp:
 
     def reload_history_commands(self):
         """Reload the history commands."""
-        self.history.populate_menu(self.history_menu)
+        self.get_history().populate_menu(self.history_menu)
 
     def reload_favorites_commands(self):
         """Reload the favorites menu with current favorites."""
         self.favorites_menu.clear()
-        self.favorites.populate_favorites_menu(self.favorites_menu)
+        self.get_favorites().populate_favorites_menu(self.favorites_menu)
 
     # ------------------------------------------------------------------ #
     # Dialog openers                                                       #
@@ -438,6 +502,8 @@ class TrayApp:
 
     def _reregister_hotkey(self, hotkey: str) -> None:
         """Unregister the current palette hotkey and register the new one."""
+        if self.palette is None:
+            return
         try:
             self.palette.register_hotkey(hotkey)
             logger.info("Palette hotkey re-registered: %s", hotkey)
@@ -446,6 +512,8 @@ class TrayApp:
 
     def _reregister_app_launcher_hotkey(self, hotkey: str) -> None:
         """Unregister the app launcher hotkey and register the new one."""
+        if self.palette is None:
+            return
         try:
             self.palette.update_app_launcher_hotkey(hotkey)
             logger.info("App Launcher hotkey re-registered: %s", hotkey)
@@ -454,6 +522,8 @@ class TrayApp:
 
     def _reregister_bar_hotkey(self, hotkey: str) -> None:
         """Unregister the current bar hotkey and register the new one."""
+        if self.quick_launch_bar is None:
+            return
         try:
             self.quick_launch_bar.unregister_hotkey()
             self.quick_launch_bar.register_hotkey(hotkey)
@@ -481,9 +551,11 @@ class TrayApp:
         logger.info("Cleaning up before exit")
         for window in self.output_windows:
             window.close()
-        self.palette.unregister_hotkey()
-        self.quick_launch_bar.unregister_hotkey()
-        self.quick_launch_bar.close()
+        if self.palette is not None:
+            self.palette.unregister_hotkey()
+        if self.quick_launch_bar is not None:
+            self.quick_launch_bar.unregister_hotkey()
+            self.quick_launch_bar.close()
         self.instance_checker.cleanup()
 
     def run(self):
