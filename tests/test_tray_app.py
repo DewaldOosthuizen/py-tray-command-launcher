@@ -417,3 +417,31 @@ def test_reregister_bar_hotkey_swallows_exception():
     app.quick_launch_bar.unregister_hotkey.side_effect = RuntimeError("boom")
     # Must not raise.
     app._reregister_bar_hotkey("ctrl+y")
+
+
+# ---------------------------------------------------------------------------
+# Branding wiring (Issue #135)
+# ---------------------------------------------------------------------------
+
+
+def test_setup_paths_selects_branded_icon(tmp_path):
+    """_setup_paths prefers the branded icon when it exists under base_dir."""
+    app = object.__new__(TrayApp)
+    branded = tmp_path / "resources" / "icons" / "branding" / "icon.png"
+    branded.parent.mkdir(parents=True)
+    branded.write_bytes(b"x")
+    with patch("core.tray_app.config_manager") as cm:
+        cm.get_base_dir.return_value = str(tmp_path)
+        cm.get_settings.return_value = {}
+        app._setup_paths()
+    assert app.icon_file == str(branded)
+
+
+def test_setup_tray_icon_calls_set_window_icon():
+    """_setup_tray_icon wires setWindowIcon on the QApplication."""
+    app = object.__new__(TrayApp)
+    app.app = MagicMock()
+    app.icon_file = "icon.png"
+    app.cleanup = MagicMock()
+    app._setup_tray_icon()
+    app.app.setWindowIcon.assert_called_once()
