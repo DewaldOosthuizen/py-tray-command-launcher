@@ -587,7 +587,7 @@ class TrayApp:
         if palette is not None:
             try:
                 palette.unregister_hotkey()
-            except Exception as exc:  # noqa: S110
+            except Exception as exc:  # noqa: S110 — hotkey unregister is best-effort during shutdown; failure is logged and non-fatal
                 logger.debug("Palette hotkey cleanup error: %s", exc)
         bar = getattr(self, "quick_launch_bar", None)
         if bar is not None:

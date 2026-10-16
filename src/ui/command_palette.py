@@ -302,7 +302,7 @@ class _PaletteWindow(QWidget):
                     "Launch failed",
                     f"Could not start {entry.name}: {exc}",
                 )
-            except Exception:  # noqa: BLE001 — best-effort notification
+            except Exception:  # best-effort notification
                 logger.debug("Failed to show launch failure notification", exc_info=True)
 
     # ------------------------------------------------------------------

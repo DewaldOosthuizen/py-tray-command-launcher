@@ -102,7 +102,7 @@ def _make_pyqt6_stub():
         def __getattr__(cls, name):
             return _StubAttr()
 
-    class _QObject(metaclass=_StubMeta):  # noqa: N801
+    class _QObject(metaclass=_StubMeta):
         """Stub base class for QtCore QObject-derived types under test."""
 
         def __init__(self, *args, **kwargs):
@@ -113,7 +113,7 @@ def _make_pyqt6_stub():
             object.__setattr__(self, name, attr)
             return attr
 
-    class _QWidget(metaclass=_StubMeta):  # noqa: N801
+    class _QWidget(metaclass=_StubMeta):
         """Stub base class for all Qt widget types under test."""
 
         def __init__(self, *args, **kwargs):

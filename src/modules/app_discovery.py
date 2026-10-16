@@ -107,7 +107,8 @@ class _LRUCache(OrderedDict):
     systems.
     """
 
-    def __setitem__(self, key, value):  # noqa: D105
+    def __setitem__(self, key, value):
+
         super().__setitem__(key, value)
         if len(self) > _MAX_PIXMAP_CACHE:
             self.popitem(last=False)
