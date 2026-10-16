@@ -11,7 +11,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 # ---------------------------------------------------------------------------
@@ -222,13 +222,14 @@ if "modules.app_discovery" not in sys.modules:
     _ad.app_discovery.resolve_icon_pixmap.return_value = None
     sys.modules["modules.app_discovery"] = _ad
 
-from ui.command_palette import CommandPalette, _PaletteWindow, _score
 from modules.command_search import (
+    _score,
     clear_command_search_cache,
     command_search_cache_info,
     search_commands,
     search_commands_uncached,
 )
+from ui.command_palette import CommandPalette, _PaletteWindow
 from utils.hotkey_helpers import to_pynput_str
 
 
@@ -341,14 +342,22 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         clear_command_search_cache()
         expected = search_commands_uncached("terminal", commands)
 
-        win._populate_commands("terminal")
-        first_info = command_search_cache_info()
-        win._populate_commands("terminal")
-        second_info = command_search_cache_info()
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.command = None
+
+            def setData(self, _role, command):
+                self.command = command
+
+        with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
+            win._populate_commands("terminal")
+            first_info = command_search_cache_info()
+            win._populate_commands("terminal")
+            second_info = command_search_cache_info()
 
         rendered = [
-            call.args[0].setData.call_args.args[1]
-            for call in win._cmd_list.addItem.call_args_list[-len(expected) :]
+            call.args[0].command for call in win._cmd_list.addItem.call_args_list[-len(expected) :]
         ]
         self.assertEqual(rendered, [command for _, command in expected])
         self.assertEqual(search_commands("terminal", commands), expected)
@@ -359,15 +368,29 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         win = _PaletteWindow(p)
         win._cmd_list.count.return_value = 0
         clear_command_search_cache()
-        win._populate_commands("terminal")
 
-        replacement = [{"group": "Tools", "label": "Terminal", "command": "new-terminal"}]
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.command = None
+
+            def setData(self, _role, command):
+                self.command = command
+
+        with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
+            win._populate_commands("")
+
+        replacement = [
+            {"group": "Tools", "label": "Console", "command": "new-terminal"},
+            {"group": "Tools", "label": "New Entry", "command": "new-command"},
+        ]
         svc.get_all_commands.return_value = replacement
-        win._populate_commands("terminal")
+        with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
+            win._populate_commands("")
 
         rendered = [
-            call.args[0].setData.call_args.args[1]
-            for call in win._cmd_list.addItem.call_args_list[-1:]
+            call.args[0].command
+            for call in win._cmd_list.addItem.call_args_list[-len(replacement) :]
         ]
         self.assertEqual(rendered, replacement)
 
