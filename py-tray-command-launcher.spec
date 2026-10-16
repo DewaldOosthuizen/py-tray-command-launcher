@@ -50,5 +50,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='resources/icons/icon.png' if os.path.exists('resources/icons/icon.png') else None,
+    icon='resources/icons/branding/icon.png' if os.path.exists('resources/icons/branding/icon.png') else None,
 )

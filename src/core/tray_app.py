@@ -78,7 +78,9 @@ class TrayApp:
 
         tray_icon_path = self.icon_resolver.resolve_tray_icon()
         if not tray_icon_path:
-            tray_icon_path = os.path.join(self.base_dir, "resources", "icons", "icon.png")
+            tray_icon_path = os.path.join(
+                self.base_dir, "resources", "icons", "branding", "icon.png"
+            )
         self.icon_file = tray_icon_path
 
         logger.info("Base directory resolved to %s", self.base_dir)
@@ -100,6 +102,7 @@ class TrayApp:
         self.app.setQuitOnLastWindowClosed(False)
 
         tray_qicon = QIcon(self.icon_file)
+        self.app.setWindowIcon(tray_qicon)
         self.tray_icon = QSystemTrayIcon(tray_qicon)
         self.tray_icon.setIcon(tray_qicon)
         self.tray_icon.setVisible(True)
@@ -185,9 +188,9 @@ class TrayApp:
         """Set the tray tooltip to show the app name and the number of loaded commands."""
         try:
             count = len(self.get_all_commands())
-            self.tray_icon.setToolTip(f"py-tray-command-launcher — {count} command(s) loaded")
+            self.tray_icon.setToolTip(f"Py Tray Command Launcher — {count} command(s) loaded")
         except Exception:
-            self.tray_icon.setToolTip("py-tray-command-launcher")
+            self.tray_icon.setToolTip("Py Tray Command Launcher")
 
     # ------------------------------------------------------------------ #
     # Command execution                                                    #

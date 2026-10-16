@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=py-tray-command-launcher
+Name=Py Tray Command Launcher
 Comment=System tray command launcher
 Exec=py-tray-command-launcher
 Icon=py-tray-command-launcher

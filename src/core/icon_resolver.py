@@ -96,6 +96,13 @@ class IconResolver:
         """
         candidates: list[str] = []
         for root in self.resource_roots():
+            candidates.append(os.path.join(root, "resources", "icons", "branding", "icon.png"))
+            candidates.append(
+                os.path.join(root, "resources", "icons", "branding", "icon-running.png")
+            )
+            candidates.append(
+                os.path.join(root, "resources", "icons", "branding", "icon-error.png")
+            )
             candidates.append(os.path.join(root, "resources", "icons", "icon.png"))
             candidates.append(os.path.join(root, "resources", "icon.png"))
 

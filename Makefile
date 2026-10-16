@@ -189,8 +189,8 @@ release-workflow:
 	mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/pixmaps
 	cp dist/py-tray-command-launcher AppDir/usr/bin/
 	cp packaging/py-tray-command-launcher.desktop AppDir/
-	cp resources/icons/icon.png AppDir/py-tray-command-launcher.png
-	cp resources/icons/icon.png AppDir/usr/share/pixmaps/py-tray-command-launcher.png
+	cp resources/icons/branding/icon.png AppDir/py-tray-command-launcher.png
+	cp resources/icons/branding/icon.png AppDir/usr/share/pixmaps/py-tray-command-launcher.png
 	mkdir -p AppDir/usr/bin/resources/themes
 	cp -r resources/themes/. AppDir/usr/bin/resources/themes/
 	printf '%s\n' '#!/bin/bash' \

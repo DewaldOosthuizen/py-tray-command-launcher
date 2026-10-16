@@ -223,3 +223,7 @@ If an installed application does not appear in the App Launcher palette, use the
 4. **Verify the file is in a scanned directory** — confirm the `.desktop` file lives under one of the directories listed above (or under a custom `$XDG_DATA_DIRS` path you have configured).
 
 5. **Check for exclusion flags** — open the `.desktop` file and confirm it does not contain `NoDisplay=true` or `Hidden=true`, and that `Type=Application` is present.
+
+## Branding
+
+Branded assets live under `resources/icons/branding/` (base `icon.png`, optional `icon-running.png`/`icon-error.png` variants). They are consumed by: tray icon, window icon, quick-launch bar, badge manager, desktop entry, and the packaged executable. Swap them by replacing the PNG files in that directory; `resources/icons/icon.png` remains as a legacy fallback.

@@ -192,3 +192,23 @@ class TestResolveTrayIcon:
         r = IconResolver(str(tmp_path))
         result = r.resolve_tray_icon()
         assert result is None or isinstance(result, str)
+
+
+class TestBrandedTrayIconResolution:
+    def test_branded_preferred_over_legacy(self, tmp_path):
+        brand_dir = tmp_path / "resources" / "icons" / "branding"
+        brand_dir.mkdir(parents=True)
+        branded = brand_dir / "icon.png"
+        branded.write_bytes(b"x")
+        legacy = tmp_path / "resources" / "icons" / "icon.png"
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_bytes(b"y")
+        r = IconResolver(str(tmp_path))
+        assert r.resolve_tray_icon() == str(branded)
+
+    def test_legacy_fallback(self, tmp_path):
+        legacy = tmp_path / "resources" / "icons" / "icon.png"
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_bytes(b"y")
+        r = IconResolver(str(tmp_path))
+        assert r.resolve_tray_icon() == str(legacy)
