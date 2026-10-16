@@ -61,6 +61,10 @@ class ScheduleCreator:
 
     def _create_windows_task(self, command_info, hour, minute, selected_days):
         task_name = f"PyTrayLauncher_{command_info['label'].replace(' ', '_')}"
+        from modules.schedule_creator import ScheduleCreator
+
+        if not ScheduleCreator.validate_command(task_name):
+            raise ValueError("Invalid task name")
         command = command_info["command"]
 
         # Convert days to Windows format
@@ -167,7 +171,7 @@ class ScheduleCreator:
             current_crontab = result.stdout if result.returncode == 0 else ""
             logger.debug("Current crontab read (%d lines)", current_crontab.count("\n"))
 
-            comment = f"# py-tray-command-launcher: {command_info['label']}"
+            comment = f"# py-tray-command-launcher: {shlex.quote(command_info['label'])}"
             new_crontab = current_crontab.rstrip("\n") + "\n" + comment + "\n" + cron_entry + "\n"
 
             with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".cron") as f:

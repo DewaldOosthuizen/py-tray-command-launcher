@@ -2,6 +2,7 @@
 
 import logging
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -236,7 +237,11 @@ class ScheduleViewer:
         for line in lines:
             stripped = line.strip()
             if stripped.startswith("# py-tray-command-launcher:"):
-                current_name = stripped.replace("# py-tray-command-launcher:", "").strip()
+                raw = stripped.replace("# py-tray-command-launcher:", "", 1).strip()
+                try:
+                    current_name = shlex.split(raw)[0] if raw else None
+                except ValueError:
+                    current_name = raw
             elif current_name and stripped and not stripped.startswith("#"):
                 parts = stripped.split()
                 if len(parts) >= 6:
@@ -375,7 +380,7 @@ class ScheduleViewer:
         result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
         current_crontab = result.stdout if result.returncode == 0 else ""
 
-        comment_marker = f"# py-tray-command-launcher: {schedule.get('name')}"
+        comment_marker = f"# py-tray-command-launcher: {shlex.quote(str(schedule.get('name')))}"
         target_cron_line = schedule.get("cron_line", "")
 
         from modules.schedule_creator import ScheduleCreator
