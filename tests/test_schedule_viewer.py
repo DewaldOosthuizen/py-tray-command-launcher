@@ -207,3 +207,37 @@ def test_delete_linux_cron_job_preserves_new_entry_same_name():
     # The new entry's cron line must appear exactly once
     new_cron_line = "0 8 * * 1 /bin/new_command"
     assert written.count(new_cron_line) == 1
+
+
+def test_delete_linux_cron_job_rejects_malformed_name():
+    from modules.schedule_viewer import ScheduleViewer
+
+    svc = MagicMock()
+    viewer = ScheduleViewer(svc)
+    schedule = {
+        "name": "bad;name",
+        "command": "/bin/true",
+        "schedule": "09:30",
+        "cron_line": "30 9 * * 1 /bin/true",
+    }
+    import pytest
+
+    with pytest.raises(ValueError):
+        viewer._delete_linux_cron_job(schedule)
+
+
+def test_delete_linux_cron_job_rejects_malformed_cron_line():
+    from modules.schedule_viewer import ScheduleViewer
+
+    svc = MagicMock()
+    viewer = ScheduleViewer(svc)
+    schedule = {
+        "name": "MyLabel",
+        "command": "/bin/true",
+        "schedule": "09:30",
+        "cron_line": "30 9 * * 1 /bin/true; rm -rf /",
+    }
+    import pytest
+
+    with pytest.raises(ValueError):
+        viewer._delete_linux_cron_job(schedule)
