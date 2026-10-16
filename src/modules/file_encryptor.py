@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import base64
+import hashlib
+import hmac
 import logging
 import os
 import struct
@@ -31,6 +33,10 @@ ENC_FILE_SUFFIX = ".enc"
 _PBKDF2_ITERATIONS = 600_000
 # Iteration count used by all files encrypted before this change.
 _LEGACY_ITERATIONS = 100_000
+# Iteration count used to derive the V2 salt HMAC auth key.
+_AUTH_ITERATIONS = 100_000
+_V2_MAGIC = b"PTCL"
+_V2_VERSION = 0x02
 
 
 class EncryptionWorker(QThread):
@@ -79,14 +85,22 @@ class EncryptionWorker(QThread):
 
             # Write encrypted data to .enc file
             encrypted_file_path = file_path + ENC_FILE_SUFFIX
-            with open(encrypted_file_path, "wb") as file:
+            tmp_path = encrypted_file_path + ".tmp"
+            with open(tmp_path, "wb") as file:
                 file.write(encrypted_data)
+            os.replace(tmp_path, encrypted_file_path)
 
             # Remove original file
             os.remove(file_path)
             return True
         except Exception as e:
             self.status_updated.emit(f"Error encrypting {file_path}: {str(e)}")
+            tmp_path = file_path + ENC_FILE_SUFFIX + ".tmp"
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
             return False
 
     def _decrypt_file(self, file_path: str, key: bytes) -> bool:
@@ -96,18 +110,32 @@ class EncryptionWorker(QThread):
                 encrypted_data = file.read()
 
             fernet = Fernet(key)
-            decrypted_data = fernet.decrypt(encrypted_data)
+            try:
+                decrypted_data = fernet.decrypt(encrypted_data)
+            except Exception:
+                raise ValueError(
+                    "Encrypted file is corrupt or truncated. Cannot decrypt."
+                ) from None
 
             # Write decrypted data to original file (remove .enc extension)
             original_file_path = file_path[: -len(ENC_FILE_SUFFIX)]  # Remove .enc extension
-            with open(original_file_path, "wb") as file:
+            tmp_path = original_file_path + ".tmp"
+            with open(tmp_path, "wb") as file:
                 file.write(decrypted_data)
+            os.replace(tmp_path, original_file_path)
 
             # Remove encrypted file
             os.remove(file_path)
             return True
         except Exception as e:
             self.status_updated.emit(f"Error decrypting {file_path}: {str(e)}")
+            # clean temp
+            for p in (file_path + ".tmp", file_path[: -len(ENC_FILE_SUFFIX)] + ".tmp"):
+                if os.path.exists(p):
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass
             return False
 
     def _get_all_files(self, path: str, operation: str):
@@ -182,9 +210,21 @@ class EncryptionWorker(QThread):
                     # For single files, store salt next to the original file location
                     salt_file = self.file_path + SALT_FILE_SUFFIX
                 with open(salt_file, "wb") as f:
-                    # 4-byte big-endian uint32 iteration count + 16-byte salt = 20 bytes total
-                    f.write(struct.pack(">I", _PBKDF2_ITERATIONS))
-                    f.write(salt)
+                    # V2 authenticated format: magic + version + iterations + salt + HMAC
+                    auth_key = PBKDF2HMAC(
+                        algorithm=hashes.SHA256(),
+                        length=32,
+                        salt=b"py-tray-fe-auth",
+                        iterations=_AUTH_ITERATIONS,
+                    ).derive(password.encode("utf-8"))
+                    header = (
+                        _V2_MAGIC
+                        + bytes([_V2_VERSION])
+                        + struct.pack(">I", _PBKDF2_ITERATIONS)
+                        + salt
+                    )
+                    tag = hmac.new(auth_key, header, hashlib.sha256).digest()
+                    f.write(header + tag)
             else:  # decrypt
                 # Read salt
                 if self.is_folder:
@@ -201,12 +241,47 @@ class EncryptionWorker(QThread):
                 if os.path.exists(salt_file):
                     with open(salt_file, "rb") as f:
                         raw = f.read()
-                    if len(raw) == 20:
-                        # New format: 4-byte big-endian uint32 + 16-byte salt
+                    # Length dispatch
+                    if len(raw) == 57:
+                        if raw[:4] != _V2_MAGIC or raw[4] != _V2_VERSION:
+                            self.finished_signal.emit(
+                                False,
+                                "Salt file is corrupt or unrecognised format. Cannot decrypt.",
+                            )
+                            return
+                        stored_iterations = struct.unpack(">I", raw[5:9])[0]
+                        salt = raw[9:25]
+                        tag = raw[25:57]
+                        if not (1 <= stored_iterations <= 10_000_000):
+                            self.finished_signal.emit(
+                                False,
+                                "Salt file is corrupt or unrecognised format. Cannot decrypt.",
+                            )
+                            return
+                        auth_key = PBKDF2HMAC(
+                            algorithm=hashes.SHA256(),
+                            length=32,
+                            salt=b"py-tray-fe-auth",
+                            iterations=_AUTH_ITERATIONS,
+                        ).derive(password.encode("utf-8"))
+                        payload = raw[:25]
+                        expected = hmac.new(auth_key, payload, hashlib.sha256).digest()
+                        if not hmac.compare_digest(expected, tag):
+                            self.finished_signal.emit(
+                                False,
+                                "Salt file is corrupt or unrecognised format. Cannot decrypt.",
+                            )
+                            return
+                    elif len(raw) == 20:
                         stored_iterations = struct.unpack(">I", raw[:4])[0]
                         salt = raw[4:]
+                        if not (1 <= stored_iterations <= 10_000_000):
+                            self.finished_signal.emit(
+                                False,
+                                "Salt file is corrupt or unrecognised format. Cannot decrypt.",
+                            )
+                            return
                     elif len(raw) == 16:
-                        # Legacy format: 16-byte salt only — iteration count was 100 000
                         stored_iterations = _LEGACY_ITERATIONS
                         salt = raw
                         is_legacy = True
@@ -567,11 +642,19 @@ class FileEncryptor:
                 enc_tmp.write(ciphertext)
                 enc_tmp_path = enc_tmp.name
 
+            auth_key = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=b"py-tray-fe-auth",
+                iterations=_AUTH_ITERATIONS,
+            ).derive(password.encode("utf-8"))
+            header = _V2_MAGIC + bytes([_V2_VERSION]) + struct.pack(">I", _PBKDF2_ITERATIONS) + salt
+            tag = hmac.new(auth_key, header, hashlib.sha256).digest()
+
             with tempfile.NamedTemporaryFile(
                 dir=dir_, delete=False, suffix=".salt.tmp"
             ) as salt_tmp:
-                salt_tmp.write(struct.pack(">I", _PBKDF2_ITERATIONS))
-                salt_tmp.write(salt)
+                salt_tmp.write(header + tag)
                 salt_tmp_path = salt_tmp.name
 
             os.replace(enc_tmp_path, enc_path)
