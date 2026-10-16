@@ -11,7 +11,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 # ---------------------------------------------------------------------------
@@ -222,7 +222,14 @@ if "modules.app_discovery" not in sys.modules:
     _ad.app_discovery.resolve_icon_pixmap.return_value = None
     sys.modules["modules.app_discovery"] = _ad
 
-from ui.command_palette import CommandPalette, _PaletteWindow, _score
+from modules.command_search import (
+    _score,
+    clear_command_search_cache,
+    command_search_cache_info,
+    search_commands,
+    search_commands_uncached,
+)
+from ui.command_palette import CommandPalette, _PaletteWindow
 from utils.hotkey_helpers import to_pynput_str
 
 
@@ -319,6 +326,32 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         win._populate_commands("")
         assert win._cmd_list.addItem.call_count == len(svc.get_all_commands())
 
+    def test_whitespace_only_query_shows_all_commands(self):
+        """Whitespace-only command queries retain the empty-query behavior."""
+        p, svc = self._make_palette()
+        win = _PaletteWindow(p)
+        win._cmd_list.count.return_value = 0
+        commands = svc.get_all_commands.return_value
+        win._cmd_list.addItem.reset_mock()
+        clear_command_search_cache()
+
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.command = None
+
+            def setData(self, _role, command):
+                self.command = command
+
+        with (
+            patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem),
+            patch("modules.command_search._score", return_value=0),
+        ):
+            win._populate_commands("  \t")
+
+        rendered = [call.args[0].command for call in win._cmd_list.addItem.call_args_list]
+        self.assertEqual(rendered, commands)
+
     def test_fuzzy_query_filters_commands(self):
         """_populate_commands filters commands by fuzzy query."""
         p, svc = self._make_palette()
@@ -326,6 +359,147 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         win._cmd_list.count.return_value = 0
         win._populate_commands("terminal")
         assert win._cmd_list.addItem.call_count >= 1
+
+    def test_populate_commands_uses_shared_cached_search_and_current_payloads(self):
+        p, svc = self._make_palette()
+        win = _PaletteWindow(p)
+        win._cmd_list.count.return_value = 0
+        commands = svc.get_all_commands.return_value
+        clear_command_search_cache()
+        expected = search_commands_uncached("terminal", commands)
+
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.command = None
+
+            def setData(self, _role, command):
+                self.command = command
+
+        with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
+            win._populate_commands("terminal")
+            first_info = command_search_cache_info()
+            win._populate_commands("terminal")
+            second_info = command_search_cache_info()
+
+        rendered = [
+            call.args[0].command for call in win._cmd_list.addItem.call_args_list[-len(expected) :]
+        ]
+        self.assertEqual(rendered, [command for _, command in expected])
+        self.assertEqual(search_commands("terminal", commands), expected)
+        self.assertEqual(second_info.hits, first_info.hits + 1)
+
+    def test_open_palette_observes_replaced_command_snapshot(self):
+        p, svc = self._make_palette()
+        win = _PaletteWindow(p)
+        win._cmd_list.count.return_value = 0
+        clear_command_search_cache()
+
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.command = None
+
+            def setData(self, _role, command):
+                self.command = command
+
+        with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
+            win._populate_commands("")
+
+        replacement = [
+            {"group": "Tools", "label": "Console", "command": "new-terminal"},
+            {"group": "Tools", "label": "New Entry", "command": "new-command"},
+        ]
+        svc.get_all_commands.return_value = replacement
+        with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
+            win._populate_commands("")
+
+        rendered = [
+            call.args[0].command
+            for call in win._cmd_list.addItem.call_args_list[-len(replacement) :]
+        ]
+        self.assertEqual(rendered, replacement)
+
+    def test_palette_uses_rebuilt_configuration_for_added_edited_removed_and_renamed_commands(
+        self,
+    ):
+        from core.menu_builder import MenuBuilder
+
+        p, svc = self._make_palette()
+        original = [
+            {"group": "System", "label": "EditableEntry", "command": "old-command"},
+            {"group": "System", "label": "RemoveObsoleteFeature", "command": "obsolete"},
+            {"group": "System", "label": "OldScarletCommand", "command": "old-name"},
+        ]
+        replacement = [
+            {"group": "Tools", "label": "EditableEntry", "command": "edited-command"},
+            {"group": "Tools", "label": "BrandNewFeature", "command": "added-command"},
+            {"group": "Tools", "label": "NewVioletCommand", "command": "renamed-command"},
+        ]
+        svc.get_all_commands.return_value = original
+        win = _PaletteWindow(p)
+        win._cmd_list.count.return_value = 0
+        clear_command_search_cache()
+
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.command = None
+
+            def setData(self, _role, command):
+                self.command = command
+
+        tray_app = MagicMock()
+        tray_app.icon_file = "/nonexistent/tray_icon.png"
+        tray_menu = MagicMock()
+        command_menu = {
+            "Tools": {command["label"]: {"command": command["command"]} for command in replacement}
+        }
+
+        with (
+            patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem),
+            patch("core.menu_builder.QMenu", return_value=MagicMock()),
+        ):
+            win._cmd_list.addItem.reset_mock()
+            win._populate_commands("")
+            original_payloads = [
+                call.args[0].command for call in win._cmd_list.addItem.call_args_list
+            ]
+
+            svc.get_all_commands.return_value = replacement
+            tray_app.command_menu = command_menu
+            MenuBuilder(tray_app).build(tray_menu, command_menu)
+            win._cmd_list.addItem.reset_mock()
+
+            win._populate_commands("")
+            current_payloads = [
+                call.args[0].command for call in win._cmd_list.addItem.call_args_list
+            ]
+            win._cmd_list.addItem.reset_mock()
+            win._populate_commands("EditableEntry")
+            edited_payloads = [
+                call.args[0].command for call in win._cmd_list.addItem.call_args_list
+            ]
+            win._cmd_list.addItem.reset_mock()
+            win._populate_commands("BrandNewFeature")
+            added_payloads = [call.args[0].command for call in win._cmd_list.addItem.call_args_list]
+            win._cmd_list.addItem.reset_mock()
+            win._populate_commands("NewVioletCommand")
+            renamed_payloads = [
+                call.args[0].command for call in win._cmd_list.addItem.call_args_list
+            ]
+
+        self.assertEqual(original_payloads, original)
+        self.assertEqual(current_payloads, replacement)
+        self.assertNotIn("RemoveObsoleteFeature", [item["label"] for item in current_payloads])
+        self.assertNotIn("OldScarletCommand", [item["label"] for item in current_payloads])
+        self.assertIn(replacement[0], edited_payloads)
+        self.assertEqual(
+            next(item for item in edited_payloads if item["label"] == "EditableEntry")["command"],
+            "edited-command",
+        )
+        self.assertIn(replacement[1], added_payloads)
+        self.assertIn(replacement[2], renamed_payloads)
 
     def test_enter_key_triggers_execute(self):
         """eventFilter triggers _execute on Enter."""

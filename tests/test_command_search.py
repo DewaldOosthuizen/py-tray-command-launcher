@@ -386,7 +386,15 @@ def _patch_all():
 
 
 # Import CommandSearch after our patches are defined, but before any test runs.
-from modules.command_search import CommandSearch, _score
+from modules.command_search import (
+    COMMAND_SEARCH_CACHE_SIZE,
+    CommandSearch,
+    _score,
+    clear_command_search_cache,
+    command_search_cache_info,
+    search_commands,
+    search_commands_uncached,
+)
 
 
 def test_exact_match_scores_high():
@@ -422,6 +430,134 @@ def test_score_is_symmetric_ish():
     s1 = _score("git", "Git Status")
     s2 = _score("Git Status", "git")
     assert s1 > 0 and s2 > 0
+
+
+def test_cached_search_matches_uncached_for_query_variants():
+    commands = [
+        {"group": "System", "label": "Terminal", "command": "terminal-v1"},
+        {"group": "System", "label": "Terminal Settings", "command": "settings"},
+        {"group": "Git", "label": "Status", "command": "git status"},
+    ]
+
+    for query in ("terminal", "TERMINAL", " terminal", "term set", "", "zzzzunlikely"):
+        assert search_commands(query, commands) == search_commands_uncached(query, commands)
+
+
+def test_search_preserves_raw_query_case_sensitive_ranking_and_cache_keys():
+    commands = [
+        {"group": "System", "label": "Terminal", "command": "system-terminal"},
+        {
+            "group": "Development",
+            "label": "terminal",
+            "command": "development-terminal",
+        },
+    ]
+
+    raw_scores = {
+        ("Terminal", "System Terminal"): 90,
+        ("Terminal", "Development terminal"): 84,
+        ("terminal", "System Terminal"): 84,
+        ("terminal", "Development terminal"): 90,
+    }
+
+    def prior_raw_query_score(query, text):
+        return raw_scores[(query, text)]
+
+    for query, expected_labels in (
+        ("Terminal", ["Terminal", "terminal"]),
+        ("terminal", ["terminal", "Terminal"]),
+    ):
+        expected = [
+            (prior_raw_query_score(query, f"{command['group']} {command['label']}"), command)
+            for command in commands
+        ]
+        expected.sort(key=lambda result: result[0], reverse=True)
+        assert [command["label"] for _, command in expected] == expected_labels
+
+        with patch("modules.command_search._score", side_effect=prior_raw_query_score):
+            assert search_commands_uncached(query, commands) == expected
+            assert search_commands(query, commands) == expected
+
+    clear_command_search_cache()
+    with patch("modules.command_search._score", side_effect=prior_raw_query_score):
+        search_commands("Terminal", commands)
+        search_commands("terminal", commands)
+    assert command_search_cache_info().misses == 2
+
+
+def test_search_cache_does_not_merge_case_distinct_queries():
+    commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
+    clear_command_search_cache()
+
+    search_commands("terminal", commands)
+    first_info = command_search_cache_info()
+    search_commands("TERMINAL", commands)
+    second_info = command_search_cache_info()
+
+    assert second_info.misses == first_info.misses + 1
+
+
+def test_search_cache_does_not_merge_queries_with_distinct_whitespace():
+    commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
+    clear_command_search_cache()
+
+    search_commands("terminal", commands)
+    before_whitespace_variant = command_search_cache_info()
+    search_commands(" terminal", commands)
+    after_whitespace_variant = command_search_cache_info()
+
+    assert after_whitespace_variant.misses == before_whitespace_variant.misses + 1
+
+
+def test_whitespace_only_query_shows_all_commands():
+    commands = [
+        {"group": "System", "label": "Terminal", "command": "terminal"},
+        {"group": "Development", "label": "Editor", "command": "editor"},
+    ]
+    expected = [(100, command) for command in commands]
+    clear_command_search_cache()
+
+    with patch("modules.command_search._score", return_value=0):
+        assert search_commands_uncached("  \t", commands) == expected
+        assert search_commands("  \t", commands) == expected
+
+
+def test_cached_results_use_current_payload_and_distinguish_searchable_snapshots():
+    original = [{"group": "System", "label": "Terminal", "command": "old"}]
+    updated = [{"group": "System", "label": "Terminal", "command": "new"}]
+    renamed = [{"group": "System", "label": "Console", "command": "new"}]
+    clear_command_search_cache()
+
+    assert search_commands("terminal", original)[0][1] is original[0]
+    assert search_commands("terminal", updated)[0][1] is updated[0]
+    before_renamed_search = command_search_cache_info()
+    renamed_results = search_commands("terminal", renamed)
+    after_renamed_search = command_search_cache_info()
+
+    assert renamed_results
+    assert all(command is renamed[0] for _, command in renamed_results)
+    assert after_renamed_search.misses == before_renamed_search.misses + 1
+
+
+def test_search_cache_is_bounded_and_evicts_least_recently_used():
+    commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
+    clear_command_search_cache()
+    search_commands("first", commands)
+    search_commands("second", commands)
+    search_commands("first", commands)
+    for index in range(COMMAND_SEARCH_CACHE_SIZE - 1):
+        search_commands(f"query-{index}", commands)
+
+    before = command_search_cache_info()
+    search_commands("first", commands)
+    after = command_search_cache_info()
+
+    assert before.currsize == COMMAND_SEARCH_CACHE_SIZE
+    assert after.currsize <= COMMAND_SEARCH_CACHE_SIZE
+    assert after.hits == before.hits + 1
+
+    search_commands("second", commands)
+    assert command_search_cache_info().misses == after.misses + 1
 
 
 # ---------------------------------------------------------------------------
@@ -464,6 +600,127 @@ def test_high_scoring_items_first(mock_services):
     assert len(_TrackedTreeWidget.added_items) == 2
     assert _TrackedTreeWidget.added_items[0].text(0) == "Terminal"
     assert _TrackedTreeWidget.added_items[1].text(0) == "Terminal Settings"
+
+
+def test_dialog_repeated_query_uses_cached_scores(mock_services):
+    commands = [
+        {"group": "System", "label": "Terminal", "command": "terminal"},
+        {"group": "System", "label": "Terminal Settings", "command": "settings"},
+    ]
+    mock_services.get_all_commands.return_value = commands
+    clear_command_search_cache()
+
+    with (
+        _patch_all(),
+        patch("modules.command_search._score", wraps=_score) as scoring,
+    ):
+        CommandSearch(mock_services).show_dialog()
+        line_edit = _TrackedLineEdit.instances[0]
+        line_edit.setText("Terminal")
+        initial_score_calls = scoring.call_count
+        first_info = command_search_cache_info()
+        line_edit.setText("Terminal")
+        second_info = command_search_cache_info()
+
+    assert scoring.call_count == initial_score_calls
+    assert second_info.hits == first_info.hits + 1
+
+
+def test_open_dialog_uses_replaced_command_snapshot(mock_services):
+    original = [{"group": "System", "label": "Terminal", "command": "old"}]
+    replacement = [
+        {"group": "Tools", "label": "Console", "command": "new"},
+        {"group": "Tools", "label": "New Entry", "command": "new-entry"},
+    ]
+    mock_services.get_all_commands.return_value = original
+    clear_command_search_cache()
+
+    with _patch_all():
+        CommandSearch(mock_services).show_dialog()
+        line_edit = _TrackedLineEdit.instances[0]
+        line_edit.setText("terminal")
+        mock_services.get_all_commands.return_value = replacement
+        line_edit.setText("")
+        rendered_commands = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+
+    assert rendered_commands == replacement
+
+
+def test_dialog_uses_rebuilt_configuration_for_added_edited_removed_and_renamed_commands(
+    mock_services,
+):
+    from core.menu_builder import MenuBuilder
+
+    original = [
+        {"group": "System", "label": "EditableEntry", "command": "old-command"},
+        {"group": "System", "label": "RemoveObsoleteFeature", "command": "obsolete"},
+        {"group": "System", "label": "OldScarletCommand", "command": "old-name"},
+    ]
+    replacement = [
+        {"group": "Tools", "label": "EditableEntry", "command": "edited-command"},
+        {"group": "Tools", "label": "BrandNewFeature", "command": "added-command"},
+        {"group": "Tools", "label": "NewVioletCommand", "command": "renamed-command"},
+    ]
+    mock_services.get_all_commands.return_value = original
+    clear_command_search_cache()
+
+    tray_app = MagicMock()
+    tray_app.icon_file = "/nonexistent/tray_icon.png"
+    tray_app.command_menu = {}
+    tray_menu = MagicMock()
+
+    with _patch_all(), patch("core.menu_builder.QMenu", return_value=MagicMock()):
+        CommandSearch(mock_services).show_dialog()
+        line_edit = _TrackedLineEdit.instances[0]
+        assert [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ] == original
+
+        tray_app.command_menu = {
+            "Tools": {command["label"]: {"command": command["command"]} for command in replacement}
+        }
+        mock_services.get_all_commands.return_value = replacement
+        MenuBuilder(tray_app).build(tray_menu, tray_app.command_menu)
+
+        line_edit.setText("")
+        rendered_commands = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+        line_edit.setText("EditableEntry")
+        edited_results = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+        line_edit.setText("BrandNewFeature")
+        added_results = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+        line_edit.setText("NewVioletCommand")
+        renamed_results = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+
+    assert rendered_commands == replacement
+    assert all(
+        command["label"] not in {"RemoveObsoleteFeature", "OldScarletCommand"}
+        for command in rendered_commands
+    )
+    assert replacement[0] in edited_results
+    assert (
+        next(command for command in edited_results if command["label"] == "EditableEntry")[
+            "command"
+        ]
+        == "edited-command"
+    )
+    assert replacement[1] in added_results
+    assert replacement[2] in renamed_results
 
 
 def test_enter_key_executes_selected_command(mock_services):

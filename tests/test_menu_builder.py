@@ -364,3 +364,25 @@ def test_build_uses_lazy_quick_launch_bar_accessor():
     tray_app.get_quick_launch_bar.assert_called_once_with()
     labels = [c.args[0] for c in parent_menu.addAction.call_args_list if c.args]
     assert "Quick Launch Bar" in labels
+
+
+def test_build_invalidates_cached_command_search_results():
+    from modules.command_search import (
+        clear_command_search_cache,
+        command_search_cache_info,
+        search_commands,
+    )
+
+    commands = [{"group": "Group", "label": "Terminal", "command": "terminal"}]
+    clear_command_search_cache()
+    search_commands("terminal", commands)
+    assert command_search_cache_info().currsize == 1
+
+    tray_app = _make_tray_app({"Group": {"Terminal": {"command": "terminal"}}})
+    parent_menu = MagicMock()
+    qmenu_make, _ = _qmenu_factory()
+
+    with patch("core.menu_builder.QMenu", side_effect=qmenu_make):
+        MenuBuilder(tray_app).build(parent_menu, tray_app.command_menu)
+
+    assert command_search_cache_info().currsize == 0

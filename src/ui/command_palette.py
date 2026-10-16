@@ -48,6 +48,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from modules.command_search import search_commands
 from utils.hotkey_helpers import safe_unregister, to_pynput_str
 
 logger = logging.getLogger(__name__)
@@ -63,20 +64,6 @@ class _HotkeyTrigger(QObject):
 # Tab identifiers
 _TAB_COMMANDS = "commands"
 _TAB_APPS = "apps"
-
-
-try:
-    from rapidfuzz import fuzz as _fuzz
-
-    _FUZZY_AVAILABLE = True
-except ImportError:
-    _FUZZY_AVAILABLE = False
-
-
-def _score(query: str, text: str) -> float:
-    if _FUZZY_AVAILABLE:
-        return _fuzz.WRatio(query, text)
-    return 100.0 if query.lower() in text.lower() else 0.0
 
 
 class _PaletteWindow(QWidget):
@@ -212,17 +199,7 @@ class _PaletteWindow(QWidget):
     def _populate_commands(self, query: str) -> None:
         self._cmd_list.clear()
         all_cmds = self._palette._services.get_all_commands()
-
-        if not query.strip():
-            scored = [(100, cmd) for cmd in all_cmds]
-        else:
-            scored = []
-            for cmd in all_cmds:
-                text = f"{cmd['group']} {cmd['label']}"
-                s = _score(query, text)
-                if s > 30 or query.lower() in text.lower():
-                    scored.append((s, cmd))
-            scored.sort(key=lambda x: x[0], reverse=True)
+        scored = search_commands(query, all_cmds)
 
         for _s, cmd in scored:
             item = QListWidgetItem(f"{cmd['label']}  —  {cmd['group']}")
