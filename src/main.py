@@ -65,6 +65,8 @@ if __name__ == "__main__":
     args, qt_args = parser.parse_known_args()
 
     app = QApplication([sys.argv[0]] + qt_args)
+    app.setApplicationName("Py Tray Command Launcher")
+    app.setApplicationDisplayName("Py Tray Command Launcher")
 
     # Apply --config override before ConfigManager is first used
     if args.config:
