@@ -26,7 +26,7 @@
         "command": {
           "type": "string",
           "minLength": 1,
-          "description": "Shell command to execute"
+          "description": "Shell command to execute. Safe scheduling: scheduled command payloads are validated by ScheduleCreator.validate_command; shell control operators (; & | $ ` ( ) { } < > * ? ! \\ and newlines/CR) are rejected and the payload is not shell-quoted, so it runs as a normal argv command. See docs/configuration.md#safe-scheduling."
         },
         "confirm": {
           "type": "boolean",
