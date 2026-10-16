@@ -326,6 +326,31 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         win._populate_commands("")
         assert win._cmd_list.addItem.call_count == len(svc.get_all_commands())
 
+    def test_whitespace_only_query_shows_all_commands(self):
+        """Whitespace-only command queries retain the empty-query behavior."""
+        p, svc = self._make_palette()
+        win = _PaletteWindow(p)
+        win._cmd_list.count.return_value = 0
+        commands = svc.get_all_commands.return_value
+        clear_command_search_cache()
+
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.command = None
+
+            def setData(self, _role, command):
+                self.command = command
+
+        with (
+            patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem),
+            patch("modules.command_search._score", return_value=0),
+        ):
+            win._populate_commands("  \t")
+
+        rendered = [call.args[0].command for call in win._cmd_list.addItem.call_args_list]
+        self.assertEqual(rendered, commands)
+
     def test_fuzzy_query_filters_commands(self):
         """_populate_commands filters commands by fuzzy query."""
         p, svc = self._make_palette()

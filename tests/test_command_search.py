@@ -509,12 +509,17 @@ def test_search_cache_does_not_merge_queries_with_distinct_whitespace():
     assert after_whitespace_variant.misses == before_whitespace_variant.misses + 1
 
 
-def test_whitespace_only_query_keeps_raw_search_semantics():
-    commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
+def test_whitespace_only_query_shows_all_commands():
+    commands = [
+        {"group": "System", "label": "Terminal", "command": "terminal"},
+        {"group": "Development", "label": "Editor", "command": "editor"},
+    ]
+    expected = [(100, command) for command in commands]
+    clear_command_search_cache()
 
     with patch("modules.command_search._score", return_value=0):
-        assert search_commands_uncached("  ", commands) == []
-        assert search_commands("  ", commands) == []
+        assert search_commands_uncached("  \t", commands) == expected
+        assert search_commands("  \t", commands) == expected
 
 
 def test_cached_results_use_current_payload_and_distinguish_searchable_snapshots():
