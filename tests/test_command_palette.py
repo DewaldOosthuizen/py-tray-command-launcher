@@ -394,6 +394,88 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         ]
         self.assertEqual(rendered, replacement)
 
+    def test_palette_uses_rebuilt_configuration_for_added_edited_removed_and_renamed_commands(
+        self,
+    ):
+        from core.menu_builder import MenuBuilder
+
+        p, svc = self._make_palette()
+        original = [
+            {"group": "System", "label": "EditableEntry", "command": "old-command"},
+            {"group": "System", "label": "RemoveObsoleteFeature", "command": "obsolete"},
+            {"group": "System", "label": "OldScarletCommand", "command": "old-name"},
+        ]
+        replacement = [
+            {"group": "Tools", "label": "EditableEntry", "command": "edited-command"},
+            {"group": "Tools", "label": "BrandNewFeature", "command": "added-command"},
+            {"group": "Tools", "label": "NewVioletCommand", "command": "renamed-command"},
+        ]
+        svc.get_all_commands.return_value = original
+        win = _PaletteWindow(p)
+        win._cmd_list.count.return_value = 0
+        clear_command_search_cache()
+
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.command = None
+
+            def setData(self, _role, command):
+                self.command = command
+
+        tray_app = MagicMock()
+        tray_app.icon_file = "/nonexistent/tray_icon.png"
+        tray_menu = MagicMock()
+        command_menu = {
+            "Tools": {command["label"]: {"command": command["command"]} for command in replacement}
+        }
+
+        with (
+            patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem),
+            patch("core.menu_builder.QMenu", return_value=MagicMock()),
+        ):
+            win._populate_commands("")
+            original_payloads = [
+                call.args[0].command for call in win._cmd_list.addItem.call_args_list
+            ]
+
+            svc.get_all_commands.return_value = replacement
+            tray_app.command_menu = command_menu
+            MenuBuilder(tray_app).build(tray_menu, command_menu)
+            win._cmd_list.addItem.reset_mock()
+
+            win._populate_commands("")
+            current_payloads = [
+                call.args[0].command for call in win._cmd_list.addItem.call_args_list
+            ]
+            win._cmd_list.addItem.reset_mock()
+            win._populate_commands("EditableEntry")
+            edited_payloads = [
+                call.args[0].command for call in win._cmd_list.addItem.call_args_list
+            ]
+            win._cmd_list.addItem.reset_mock()
+            win._populate_commands("BrandNewFeature")
+            added_payloads = [
+                call.args[0].command for call in win._cmd_list.addItem.call_args_list
+            ]
+            win._cmd_list.addItem.reset_mock()
+            win._populate_commands("NewVioletCommand")
+            renamed_payloads = [
+                call.args[0].command for call in win._cmd_list.addItem.call_args_list
+            ]
+
+        self.assertEqual(original_payloads, original)
+        self.assertEqual(current_payloads, replacement)
+        self.assertNotIn("RemoveObsoleteFeature", [item["label"] for item in current_payloads])
+        self.assertNotIn("OldScarletCommand", [item["label"] for item in current_payloads])
+        self.assertIn(replacement[0], edited_payloads)
+        self.assertEqual(
+            next(item for item in edited_payloads if item["label"] == "EditableEntry")["command"],
+            "edited-command",
+        )
+        self.assertIn(replacement[1], added_payloads)
+        self.assertIn(replacement[2], renamed_payloads)
+
     def test_enter_key_triggers_execute(self):
         """eventFilter triggers _execute on Enter."""
         p, svc = self._make_palette()

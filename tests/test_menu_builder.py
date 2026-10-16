@@ -12,11 +12,6 @@ from unittest.mock import MagicMock, patch
 # The PyQt6 stub is already injected by conftest.py. Import MenuBuilder
 # after the stub is in place — the src/ path is on sys.path via conftest.py.
 from core.menu_builder import MenuBuilder  # noqa: E402
-from modules.command_search import (
-    clear_command_search_cache,
-    command_search_cache_info,
-    search_commands,
-)  # noqa: E402
 
 
 def _stub_icon_file():
@@ -372,6 +367,12 @@ def test_build_uses_lazy_quick_launch_bar_accessor():
 
 
 def test_build_invalidates_cached_command_search_results():
+    from modules.command_search import (
+        clear_command_search_cache,
+        command_search_cache_info,
+        search_commands,
+    )
+
     commands = [{"group": "Group", "label": "Terminal", "command": "terminal"}]
     clear_command_search_cache()
     search_commands("terminal", commands)

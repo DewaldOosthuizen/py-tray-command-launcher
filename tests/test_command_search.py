@@ -443,6 +443,48 @@ def test_cached_search_matches_uncached_for_query_variants():
         assert search_commands(query, commands) == search_commands_uncached(query, commands)
 
 
+def test_search_preserves_raw_query_case_sensitive_ranking_and_cache_keys():
+    commands = [
+        {"group": "System", "label": "Terminal", "command": "system-terminal"},
+        {
+            "group": "Development",
+            "label": "terminal",
+            "command": "development-terminal",
+        },
+    ]
+
+    raw_scores = {
+        ("Terminal", "System Terminal"): 90,
+        ("Terminal", "Development terminal"): 84,
+        ("terminal", "System Terminal"): 84,
+        ("terminal", "Development terminal"): 90,
+    }
+
+    def prior_raw_query_score(query, text):
+        return raw_scores[(query, text)]
+
+    for query, expected_labels in (
+        ("Terminal", ["Terminal", "terminal"]),
+        ("terminal", ["terminal", "Terminal"]),
+    ):
+        expected = [
+            (prior_raw_query_score(query, f"{command['group']} {command['label']}"), command)
+            for command in commands
+        ]
+        expected.sort(key=lambda result: result[0], reverse=True)
+        assert [command["label"] for _, command in expected] == expected_labels
+
+        with patch("modules.command_search._score", side_effect=prior_raw_query_score):
+            assert search_commands_uncached(query, commands) == expected
+            assert search_commands(query, commands) == expected
+
+    clear_command_search_cache()
+    with patch("modules.command_search._score", side_effect=prior_raw_query_score):
+        search_commands("Terminal", commands)
+        search_commands("terminal", commands)
+    assert command_search_cache_info().misses == 2
+
+
 def test_search_cache_hits_case_normalized_queries():
     commands = [{"group": "System", "label": "Terminal", "command": "terminal"}]
     clear_command_search_cache()
@@ -593,6 +635,77 @@ def test_open_dialog_uses_replaced_command_snapshot(mock_services):
         ]
 
     assert rendered_commands == replacement
+
+
+def test_dialog_uses_rebuilt_configuration_for_added_edited_removed_and_renamed_commands(
+    mock_services,
+):
+    from core.menu_builder import MenuBuilder
+
+    original = [
+        {"group": "System", "label": "EditableEntry", "command": "old-command"},
+        {"group": "System", "label": "RemoveObsoleteFeature", "command": "obsolete"},
+        {"group": "System", "label": "OldScarletCommand", "command": "old-name"},
+    ]
+    replacement = [
+        {"group": "Tools", "label": "EditableEntry", "command": "edited-command"},
+        {"group": "Tools", "label": "BrandNewFeature", "command": "added-command"},
+        {"group": "Tools", "label": "NewVioletCommand", "command": "renamed-command"},
+    ]
+    mock_services.get_all_commands.return_value = original
+    clear_command_search_cache()
+
+    tray_app = MagicMock()
+    tray_app.icon_file = "/nonexistent/tray_icon.png"
+    tray_app.command_menu = {}
+    tray_menu = MagicMock()
+
+    with _patch_all(), patch("core.menu_builder.QMenu", return_value=MagicMock()):
+        CommandSearch(mock_services).show_dialog()
+        line_edit = _TrackedLineEdit.instances[0]
+        assert [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ] == original
+
+        tray_app.command_menu = {
+            "Tools": {command["label"]: {"command": command["command"]} for command in replacement}
+        }
+        mock_services.get_all_commands.return_value = replacement
+        MenuBuilder(tray_app).build(tray_menu, tray_app.command_menu)
+
+        line_edit.setText("")
+        rendered_commands = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+        line_edit.setText("EditableEntry")
+        edited_results = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+        line_edit.setText("BrandNewFeature")
+        added_results = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+        line_edit.setText("NewVioletCommand")
+        renamed_results = [
+            item.data(0, _QtNamespace.ItemDataRole.UserRole)
+            for item in _TrackedTreeWidget.added_items
+        ]
+
+    assert rendered_commands == replacement
+    assert all(
+        command["label"] not in {"RemoveObsoleteFeature", "OldScarletCommand"}
+        for command in rendered_commands
+    )
+    assert replacement[0] in edited_results
+    assert next(command for command in edited_results if command["label"] == "EditableEntry")[
+        "command"
+    ] == "edited-command"
+    assert replacement[1] in added_results
+    assert replacement[2] in renamed_results
 
 
 def test_enter_key_executes_selected_command(mock_services):
