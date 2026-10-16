@@ -239,7 +239,7 @@ Exports the current command set (or a specific category) to a user-chosen `.json
 
 ### `modules/file_encryptor.py`
 
-Password-based file and folder encryption using PBKDF2 (SHA-256, 600,000 iterations for new files) for key derivation and Fernet (AES-128-CBC + HMAC) for encryption. Runs the cipher operation in a `QThread` (`EncryptionWorker`) to keep the UI responsive. Encrypted files are written as `<original>.enc`; salt is stored in `<original>.salt` using a 20-byte format (4-byte iteration prefix + 16-byte salt), with legacy 16-byte salt files still supported for decryption.
+Password-based file and folder encryption using PBKDF2 (SHA-256, 600,000 iterations for new files) for key derivation and Fernet (AES-128-CBC + HMAC) for encryption. Runs the cipher operation in a `QThread` (`EncryptionWorker`) to keep the UI responsive. Encrypted files are written as `<original>.enc`; salt is stored in `<original>.salt` using a versioned format: V0 (16 bytes, legacy, 100,000 iterations), V1 (20 bytes, 4-byte iteration prefix + 16-byte salt, read-only), V2 (57 bytes, authenticated: magic "PTCL" + version 0x02 + iterations + 16-byte salt + HMAC-SHA256). Iterations bounds-checked to 1..10,000,000; V2 HMAC verified fail-closed before key derivation. Encrypt/decrypt use atomic temp-file + os.replace writes with cleanup on failure.
 
 ### `modules/schedule_creator.py`
 
