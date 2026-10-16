@@ -522,6 +522,7 @@ class TrayApp:
         if self.palette is None:
             return
         try:
+            self.palette.unregister_hotkey()
             self.palette.register_hotkey(hotkey)
             logger.info("Palette hotkey re-registered: %s", hotkey)
         except Exception as exc:
@@ -532,6 +533,7 @@ class TrayApp:
         if self.palette is None:
             return
         try:
+            self.palette.unregister_hotkey()
             self.palette.update_app_launcher_hotkey(hotkey)
             logger.info("App Launcher hotkey re-registered: %s", hotkey)
         except Exception as exc:
@@ -568,11 +570,22 @@ class TrayApp:
         logger.info("Cleaning up before exit")
         for window in self.output_windows:
             window.close()
-        if self.palette is not None:
-            self.palette.unregister_hotkey()
-        if self.quick_launch_bar is not None:
-            self.quick_launch_bar.unregister_hotkey()
-            self.quick_launch_bar.close()
+        palette = getattr(self, "palette", None)
+        if palette is not None:
+            try:
+                palette.unregister_hotkey()
+            except Exception as exc:  # noqa: S110
+                logger.debug("Palette hotkey cleanup error: %s", exc)
+        bar = getattr(self, "quick_launch_bar", None)
+        if bar is not None:
+            try:
+                bar.unregister_hotkey()
+            except Exception as exc:
+                logger.debug("Bar hotkey cleanup error: %s", exc)
+            try:
+                bar.close()
+            except Exception as exc:
+                logger.debug("Bar close error: %s", exc)
         self.instance_checker.cleanup()
 
     def run(self):
