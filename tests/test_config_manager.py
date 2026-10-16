@@ -78,6 +78,32 @@ class TestAtomicWrite:
         target.write_text("{}", encoding="utf-8")
         assert target.exists()
 
+    def test_replace_failure_leaves_destination_and_removes_temp(self, tmp_path):
+        target = tmp_path / "data.json"
+        target.write_text(json.dumps({"original": True}), encoding="utf-8")
+        mgr = ConfigManager.__new__(ConfigManager)
+        with patch("core.config_manager.os.replace", side_effect=OSError("boom")):
+            with pytest.raises(OSError):
+                mgr._write_json_atomic(target, {"new": True})
+        assert json.loads(target.read_text(encoding="utf-8")) == {"original": True}
+        assert not (tmp_path / "data.tmp").exists()
+
+    def test_successful_write_leaves_no_tmp_sibling(self, tmp_path):
+        target = tmp_path / "data.json"
+        mgr = ConfigManager.__new__(ConfigManager)
+        mgr._write_json_atomic(target, {"a": 1})
+        assert target.exists()
+        assert not (tmp_path / "data.tmp").exists()
+
+    def test_recover_partial_file_removes_only_tmp(self, tmp_path):
+        target = tmp_path / "data.json"
+        target.write_text("{corrupt", encoding="utf-8")
+        (tmp_path / "data.tmp").write_text("stray", encoding="utf-8")
+        mgr = ConfigManager.__new__(ConfigManager)
+        mgr._recover_partial_file(target)
+        assert not (tmp_path / "data.tmp").exists()
+        assert target.read_text(encoding="utf-8") == "{corrupt"
+
 
 # ---------------------------------------------------------------------------
 # get_commands

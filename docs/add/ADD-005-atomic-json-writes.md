@@ -35,7 +35,7 @@ All JSON writes go through `ConfigManager._write_json_atomic(file_path, data)`:
 def _write_json_atomic(self, file_path: Path, data: Any) -> None:
     tmp = file_path.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=2, ensure_ascii=False)
+        json.dump(data, fh, indent=4)
         fh.flush()
         os.fsync(fh.fileno())
     os.replace(tmp, file_path)

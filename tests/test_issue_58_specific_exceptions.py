@@ -297,14 +297,14 @@ class TestExportCommandGroupSpecificExceptions:
     def test_oserror_returns_false(self, tmp_path):
         mgr = _bare_mgr(tmp_path)
         with patch.object(mgr, "get_commands", return_value={"MyGroup": {}}):
-            with patch("builtins.open", side_effect=OSError("perm")):
+            with patch.object(mgr, "_write_json_atomic", side_effect=OSError("perm")):
                 result = mgr.export_command_group("MyGroup", str(tmp_path / "out.json"))
-        assert result is False
+            assert result is False
 
     def test_runtime_error_propagates(self, tmp_path):
         mgr = _bare_mgr(tmp_path)
         with patch.object(mgr, "get_commands", return_value={"MyGroup": {}}):
-            with patch("builtins.open", side_effect=RuntimeError("unexpected")):
+            with patch.object(mgr, "_write_json_atomic", side_effect=RuntimeError("unexpected")):
                 with pytest.raises(RuntimeError):
                     mgr.export_command_group("MyGroup", str(tmp_path / "out.json"))
 

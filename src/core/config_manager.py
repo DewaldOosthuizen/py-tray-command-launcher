@@ -210,16 +210,30 @@ class ConfigManager:
             OSError: If the write or rename fails.
         """
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = file_path.with_suffix(file_path.suffix + ".tmp")
+        tmp_path = file_path.with_suffix(".tmp")
         try:
             if os.name != "nt":
                 fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4)
+                    f.flush()
+                    os.fsync(f.fileno())
             else:
                 with open(tmp_path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4)
+                    f.flush()
+                    os.fsync(f.fileno())
             os.replace(tmp_path, file_path)
+            # Best-effort directory fsync on POSIX to flush rename to storage
+            if os.name != "nt":
+                try:
+                    dir_fd = os.open(str(file_path.parent), os.O_DIRECTORY)
+                    try:
+                        os.fsync(dir_fd)
+                    finally:
+                        os.close(dir_fd)
+                except OSError:
+                    pass
         except (OSError, TypeError, ValueError):
             try:
                 if tmp_path.exists():
@@ -228,8 +242,20 @@ class ConfigManager:
                 pass
             raise
 
+    def _recover_partial_file(self, file_path: Path) -> None:
+        """Remove a stray ``.tmp`` sibling left by an interrupted write.
+
+        Only the temp file is removed; a corrupt destination is never
+        masked or replaced.
+        """
+        tmp_path = file_path.with_suffix(".tmp")
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except OSError:
+            logger.warning("Could not remove stray temp file %s", tmp_path)
+
     def get_settings(self, refresh: bool = False) -> dict[str, Any]:
-        """Get application settings from settings.json, deep-merged with defaults."""
         if self._settings_cache is None or refresh:
             try:
                 if self.settings_file.exists():
@@ -672,8 +698,7 @@ class ConfigManager:
                 return False
 
             # Export the group to the file
-            with open(export_file, "w", encoding="utf-8") as f:
-                json.dump({group_name: commands[group_name]}, f, indent=4)
+            self._write_json_atomic(Path(export_file), {group_name: commands[group_name]})
 
             logger.info(f"Successfully exported group '{group_name}' to {export_file}")
             return True
@@ -1097,8 +1122,7 @@ class ConfigManager:
 
             # If there is no canonical file yet, or the merged data differs, write it out.
             if (not canonical_file.exists()) or (merged_data != canonical_data):
-                with open(canonical_file, "w", encoding="utf-8") as f:
-                    json.dump(merged_data, f, indent=4)
+                self._write_json_atomic(canonical_file, merged_data)
                 logger.info("Merged legacy commands into canonical file %s", canonical_file)
 
     def _legacy_files_for(self, canonical_file: Path) -> list[Path]:
