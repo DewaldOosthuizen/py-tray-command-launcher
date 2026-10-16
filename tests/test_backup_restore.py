@@ -129,13 +129,11 @@ import os as _os
 import shutil as _shutil
 from unittest.mock import patch as _patch
 
-import pytest
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from core.config_manager import ConfigManager, ConfigurationError  # noqa: E402
+from core.config_manager import ConfigManager  # noqa: E402
 
 
 def _bare_mgr(tmp_path):
