@@ -133,6 +133,83 @@ class TestFavorites(unittest.TestCase):
         # "No Favorites" should be the first QAction created
         mock_qaction_cls.assert_any_call("No Favorites", mock_menu)
 
+    # ------------------------------------------------------------------
+    # add_to_favorites (interactive)
+    # ------------------------------------------------------------------
+
+    def test_add_to_favorites_success(self):
+        """add_to_favorites should run full flow and call config_manager."""
+        self.mock_services.get_all_commands.return_value = [
+            {"group": "System", "label": "Terminal"}
+        ]
+        self.mock_config_manager.add_to_favorites.return_value = True
+
+        with patch("modules.favorites.QInputDialog") as mock_dialog:
+            with patch("modules.favorites.QMessageBox"):
+                mock_dialog.getItem.return_value = ("System → Terminal", True)
+                mock_dialog.getText.return_value = ("My Terminal", True)
+                self.favorites.add_to_favorites()
+
+        self.mock_config_manager.add_to_favorites.assert_called_once_with(
+            "System.Terminal", "My Terminal"
+        )
+        self.mock_services.reload_favorites_commands.assert_called_once()
+
+    def test_add_to_favorites_cancel_selection(self):
+        """Cancellation at command dialog should not call config_manager."""
+        self.mock_services.get_all_commands.return_value = [
+            {"group": "System", "label": "Terminal"}
+        ]
+
+        with patch("modules.favorites.QInputDialog") as mock_dialog:
+            with patch("modules.favorites.QMessageBox"):
+                mock_dialog.getItem.return_value = ("", False)
+                self.favorites.add_to_favorites()
+
+        self.mock_config_manager.add_to_favorites.assert_not_called()
+
+    def test_add_to_favorites_cancel_label(self):
+        """Cancellation at label dialog should not call config_manager."""
+        self.mock_services.get_all_commands.return_value = [
+            {"group": "System", "label": "Terminal"}
+        ]
+
+        with patch("modules.favorites.QInputDialog") as mock_dialog:
+            with patch("modules.favorites.QMessageBox"):
+                mock_dialog.getItem.return_value = ("System → Terminal", True)
+                mock_dialog.getText.return_value = ("", False)
+                self.favorites.add_to_favorites()
+
+        self.mock_config_manager.add_to_favorites.assert_not_called()
+
+    def test_add_to_favorites_no_commands(self):
+        """Empty commands should warn and not call config_manager."""
+        self.mock_services.get_all_commands.return_value = []
+
+        with patch("modules.favorites.QInputDialog"):
+            with patch("modules.favorites.QMessageBox") as mock_box:
+                self.favorites.add_to_favorites()
+
+        mock_box.warning.assert_called()
+        self.mock_config_manager.add_to_favorites.assert_not_called()
+
+    def test_add_to_favorites_failed_add(self):
+        """Failed add should warn and not reload favorites."""
+        self.mock_services.get_all_commands.return_value = [
+            {"group": "System", "label": "Terminal"}
+        ]
+        self.mock_config_manager.add_to_favorites.return_value = False
+
+        with patch("modules.favorites.QInputDialog") as mock_dialog:
+            with patch("modules.favorites.QMessageBox") as mock_box:
+                mock_dialog.getItem.return_value = ("System → Terminal", True)
+                mock_dialog.getText.return_value = ("My Terminal", True)
+                self.favorites.add_to_favorites()
+
+        self.mock_config_manager.add_to_favorites.assert_called_once()
+        mock_box.warning.assert_called()
+        self.mock_services.reload_favorites_commands.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
