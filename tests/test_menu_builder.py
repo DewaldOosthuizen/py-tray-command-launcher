@@ -50,8 +50,9 @@ def _make_tray_app(command_menu=None):
     tray_app.schedule_viewer = MagicMock()
     tray_app.schedule_viewer.show_dialog = MagicMock()
     tray_app._open_settings = MagicMock()
-    tray_app.quick_launch_bar = MagicMock()
-    tray_app.quick_launch_bar.toggle = MagicMock()
+    # Lazy slot: unset until first use, as in the real TrayApp
+    tray_app.quick_launch_bar = None
+    tray_app.get_quick_launch_bar = MagicMock()
     tray_app.restart_app = MagicMock()
     tray_app.confirm_exit = MagicMock()
     tray_app.execute = MagicMock()
@@ -347,3 +348,19 @@ def test_build_raises_when_group_value_is_not_dict():
     mock_error.assert_called_once()
     assert "BadGroup" in mock_error.call_args[0][0]
     assert "dictionary" in mock_error.call_args[0][0].lower()
+
+
+def test_build_uses_lazy_quick_launch_bar_accessor():
+    """Regression: the tray menu must obtain the Quick Launch Bar through the
+    lazy accessor. Dereferencing the unset ``quick_launch_bar`` slot raised
+    AttributeError inside the aboutToShow slot, which aborts the process."""
+    tray_app = _make_tray_app({"GroupA": {"Cmd1": {"command": "echo one"}}})
+    parent_menu = MagicMock()
+    qmenu_make, _ = _qmenu_factory()
+
+    with patch("core.menu_builder.QMenu", side_effect=qmenu_make):
+        MenuBuilder(tray_app).build(parent_menu, tray_app.command_menu)
+
+    tray_app.get_quick_launch_bar.assert_called_once_with()
+    labels = [c.args[0] for c in parent_menu.addAction.call_args_list if c.args]
+    assert "Quick Launch Bar" in labels

@@ -52,6 +52,22 @@ class SingleInstanceChecker:
         else:
             return True
 
+    def _is_stale_lock(self):
+        """Return True if the PID file names a process that is no longer running.
+
+        QSharedMemory segments survive a crash on Linux, so a segment alone does
+        not prove another instance is alive. Without a readable PID we cannot
+        tell, so the lock is treated as genuine.
+        """
+        if not self.pidfile:
+            return False
+        try:
+            with open(self.pidfile) as f:
+                pid = f.read().strip()
+        except OSError:
+            return False
+        return bool(pid) and not self.is_pid_running(pid)
+
     def force_unlock(self):
         """
         Remove the PID file and detach shared memory (force unlock).
@@ -75,8 +91,11 @@ class SingleInstanceChecker:
         """
         # Try to attach to existing shared memory
         if self.shared_memory.attach():
-            # Another instance is already running, detach and return True
+            # Detaching as the last attachee also removes an orphaned segment.
             self.shared_memory.detach()
+            if self._is_stale_lock():
+                logger.warning("Recovered stale single-instance lock left by a crashed process")
+                return False
             return True
 
         # No existing shared memory found - no other instance running

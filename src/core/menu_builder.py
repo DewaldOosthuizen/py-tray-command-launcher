@@ -146,7 +146,7 @@ class MenuBuilder:
 
         menu.addMenu(tools_menu)
         menu.addAction("Settings", self.tray_app._open_settings)
-        menu.addAction("Quick Launch Bar", self.tray_app.quick_launch_bar.toggle)
+        menu.addAction("Quick Launch Bar", self.tray_app.get_quick_launch_bar().toggle)
 
         # Dynamic "Running: N" indicator (non-interactive, hidden when idle)
         menu.addSeparator()

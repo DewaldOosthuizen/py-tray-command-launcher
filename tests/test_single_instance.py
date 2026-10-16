@@ -130,6 +130,26 @@ class TestAcquireLock:
 
         assert result is False
 
+    def test_live_pid_in_pidfile_keeps_lock(self, tmp_path):
+        pidfile = tmp_path / "app.pid"
+        pidfile.write_text(str(os.getpid()))
+        checker = _make_checker(pidfile=str(pidfile))
+        checker.shared_memory.attach.return_value = True
+
+        assert checker.is_another_instance_running() is True
+
+    def test_dead_pid_in_pidfile_is_recovered_as_stale(self, tmp_path):
+        """Regression: a crashed instance leaves its shared-memory segment behind;
+        the next launch must not report 'already running'."""
+        pidfile = tmp_path / "app.pid"
+        pidfile.write_text("999999999")
+        checker = _make_checker(pidfile=str(pidfile))
+        checker.shared_memory.attach.return_value = True
+        checker.shared_memory.create.return_value = True
+
+        assert checker.is_another_instance_running() is False
+        assert checker.acquire_lock() is True
+
 
 # ---------------------------------------------------------------------------
 # Headless / Wayland detection
