@@ -304,6 +304,17 @@ class TestAcquireLock:
         replace.assert_not_called()
         assert pidfile.read_text() == "winner-pid"
 
+    def test_retries_create_when_segment_disappears_before_attach(self, tmp_path):
+        pidfile = tmp_path / "app.pid"
+        checker = _make_checker(pidfile=str(pidfile))
+        checker.shared_memory.create.side_effect = [False, True]
+        checker.shared_memory.attach.return_value = False
+
+        assert checker.acquire_lock() is True
+
+        assert checker.shared_memory.create.call_count == 2
+        assert pidfile.read_text() == str(os.getpid())
+
     def test_concurrent_acquisition_has_one_winner_and_keeps_its_pid(self, tmp_path):
         pidfile = tmp_path / "app.pid"
         registry = _SharedMemoryRegistry()
