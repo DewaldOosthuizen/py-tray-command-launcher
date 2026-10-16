@@ -36,7 +36,7 @@ SRC_DIR = Path(__file__).parent.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from modules.file_encryptor import (  # noqa: E402
+from modules.file_encryptor import (  # noqa: E402  # after installing Qt stubs
     _LEGACY_ITERATIONS,
     _PBKDF2_ITERATIONS,
     EncryptionWorker,

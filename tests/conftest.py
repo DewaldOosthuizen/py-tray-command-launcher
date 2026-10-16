@@ -102,7 +102,7 @@ def _make_pyqt6_stub():
         def __getattr__(cls, name):
             return _StubAttr()
 
-    class _QObject(metaclass=_StubMeta):  # noqa: N801
+    class _QObject(metaclass=_StubMeta):
         """Stub base class for QtCore QObject-derived types under test."""
 
         def __init__(self, *args, **kwargs):
@@ -113,7 +113,7 @@ def _make_pyqt6_stub():
             object.__setattr__(self, name, attr)
             return attr
 
-    class _QWidget(metaclass=_StubMeta):  # noqa: N801
+    class _QWidget(metaclass=_StubMeta):
         """Stub base class for all Qt widget types under test."""
 
         def __init__(self, *args, **kwargs):
@@ -270,10 +270,10 @@ if str(SRC_DIR) not in sys.path:
 # pyqtSignal doesn't actually dispatch; since Python caches module imports,
 # importing these modules here (before any test module runs) guarantees they
 # bind to our fully-functional signal stub regardless of collection order.
-import core.badge_manager  # noqa: E402, F401
-import core.process_tracker  # noqa: E402, F401
-import modules.schedule_creator  # noqa: E402, F401
-import ui.schedule_dialog  # noqa: E402, F401
+import core.badge_manager  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
+import core.process_tracker  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
+import modules.schedule_creator  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
+import ui.schedule_dialog  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
 
 # ---------------------------------------------------------------------------
 # Filesystem helpers

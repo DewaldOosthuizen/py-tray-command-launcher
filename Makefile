@@ -74,13 +74,8 @@ tests-workflow:
 .PHONY: lint-ruff
 lint-ruff:
 	@mkdir -p $(LOG_DIR)
-	@echo "[lint-ruff] Installing ruff..."
-	@$(PIP) install --break-system-packages ruff || { \
-		echo "[FAIL] lint-ruff: failed to install ruff"; \
-		exit 1; \
-	}
 	@echo "[lint-ruff] Running ruff check..."
-	@set -o pipefail; $(RUFF) check src/ tests/ 2>&1 | tee "$(LOG_DIR)/ruff-check.log"; status=$${PIPESTATUS[0]}; if [[ $$status -ne 0 ]]; then \
+	@set -o pipefail; $(RUFF) check src/ tests/ --config pyproject.toml 2>&1 | tee "$(LOG_DIR)/ruff-check.log"; status=$${PIPESTATUS[0]}; if [[ $$status -ne 0 ]]; then \
 		echo "[FAIL] lint-ruff: ruff check failed (rule violations found)"; \
 		echo "[DETAIL] Offending locations:"; \
 		grep -E '^[^:]+:[0-9]+:[0-9]+:' "$(LOG_DIR)/ruff-check.log" | head -n 20 || true; \
@@ -88,7 +83,7 @@ lint-ruff:
 		exit 1; \
 	fi
 	@echo "[lint-ruff] Running ruff format --check..."
-	@set -o pipefail; $(RUFF) format --check src/ tests/ 2>&1 | tee "$(LOG_DIR)/ruff-format-check.log"; status=$${PIPESTATUS[0]}; if [[ $$status -ne 0 ]]; then \
+	@set -o pipefail; $(RUFF) format --check src/ tests/ --config pyproject.toml 2>&1 | tee "$(LOG_DIR)/ruff-format-check.log"; status=$${PIPESTATUS[0]}; if [[ $$status -ne 0 ]]; then \
 		echo "[FAIL] lint-ruff: ruff format --check failed (formatting changes needed)"; \
 		echo "[DETAIL] Files requiring formatting:"; \
 		grep -E 'Would reformat ' "$(LOG_DIR)/ruff-format-check.log" | sed 's/^/  - /' || true; \

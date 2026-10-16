@@ -58,13 +58,13 @@ def safe_unregister(handle, timeout: float = 2.0):
         return None
     try:
         handle.stop()
-    except Exception:  # noqa: S110
+    except Exception:  # noqa: S110 — best-effort cleanup; stop failure must not raise during deregistration
         pass
     try:
         join = getattr(handle, "join", None)
         if callable(join):
             join(timeout=timeout)
-    except Exception:  # noqa: S110
+    except Exception:  # noqa: S110 — best-effort cleanup; a failing stop must not raise during deregistration
         pass
     return None
 

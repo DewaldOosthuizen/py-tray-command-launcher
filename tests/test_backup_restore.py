@@ -17,7 +17,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from modules.backup_restore import BackupRestore  # noqa: E402
+from modules.backup_restore import BackupRestore  # noqa: E402  # after src path setup
 
 
 class TestBackupRestore(unittest.TestCase):
@@ -133,7 +133,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from core.config_manager import ConfigManager  # noqa: E402
+from core.config_manager import ConfigManager  # noqa: E402  # after src path setup
 
 
 def _bare_mgr(tmp_path):

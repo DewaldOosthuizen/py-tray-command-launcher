@@ -20,16 +20,16 @@ echo "==> py-tray-command-launcher lint"
 
 if [[ $FIX -eq 1 ]]; then
     echo "--- ruff format (fix) ---"
-    ruff format src/ tests/
+    ruff format src/ tests/ --config pyproject.toml
     echo "--- ruff check (fix) ---"
-    ruff check src/ tests/ --fix
+    ruff check src/ tests/ --config pyproject.toml --fix
     echo "--- re-check after fixes ---"
 fi
 
 echo "--- ruff check src/ tests/ ---"
-ruff check src/ tests/
+ruff check src/ tests/ --config pyproject.toml
 
 echo "--- ruff format --check src/ tests/ ---"
-ruff format --check src/ tests/
+ruff format --check src/ tests/ --config pyproject.toml
 
 echo "==> All lint checks passed."

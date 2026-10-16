@@ -13,7 +13,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from core import config_manager as config_module  # noqa: E402
+from core import config_manager as config_module  # noqa: E402  # after src path setup
 
 
 @unittest.skipIf(

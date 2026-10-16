@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 # The PyQt6 stub is already injected by conftest.py. Import MenuBuilder
 # after the stub is in place — the src/ path is on sys.path via conftest.py.
-from core.menu_builder import MenuBuilder  # noqa: E402
+from core.menu_builder import MenuBuilder  # noqa: E402  # after conftest installs Qt stub
 
 
 def _stub_icon_file():

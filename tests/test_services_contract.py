@@ -17,7 +17,7 @@ sys.path.insert(0, str(SRC))
 for _mod in ("PyQt6", "PyQt6.QtCore", "PyQt6.QtGui", "PyQt6.QtWidgets"):
     sys.modules.setdefault(_mod, MagicMock())
 
-from core.services import AppServices  # noqa: E402
+from core.services import AppServices  # noqa: E402  # after Qt stubs and src path setup
 
 
 def test_every_services_attribute_used_in_src_is_declared():

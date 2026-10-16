@@ -199,7 +199,7 @@ def test_find_pixmap_concurrent_with_icon_index_build_no_exception():
                 with discovery._icon_index_lock:
                     path = discovery._icon_path_index.get("nonexistent-icon")
                 assert path is None or isinstance(path, str)
-            except BaseException as exc:  # noqa: BLE001 - want to capture any race exception
+            except BaseException as exc:  # Capture errors for the race assertion.
                 errors.append(exc)
 
     reader_threads = [threading.Thread(target=reader) for _ in range(4)]
