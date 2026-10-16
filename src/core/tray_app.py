@@ -226,11 +226,24 @@ class TrayApp:
         return self.quick_launch_bar
 
     def _build_menu(self) -> None:
-        """Build the tray context menu and attach it to the tray icon."""
+        """Build the tray context menu and attach it to the tray icon.
+
+        Heavy (feature-module-touching) menu construction is deferred to the
+        first ``aboutToShow`` so startup does not instantiate lazy modules.
+        """
         self.reload_commands()
-        MenuBuilder(self).build(self.menu, self.command_menu)
+        self._heavy_menu_built = False
         self.tray_icon.setContextMenu(self.menu)
+
+        def _build_heavy() -> None:
+            if self._heavy_menu_built:
+                return
+            self._heavy_menu_built = True
+            MenuBuilder(self).build(self.menu, self.command_menu)
+
+        self.menu.aboutToShow.connect(_build_heavy)
         self.tray_icon.show()
+        print("TRAY_ICON_SHOWN", flush=True)
         self._update_tray_tooltip()
 
     # ------------------------------------------------------------------ #
@@ -260,6 +273,7 @@ class TrayApp:
     def load_tray_menu(self):
         """Load commands into the tray menu."""
         self.reload_commands()
+        self._heavy_menu_built = True
         MenuBuilder(self).build(self.menu, self.command_menu)
 
     def execute(self, title, command, confirm, show_output, prompt):

@@ -297,3 +297,30 @@ Log level resolution order (highest priority first):
 3. Default: `INFO`
 
 Log format: `2026-01-01 12:00:00,000 | INFO | core.config_manager | message`
+
+## Lazy construction contract (Issue #133)
+
+TrayApp defers construction of feature modules until first use. Feature-module
+attributes on `TrayApp` are typed `Optional[FeatureModule] = None`; explicit
+factory accessors `get_palette()`, `get_quick_launch_bar()`, `get_history()`,
+etc. construct on first call and cache the result. No transparent `__getattr__`
+proxy is used, so Qt identity, `isinstance`, and slot semantics are preserved.
+
+### Delayed hotkey registration API
+
+Hotkey re-registration (`_reregister_hotkey`, `_reregister_app_launcher_hotkey`,
+`_reregister_bar_hotkey`) only touches a module when it has already been
+loaded; guards use `is not None` (or `has_loaded()`), so never-used features are
+never instantiated during settings changes.
+
+### Factory registration sites
+
+Module factories are registered in `TrayApp._build_modules()`; `AppServices`
+fields are unchanged, wiring remains in `TrayApp._build_services()`.
+
+### Cleanup invariants
+
+`cleanup()` never instantiates a lazy module; every access is guarded with
+`is not None`. Deferred heavy menu items are built on first tray-icon
+interaction via the menu `aboutToShow` signal, so startup does not construct
+lazy modules.
