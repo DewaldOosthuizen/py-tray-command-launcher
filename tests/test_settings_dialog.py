@@ -278,7 +278,7 @@ if str(SRC_DIR) not in sys.path:
 # Import at module level so SettingsDialog is bound to the correct QDialog stub
 # BEFORE test_single_instance.py's module-level code can overwrite QDialog in
 # sys.modules["PyQt6.QtWidgets"].
-from ui.settings_dialog import SettingsDialog  # noqa: E402
+from ui.settings_dialog import SettingsDialog  # noqa: E402  # after installing custom Qt stub
 
 _DEFAULT_SETTINGS = {
     "theme": "dark",

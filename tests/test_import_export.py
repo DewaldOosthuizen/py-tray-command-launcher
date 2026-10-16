@@ -17,7 +17,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from modules.import_export import ImportExport  # noqa: E402
+from modules.import_export import ImportExport  # noqa: E402  # after src path setup
 
 
 class TestImportExport(unittest.TestCase):

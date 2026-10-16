@@ -270,10 +270,10 @@ if str(SRC_DIR) not in sys.path:
 # pyqtSignal doesn't actually dispatch; since Python caches module imports,
 # importing these modules here (before any test module runs) guarantees they
 # bind to our fully-functional signal stub regardless of collection order.
-import core.badge_manager  # noqa: E402, F401
-import core.process_tracker  # noqa: E402, F401
-import modules.schedule_creator  # noqa: E402, F401
-import ui.schedule_dialog  # noqa: E402, F401
+import core.badge_manager  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
+import core.process_tracker  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
+import modules.schedule_creator  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
+import ui.schedule_dialog  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
 
 # ---------------------------------------------------------------------------
 # Filesystem helpers

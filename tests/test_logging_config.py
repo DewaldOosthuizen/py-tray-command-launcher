@@ -12,7 +12,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from core.logging_config import (  # noqa: E402
+from core.logging_config import (  # noqa: E402  # after src path setup
     DEFAULT_LOG_LEVEL,
     LOG_LEVEL_ENV_VAR,
     configure_logging,

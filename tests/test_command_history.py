@@ -18,7 +18,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from modules.command_history import CommandHistory  # noqa: E402
+from modules.command_history import CommandHistory  # noqa: E402  # after src path setup
 
 
 class TestCommandHistory(unittest.TestCase):
