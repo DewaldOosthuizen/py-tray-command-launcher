@@ -328,3 +328,40 @@ def test_show_dialog_returns_true_on_accept():
         result = creator.show_dialog()
 
     assert result is True
+
+
+def test_validate_command_allows_common_commands():
+    assert ScheduleCreator.validate_command("echo hello") is True
+    assert ScheduleCreator.validate_command("python script.py") is True
+    assert ScheduleCreator.validate_command("/usr/bin/backup.sh") is True
+
+
+def test_validate_command_rejects_metacharacters():
+    for bad in [
+        ";",
+        "&",
+        "|",
+        "$()",
+        "`",
+        "\n",
+        "&&",
+        "||",
+        "foo;bar",
+        "a && b",
+        "a || b",
+        "echo `id`",
+    ]:
+        assert ScheduleCreator.validate_command(bad) is False, f"expected reject {bad!r}"
+
+
+def test_create_schedule_rejects_injection():
+    svc = MagicMock()
+    creator = ScheduleCreator(svc)
+    cmd_info = {"label": "X", "command": "rm -rf /; echo pwned"}
+    with (
+        patch.object(creator, "_create_linux_cron") as mock_linux,
+        patch("modules.schedule_creator.sys.platform", "linux"),
+    ):
+        result = creator.create_schedule(cmd_info, 9, 0, ["Monday"])
+    assert result is False
+    mock_linux.assert_not_called()

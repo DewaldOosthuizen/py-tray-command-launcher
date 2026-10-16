@@ -160,3 +160,12 @@ PY_TRAY_LOG_LEVEL=DEBUG python3 src/main.py
 ```
 
 The environment variable always takes precedence over the value in `settings.json`.
+
+## Safe scheduling
+
+Scheduled command payloads are validated by `ScheduleCreator.validate_command`
+before being handed to the scheduler. Shell control operators
+(`;`, `&`, `|`, `$`, backticks, `()`, `{}`, `<>`, `*`, `?`, `\`, `!`,
+and newlines/CR) are rejected. The command payload is **not** shell-quoted,
+so it runs as a normal argv command. Task names and comment markers are the
+only scheduler-facing strings escaped with `shlex.quote`.
