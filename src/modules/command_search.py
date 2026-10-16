@@ -154,6 +154,8 @@ class CommandSearch:
             key = event.key()
             if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
                 _execute()
+            elif key == Qt.Key.Key_Escape:
+                dialog.reject()
             elif key == Qt.Key.Key_Down:
                 results_tree.setFocus()
                 current = results_tree.currentItem()

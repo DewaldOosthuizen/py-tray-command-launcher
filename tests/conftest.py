@@ -179,7 +179,39 @@ def _make_pyqt6_stub():
     pyqt6.QtWidgets.QPushButton = _QWidget
     pyqt6.QtWidgets.QLineEdit = _QWidget
     pyqt6.QtWidgets.QTreeWidget = _QWidget
-    pyqt6.QtWidgets.QTreeWidgetItem = _QWidget
+
+    class _TreeWidgetItem:
+        """Stub for QTreeWidgetItem that round-trips setData()/data() for
+        Qt.ItemDataRole.UserRole so show_dialog() tests can store and retrieve
+        command dicts attached to tree items."""
+
+        def __init__(self, text=None, *args, **kwargs):
+            self._texts = list(text) if text else []
+            self._data: dict = {}
+
+        def __getattr__(self, name):
+            return _StubAttr()
+
+        def setData(self, column, role, value):
+            self._data[(column, role)] = value
+            return self
+
+        def data(self, column, role):
+            return self._data.get((column, role), _StubAttr())
+
+        def text(self, column):
+            try:
+                return self._texts[column] if column < len(self._texts) else ""
+            except (IndexError, TypeError):
+                return ""
+
+        def setText(self, column, text):
+            while len(self._texts) <= column:
+                self._texts.append("")
+            self._texts[column] = text
+            return self
+
+    pyqt6.QtWidgets.QTreeWidgetItem = _TreeWidgetItem
     pyqt6.QtWidgets.QSplitter = _QWidget
     pyqt6.QtWidgets.QScrollArea = _QWidget
     pyqt6.QtWidgets.QComboBox = _QWidget
