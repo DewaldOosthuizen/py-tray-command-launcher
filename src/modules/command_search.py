@@ -79,8 +79,8 @@ def _cached_search_positions(query: str, searchable_commands: tuple) -> tuple:
 
 
 def _normalized_query(query: str) -> str:
-    """Preserve the raw query because case and whitespace can affect fuzzy ranking."""
-    return query
+    """Collapse blank queries while preserving raw non-blank search semantics."""
+    return query if query.strip() else ""
 
 
 def _searchable_signature(commands: list) -> tuple:

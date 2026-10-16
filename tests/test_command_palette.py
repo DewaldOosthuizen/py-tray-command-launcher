@@ -332,6 +332,7 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         win = _PaletteWindow(p)
         win._cmd_list.count.return_value = 0
         commands = svc.get_all_commands.return_value
+        win._cmd_list.addItem.reset_mock()
         clear_command_search_cache()
 
         class _CommandListItem:
