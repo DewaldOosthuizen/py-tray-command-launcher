@@ -4,8 +4,8 @@
 import importlib
 import os
 import sys
-import threading
 import tempfile
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -102,6 +102,7 @@ def main():
 
         window._start_discovery_worker()
         assert window._discovery_running
+        assert not failure_threads
         _wait_for(signals.failed)
         assert not window._apps_loaded
         assert failure_threads == [main_thread_id]
@@ -110,6 +111,7 @@ def main():
         discovery._load_linux = original_load
         window._retry_discovery()
         assert window._discovery_running
+        assert not completion_threads
         _wait_for(signals.completed)
 
         assert window._apps_loaded

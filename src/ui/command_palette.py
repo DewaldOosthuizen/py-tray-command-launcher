@@ -30,6 +30,7 @@ import logging
 import os
 import subprocess
 import sys
+import weakref
 
 from PyQt6.QtCore import QEvent, QObject, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QKeyEvent
@@ -52,6 +53,32 @@ from modules.command_search import search_commands
 from utils.hotkey_helpers import safe_unregister, to_pynput_str
 
 logger = logging.getLogger(__name__)
+_ACTIVE_DISCOVERY_WORKERS = set()
+_SHUTDOWN_HOOK_CONNECTED = False
+
+
+def _wait_for_discovery_workers() -> None:
+    """Finish outstanding scans before Qt destroys their parentless threads."""
+    for worker in tuple(_ACTIVE_DISCOVERY_WORKERS):
+        worker.wait()
+    _ACTIVE_DISCOVERY_WORKERS.clear()
+
+
+def _ensure_discovery_shutdown_hook() -> None:
+    """Register one orderly worker wait for application shutdown."""
+    global _SHUTDOWN_HOOK_CONNECTED
+    application = QApplication.instance()
+    if application is not None and not _SHUTDOWN_HOOK_CONNECTED:
+        application.aboutToQuit.connect(_wait_for_discovery_workers)
+        _SHUTDOWN_HOOK_CONNECTED = True
+
+
+def _release_discovery_worker(worker, window_ref) -> None:
+    """Release a finished worker without tying its lifetime to the popup."""
+    _ACTIVE_DISCOVERY_WORKERS.discard(worker)
+    window = window_ref()
+    if window is not None:
+        window._on_discovery_worker_finished(worker)
 
 
 class _HotkeyTrigger(QObject):
@@ -69,7 +96,16 @@ _TAB_APPS = "apps"
 class _PaletteWindow(QWidget):
     """Internal frameless popup window with Commands / Apps tabs."""
 
-    def __init__(self, palette: "CommandPalette"):
+    def __init__(self, palette: "CommandPalette", discovery=None):
+        """Build the popup and bind it to an application discovery service.
+
+        Args:
+            palette: Command palette coordinator owning this window.
+            discovery: Optional discovery service; defaults to the singleton.
+
+        Returns:
+            None.
+        """
         super().__init__(
             None,
             Qt.WindowType.FramelessWindowHint
@@ -77,6 +113,15 @@ class _PaletteWindow(QWidget):
             | Qt.WindowType.NoDropShadowWindowHint,
         )
         self._palette = palette
+        if discovery is None:
+            from modules.app_discovery import app_discovery
+
+            discovery = app_discovery
+        self._app_discovery = discovery
+        self._apps_loaded = discovery.is_loaded is True
+        self._apps = discovery.get_all() if self._apps_loaded else None
+        self._discovery_running = False
+        self._discovery_workers = set()
         self._active_tab = _TAB_COMMANDS
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
         self.setMinimumWidth(520)
@@ -133,7 +178,21 @@ class _PaletteWindow(QWidget):
         self._app_list.setObjectName("PaletteList")
         self._app_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._app_list.setIconSize(QSize(32, 32))
-        self._stack.addWidget(self._app_list)
+        self._apps_status = QLabel()
+        self._apps_status.setObjectName("PaletteAppsStatus")
+        self._apps_status.setWordWrap(True)
+        self._apps_status.setVisible(False)
+        self._retry_button = QPushButton("Retry")
+        self._retry_button.setObjectName("PaletteAppsRetry")
+        self._retry_button.setVisible(False)
+        apps_page = QWidget()
+        apps_layout = QVBoxLayout(apps_page)
+        apps_layout.setContentsMargins(0, 0, 0, 0)
+        apps_layout.setSpacing(4)
+        apps_layout.addWidget(self._apps_status)
+        apps_layout.addWidget(self._retry_button)
+        apps_layout.addWidget(self._app_list)
+        self._stack.addWidget(apps_page)
 
         layout.addWidget(self._stack)
 
@@ -158,6 +217,7 @@ class _PaletteWindow(QWidget):
         self._app_list.itemActivated.connect(self._execute)
         self._cmd_tab_btn.clicked.connect(lambda: self._switch_tab(_TAB_COMMANDS))
         self._app_tab_btn.clicked.connect(lambda: self._switch_tab(_TAB_APPS))
+        self._retry_button.clicked.connect(self._retry_discovery)
 
         self._search.installEventFilter(self)
 
@@ -210,19 +270,40 @@ class _PaletteWindow(QWidget):
             self._cmd_list.setCurrentRow(0)
 
     def _populate_apps(self, query: str) -> None:
+        """Render cached results or start the single cold-discovery job."""
+        if not self._apps_loaded:
+            if not self._discovery_running:
+                self._discovery_running = True
+                self._show_apps_loading()
+                self._start_discovery_worker()
+            return
+
+        self._render_apps(query, self._apps)
+
+    def _render_apps(self, query: str, apps) -> None:
+        """Filter and render discovered entries on the Qt main thread.
+
+        Args:
+            query: Current Apps-tab search text.
+            apps: Fully discovered entries returned by the worker or cache.
+
+        Returns:
+            None.
+        """
         from PyQt6.QtGui import QIcon as _QIcon
 
-        from modules.app_discovery import app_discovery
+        from modules.app_discovery import search_apps
 
         self._app_list.clear()
-        apps = app_discovery.search(query)
-
-        for app in apps:
+        self._apps_status.clear()
+        self._apps_status.setVisible(False)
+        self._retry_button.setVisible(False)
+        for app in search_apps(query, apps):
             display = app.name
             if app.categories_str:
                 display = f"{app.name}\n{app.categories_str}"
             item = QListWidgetItem(display)
-            px = app_discovery.resolve_icon_pixmap(app.icon_name, size=32)
+            px = self._app_discovery.resolve_icon_pixmap(app.icon_name, size=32)
             if px and not px.isNull():
                 item.setIcon(_QIcon(px))
             item.setData(Qt.ItemDataRole.UserRole, app)
@@ -230,6 +311,80 @@ class _PaletteWindow(QWidget):
 
         if self._app_list.count() > 0:
             self._app_list.setCurrentRow(0)
+
+    def _show_apps_loading(self) -> None:
+        """Display non-blocking progress feedback while installed apps are scanned."""
+        self._app_list.clear()
+        self._retry_button.setVisible(False)
+        self._apps_status.setText("Loading installed applications…")
+        self._apps_status.setVisible(True)
+
+    def _show_apps_error(self, message: str) -> None:
+        """Display the discovery error and expose its retry action."""
+        self._app_list.clear()
+        self._apps_status.setText(
+            f"Unable to load installed applications: {message}\nSelect Retry to try again."
+        )
+        self._apps_status.setVisible(True)
+        self._retry_button.setVisible(True)
+
+    def _start_discovery_worker(self) -> None:
+        """Start one worker for the cached discovery service.
+
+        The worker is parentless and retained independently of this popup so
+        closing the palette cannot destroy a running QThread. Its signals are
+        explicitly queued to the main-thread UI slots.
+
+        Returns:
+            None.
+
+        Raises:
+            ImportError: If the discovery worker implementation is unavailable.
+        """
+        from modules.app_discovery import AppDiscoveryWorker
+
+        _ensure_discovery_shutdown_hook()
+        self._discovery_running = True
+        self._show_apps_loading()
+        worker = AppDiscoveryWorker(self._app_discovery)
+        self._discovery_workers.add(worker)
+        _ACTIVE_DISCOVERY_WORKERS.add(worker)
+        worker.completed.connect(self._on_discovery_completed, Qt.ConnectionType.QueuedConnection)
+        worker.failed.connect(self._on_discovery_failed, Qt.ConnectionType.QueuedConnection)
+        window_ref = weakref.ref(self)
+        worker.finished.connect(
+            lambda current=worker, owner=window_ref: _release_discovery_worker(current, owner),
+            Qt.ConnectionType.QueuedConnection,
+        )
+        try:
+            worker.start()
+        except RuntimeError as exc:
+            _release_discovery_worker(worker, window_ref)
+            self._on_discovery_failed(str(exc) or "The discovery worker could not start.")
+
+    def _on_discovery_completed(self, apps) -> None:
+        """Cache worker results, clear progress state, and render the current query."""
+        self._apps = apps
+        self._apps_loaded = True
+        self._discovery_running = False
+        self._render_apps(self._search.text(), apps)
+
+    def _on_discovery_failed(self, message: str) -> None:
+        """Clear progress state and present a useful, retryable error."""
+        self._discovery_running = False
+        self._show_apps_error(message or "The discovery operation returned no details.")
+
+    def _on_discovery_worker_finished(self, worker) -> None:
+        """Forget a completed thread while preserving any newer retry worker."""
+        self._discovery_workers.discard(worker)
+
+    def _retry_discovery(self) -> None:
+        """Retry a failed discovery asynchronously without changing the query."""
+        if self._discovery_running or self._apps_loaded:
+            return
+        self._discovery_running = True
+        self._show_apps_loading()
+        self._start_discovery_worker()
 
     # ------------------------------------------------------------------
     # Active list helper

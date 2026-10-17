@@ -183,6 +183,8 @@ Select **Restart App** from the tray menu to reload the application process. Use
 
 The App Launcher palette lists all installed applications discovered from XDG `.desktop` files on Linux, or from Windows Start Menu `.lnk` shortcuts on Windows. It is powered by the `AppDiscovery` module (`src/modules/app_discovery.py`).
 
+The first time the Apps tab is opened, installed applications are discovered in a background thread so the palette remains responsive. A loading message is shown while the scan runs. If discovery fails, the Apps tab displays the error and a **Retry** button; select **Retry** to start another background scan. The current search query is preserved while loading and applied when results arrive.
+
 ### Default search directories (Linux)
 
 On Linux, AppDiscovery scans the following directories for `.desktop` files by default:
