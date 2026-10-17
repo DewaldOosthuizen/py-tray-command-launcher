@@ -236,6 +236,7 @@ def test_get_prompt_input_ok():
     with patch("core.tray_app.prompt_text") as dialog:
         dialog.return_value = ("hello", True)
         value, ok = app._get_prompt_input("Enter value")
+        dialog.assert_called_once_with(None, "Input Required", "Enter value")
     assert value == "hello"
     assert ok is True
 
@@ -246,6 +247,7 @@ def test_get_prompt_input_cancelled():
     with patch("core.tray_app.prompt_text") as dialog:
         dialog.return_value = ("", False)
         value, ok = app._get_prompt_input("Enter value")
+        dialog.assert_called_once_with(None, "Input Required", "Enter value")
     assert value is None
     assert ok is False
 
@@ -256,6 +258,7 @@ def test_get_prompt_input_empty():
     with patch("core.tray_app.prompt_text") as dialog:
         dialog.return_value = ("", True)
         value, ok = app._get_prompt_input("Enter value")
+        dialog.assert_called_once_with(None, "Input Required", "Enter value")
     assert value is None
     assert ok is False
 

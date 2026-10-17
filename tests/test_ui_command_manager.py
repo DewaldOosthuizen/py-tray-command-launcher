@@ -71,6 +71,19 @@ def test_command_form_dialog_with_groups_and_initial(qtbot):
     assert "command" in data
 
 
+def test_command_form_validation_uses_shared_warning_helper():
+    dialog = object.__new__(_CommandFormDialog)
+    dialog._group_combo = MagicMock()
+    dialog._group_combo.currentText.return_value = ""
+    dialog.accept = MagicMock()
+
+    with patch("ui.command_manager.show_warning") as show_warning:
+        dialog._validate_and_accept()
+
+    show_warning.assert_called_once_with(dialog, "Error", "Group is required.")
+    dialog.accept.assert_not_called()
+
+
 def _manager_for_delete(commands):
     dialog = object.__new__(CommandManagerDialog)
     dialog._services = MagicMock()
