@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QInputDialog, QMenu, QSystemTrayIcon
+from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
 from core.badge_manager import BadgeManager
 from core.config_manager import ConfigurationError, config_manager
@@ -33,7 +33,7 @@ from ui.command_palette import CommandPalette
 from ui.output_window import RichOutputWindow
 from ui.quick_launch_bar import QuickLaunchBar
 from ui.settings_dialog import SettingsDialog
-from utils.dialogs import confirm_execute, confirm_exit, show_error_and_raise
+from utils.dialogs import confirm_execute, confirm_exit, prompt_text, show_error_and_raise
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +302,7 @@ class TrayApp:
 
     def _get_prompt_input(self, prompt):
         """Show input dialog. Returns (value, ok) or (None, False)."""
-        input_value, ok = QInputDialog.getText(None, "Input Required", prompt)
+        input_value, ok = prompt_text(None, "Input Required", prompt)
         if not ok or not input_value:
             return None, False
         return input_value, True

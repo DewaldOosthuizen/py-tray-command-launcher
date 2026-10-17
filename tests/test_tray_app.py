@@ -116,9 +116,9 @@ def test_execute_prompt_cancelled_aborts():
     app = _make_app()
     with (
         patch("core.tray_app.config_manager"),
-        patch("core.tray_app.QInputDialog") as dialog,
+        patch("core.tray_app.prompt_text") as dialog,
     ):
-        dialog.getText.return_value = ("whatever", False)
+        dialog.return_value = ("whatever", False)
         app.execute(
             title="Term",
             command="echo {promptInput}",
@@ -134,9 +134,9 @@ def test_execute_prompt_empty_input_aborts():
     app = _make_app()
     with (
         patch("core.tray_app.config_manager"),
-        patch("core.tray_app.QInputDialog") as dialog,
+        patch("core.tray_app.prompt_text") as dialog,
     ):
-        dialog.getText.return_value = ("", True)
+        dialog.return_value = ("", True)
         app.execute(
             title="Term",
             command="echo {promptInput}",
@@ -168,12 +168,12 @@ def test_execute_prompt_windows_uses_list2cmdline():
     app = _make_app()
     with (
         patch("core.tray_app.config_manager"),
-        patch("core.tray_app.QInputDialog") as dialog,
+        patch("core.tray_app.prompt_text") as dialog,
         patch("core.tray_app.os") as mock_os,
         patch("core.tray_app.subprocess") as mock_sub,
     ):
         mock_os.name = "nt"
-        dialog.getText.return_value = ("a b", True)
+        dialog.return_value = ("a b", True)
         mock_sub.list2cmdline.return_value = '"a b"'
         app.execute(
             title="Term",
@@ -191,12 +191,12 @@ def test_execute_prompt_posix_uses_shlex_quote():
     app = _make_app()
     with (
         patch("core.tray_app.config_manager"),
-        patch("core.tray_app.QInputDialog") as dialog,
+        patch("core.tray_app.prompt_text") as dialog,
         patch("core.tray_app.os") as mock_os,
         patch("core.tray_app.shlex") as mock_shlex,
     ):
         mock_os.name = "posix"
-        dialog.getText.return_value = ("a b; rm -rf x", True)
+        dialog.return_value = ("a b; rm -rf x", True)
         mock_shlex.quote.return_value = "'a b; rm -rf x'"
         app.execute(
             title="Term",
@@ -233,9 +233,10 @@ def test_record_history_adds_entry():
 def test_get_prompt_input_ok():
     """_get_prompt_input returns (value, True) when the dialog is accepted with text."""
     app = _make_app()
-    with patch("core.tray_app.QInputDialog") as dialog:
-        dialog.getText.return_value = ("hello", True)
+    with patch("core.tray_app.prompt_text") as dialog:
+        dialog.return_value = ("hello", True)
         value, ok = app._get_prompt_input("Enter value")
+        dialog.assert_called_once_with(None, "Input Required", "Enter value")
     assert value == "hello"
     assert ok is True
 
@@ -243,9 +244,10 @@ def test_get_prompt_input_ok():
 def test_get_prompt_input_cancelled():
     """_get_prompt_input returns (None, False) when the dialog is cancelled."""
     app = _make_app()
-    with patch("core.tray_app.QInputDialog") as dialog:
-        dialog.getText.return_value = ("", False)
+    with patch("core.tray_app.prompt_text") as dialog:
+        dialog.return_value = ("", False)
         value, ok = app._get_prompt_input("Enter value")
+        dialog.assert_called_once_with(None, "Input Required", "Enter value")
     assert value is None
     assert ok is False
 
@@ -253,9 +255,10 @@ def test_get_prompt_input_cancelled():
 def test_get_prompt_input_empty():
     """_get_prompt_input returns (None, False) when input is empty (ok=True)."""
     app = _make_app()
-    with patch("core.tray_app.QInputDialog") as dialog:
-        dialog.getText.return_value = ("", True)
+    with patch("core.tray_app.prompt_text") as dialog:
+        dialog.return_value = ("", True)
         value, ok = app._get_prompt_input("Enter value")
+        dialog.assert_called_once_with(None, "Input Required", "Enter value")
     assert value is None
     assert ok is False
 

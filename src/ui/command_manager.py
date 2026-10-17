@@ -22,13 +22,14 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QToolBar,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
 )
+
+from utils.dialogs import confirm_action, show_info, show_warning
 
 logger = logging.getLogger(__name__)
 
@@ -106,13 +107,13 @@ class _CommandFormDialog(QDialog):
 
     def _validate_and_accept(self):
         if not self._group_combo.currentText().strip():
-            QMessageBox.warning(self, "Error", "Group is required.")
+            show_warning(self, "Error", "Group is required.")
             return
         if not self._name_edit.text().strip():
-            QMessageBox.warning(self, "Error", "Name is required.")
+            show_warning(self, "Error", "Name is required.")
             return
         if not self._cmd_edit.text().strip():
-            QMessageBox.warning(self, "Error", "Command is required.")
+            show_warning(self, "Error", "Command is required.")
             return
         self.accept()
 
@@ -286,11 +287,11 @@ class CommandManagerDialog(QDialog):
     def _edit_command(self):
         item = self._tree.currentItem()
         if not item:
-            QMessageBox.information(self, "Edit", "Select a command to edit.")
+            show_info(self, "Edit", "Select a command to edit.")
             return
         meta = item.data(0, Qt.ItemDataRole.UserRole) or {}
         if meta.get("type") != "command":
-            QMessageBox.information(self, "Edit", "Select a command (not a group) to edit.")
+            show_info(self, "Edit", "Select a command (not a group) to edit.")
             return
 
         commands = self._services.config_manager.get_commands()
@@ -325,13 +326,7 @@ class CommandManagerDialog(QDialog):
         meta = item.data(0, Qt.ItemDataRole.UserRole) or {}
         name = meta.get("label") or meta.get("name", "")
 
-        reply = QMessageBox.question(
-            self,
-            "Confirm Delete",
-            f"Delete '{name}'?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
+        if not confirm_action(self, "Confirm Delete", f"Delete '{name}'?"):
             return
 
         commands = self._services.config_manager.get_commands()
@@ -414,7 +409,7 @@ class CommandManagerDialog(QDialog):
     def _save(self):
         """Rebuild tray menu from updated commands.json."""
         if self._running:
-            QMessageBox.warning(
+            show_warning(
                 self,
                 "Processes Running",
                 "Cannot rebuild the menu while commands are running.\nPlease wait for them to finish.",

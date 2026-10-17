@@ -23,10 +23,11 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QSpinBox,
     QVBoxLayout,
 )
+
+from utils.dialogs import show_error
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +214,7 @@ class SettingsDialog(QDialog):
                 self._app_launcher_hotkey_callback(settings["app_launcher_hotkey"])
             self.accept()
         except Exception as exc:
-            QMessageBox.critical(self, "Error", f"Failed to save settings:\n{exc}")
+            show_error(self, "Error", f"Failed to save settings:\n{exc}")
 
     def _cancel(self) -> None:
         """Revert any live theme preview and close."""

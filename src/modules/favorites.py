@@ -7,6 +7,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QCursor, QIcon
 from PyQt6.QtWidgets import QInputDialog, QMenu, QMessageBox
 
+from utils.dialogs import prompt_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,11 +69,11 @@ class Favorites:
 
             # Get a label for the favorite
             default_label = command_data["label"]
-            label, ok = QInputDialog.getText(
+            label, ok = prompt_text(
                 None,
                 "Favorite Label",
                 "Enter a label for this favorite:",
-                text=default_label,
+                initial_text=default_label,
             )
 
             if ok and label:
