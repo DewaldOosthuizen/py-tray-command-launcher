@@ -11,7 +11,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 def _install_real_pyqt6_stub():
@@ -401,6 +401,22 @@ class TestSettingsDialogSave(unittest.TestCase):
 
         saved = mock_services.config_manager.save_settings.call_args[0][0]
         assert saved["hotkey"] == "ctrl+shift+x"
+
+    def test_save_failure_uses_shared_error_helper_with_exception_detail(self):
+        """A settings-save exception is displayed through the shared helper."""
+        dlg, cm, mock_services, _ = _build_dialog_direct()
+        mock_services.config_manager.get_settings.return_value = {
+            "theme": "dark",
+            "quick_launch_bar": {},
+            "logging": {},
+        }
+        mock_services.config_manager.save_settings.side_effect = RuntimeError("disk is full")
+
+        with patch("ui.settings_dialog.show_error", create=True) as show_error:
+            dlg._save()
+
+        show_error.assert_called_once_with(dlg, "Error", "Failed to save settings:\ndisk is full")
+        dlg.accept.assert_not_called()
 
     def test_dialog_prepopulates_theme_from_config(self):
         """Config theme value 'dark' should be reflected in dlg._theme_combo."""

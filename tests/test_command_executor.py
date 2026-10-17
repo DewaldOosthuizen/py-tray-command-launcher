@@ -374,9 +374,9 @@ class TestPromptInputSanitisation(unittest.TestCase):
 
         with (
             patch("core.tray_app.config_manager"),
-            patch("core.tray_app.QInputDialog") as mock_dialog,
+            patch("core.tray_app.prompt_text") as mock_prompt,
         ):
-            mock_dialog.getText.return_value = (dangerous_input, True)
+            mock_prompt.return_value = (dangerous_input, True)
             tray_app.execute(
                 title="Test",
                 command="echo {promptInput}",
@@ -407,10 +407,10 @@ class TestPromptInputSanitisation(unittest.TestCase):
         with (
             patch("subprocess.Popen") as mock_popen,
             patch("core.tray_app.config_manager"),
-            patch("core.tray_app.QInputDialog") as mock_dialog,
+            patch("core.tray_app.prompt_text") as mock_prompt,
         ):
             mock_popen.return_value.pid = 12345
-            mock_dialog.getText.return_value = (dangerous_input, True)
+            mock_prompt.return_value = (dangerous_input, True)
             tray_app.execute(
                 title="Test",
                 command="echo {promptInput}",

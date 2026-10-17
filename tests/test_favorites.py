@@ -145,10 +145,18 @@ class TestFavorites(unittest.TestCase):
         self.mock_config_manager.add_to_favorites.return_value = True
 
         with patch("modules.favorites.QInputDialog") as mock_dialog:
-            with patch("modules.favorites.QMessageBox"):
-                mock_dialog.getItem.return_value = ("System → Terminal", True)
-                mock_dialog.getText.return_value = ("My Terminal", True)
-                self.favorites.add_to_favorites()
+            with patch("modules.favorites.prompt_text") as prompt_text:
+                with patch("modules.favorites.QMessageBox"):
+                    mock_dialog.getItem.return_value = ("System → Terminal", True)
+                    prompt_text.return_value = ("My Terminal", True)
+                    self.favorites.add_to_favorites()
+
+        prompt_text.assert_called_once_with(
+            None,
+            "Favorite Label",
+            "Enter a label for this favorite:",
+            initial_text="Terminal",
+        )
 
         self.mock_config_manager.add_to_favorites.assert_called_once_with(
             "System.Terminal", "My Terminal"
@@ -175,10 +183,11 @@ class TestFavorites(unittest.TestCase):
         ]
 
         with patch("modules.favorites.QInputDialog") as mock_dialog:
-            with patch("modules.favorites.QMessageBox"):
-                mock_dialog.getItem.return_value = ("System → Terminal", True)
-                mock_dialog.getText.return_value = ("", False)
-                self.favorites.add_to_favorites()
+            with patch("modules.favorites.prompt_text") as prompt_text:
+                with patch("modules.favorites.QMessageBox"):
+                    mock_dialog.getItem.return_value = ("System → Terminal", True)
+                    prompt_text.return_value = ("", False)
+                    self.favorites.add_to_favorites()
 
         self.mock_config_manager.add_to_favorites.assert_not_called()
 
@@ -201,10 +210,11 @@ class TestFavorites(unittest.TestCase):
         self.mock_config_manager.add_to_favorites.return_value = False
 
         with patch("modules.favorites.QInputDialog") as mock_dialog:
-            with patch("modules.favorites.QMessageBox") as mock_box:
-                mock_dialog.getItem.return_value = ("System → Terminal", True)
-                mock_dialog.getText.return_value = ("My Terminal", True)
-                self.favorites.add_to_favorites()
+            with patch("modules.favorites.prompt_text") as prompt_text:
+                with patch("modules.favorites.QMessageBox") as mock_box:
+                    mock_dialog.getItem.return_value = ("System → Terminal", True)
+                    prompt_text.return_value = ("My Terminal", True)
+                    self.favorites.add_to_favorites()
 
         self.mock_config_manager.add_to_favorites.assert_called_once()
         mock_box.warning.assert_called()
