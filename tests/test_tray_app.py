@@ -32,6 +32,10 @@ def _make_app():
     """Build a bare TrayApp with the attributes ``execute()`` touches."""
     app = object.__new__(TrayApp)
     app.executor = MagicMock()
+    app.module_controller = MagicMock()
+    app.module_controller.get_executor.return_value = app.executor
+    app.module_controller.loaded_palette = None
+    app.module_controller.loaded_quick_launch_bar = None
     app.reload_history_commands = MagicMock()
     app.reload_favorites_commands = MagicMock()
     return app
@@ -379,6 +383,8 @@ def test_on_finished_removes_process_and_updates_badge():
     app.services = MagicMock()
     app.services.config_manager = MagicMock()
     app.executor = MagicMock()
+    app.module_controller = MagicMock()
+    app.module_controller.get_executor.return_value = app.executor
     app.output_windows = []
     app.process_tracker = ProcessTracker()
     app.process_tracker.process_count_changed = MagicMock()
@@ -407,6 +413,8 @@ def test_reregister_hotkey_swallows_exception():
     """_reregister_hotkey logs and swallows a failure instead of propagating it."""
     app = object.__new__(TrayApp)
     app.palette = MagicMock()
+    app.module_controller = MagicMock()
+    app.module_controller.loaded_palette = app.palette
     app.palette.register_hotkey.side_effect = RuntimeError("boom")
     # Must not raise.
     app._reregister_hotkey("ctrl+x")
@@ -417,6 +425,8 @@ def test_reregister_bar_hotkey_swallows_exception():
     """_reregister_bar_hotkey logs and swallows a failure instead of propagating it."""
     app = object.__new__(TrayApp)
     app.quick_launch_bar = MagicMock()
+    app.module_controller = MagicMock()
+    app.module_controller.loaded_quick_launch_bar = app.quick_launch_bar
     app.quick_launch_bar.unregister_hotkey.side_effect = RuntimeError("boom")
     # Must not raise.
     app._reregister_bar_hotkey("ctrl+y")

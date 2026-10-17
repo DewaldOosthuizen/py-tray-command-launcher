@@ -8,9 +8,14 @@ construction from the main TrayApp class, reducing complexity and improving
 testability.
 """
 
+from __future__ import annotations
+
 import logging
 import os
+from collections.abc import Callable
+from dataclasses import dataclass
 from functools import partial
+from typing import TYPE_CHECKING, Any
 
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QMenu
@@ -19,6 +24,48 @@ from modules.command_search import clear_command_search_cache
 from utils.dialogs import show_error_and_raise
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from modules.backup_restore import BackupRestore
+    from modules.command_search import CommandSearch
+    from modules.favorites import Favorites
+    from modules.file_encryptor import FileEncryptor
+    from modules.import_export import ImportExport
+    from modules.schedule_creator import ScheduleCreator
+    from modules.schedule_viewer import ScheduleViewer
+    from ui.command_palette import CommandPalette
+    from ui.quick_launch_bar import QuickLaunchBar
+
+
+@dataclass(frozen=True)
+class MenuBuilderDependencies:
+    """Typed rendering data and callbacks required to assemble tray actions."""
+
+    icon_file: str
+    get_command_menu: Callable[[], dict[str, Any]]
+    resolve_icon_path: Callable[[Any], str | None]
+    execute: Callable[[str, str, bool, bool, str | None], None]
+    pin_to_quick_launch: Callable[[dict[str, Any]], None]
+    get_favorites: Callable[[], Favorites]
+    set_favorites_menu: Callable[[QMenu], None]
+    reload_favorites_commands: Callable[[], None]
+    set_history_menu: Callable[[QMenu], None]
+    reload_history_commands: Callable[[], None]
+    get_palette: Callable[[], CommandPalette]
+    get_search: Callable[[], CommandSearch]
+    open_command_manager: Callable[[], None]
+    open_commands_json: Callable[[], None]
+    reload_commands: Callable[..., None]
+    get_import_export: Callable[[], ImportExport]
+    get_backup: Callable[[], BackupRestore]
+    get_file_encryptor: Callable[[], FileEncryptor]
+    get_schedule_creator: Callable[[], ScheduleCreator]
+    get_schedule_viewer: Callable[[], ScheduleViewer]
+    open_settings: Callable[[], None]
+    get_quick_launch_bar: Callable[[], QuickLaunchBar]
+    set_running_action: Callable[[QAction], None]
+    restart_app: Callable[[], None]
+    confirm_exit: Callable[[], None]
 
 
 class MenuBuilder:
@@ -31,13 +78,13 @@ class MenuBuilder:
     - Create menu actions with proper signal connections
     """
 
-    def __init__(self, tray_app):
-        """Initialize MenuBuilder with reference to parent TrayApp.
+    def __init__(self, dependencies: MenuBuilderDependencies) -> None:
+        """Initialize the builder with its narrow rendering contract.
 
         Args:
-            tray_app: The parent TrayApp instance providing context and methods
+            dependencies: Data providers and action callbacks used for rendering.
         """
-        self.tray_app = tray_app
+        self.dependencies = dependencies
 
     def build(self, menu, command_menu):
         """Build the complete tray menu from command configuration.
@@ -45,6 +92,9 @@ class MenuBuilder:
         Args:
             menu: The QMenu to add items to
             command_menu: Dictionary of commands from config
+
+        Raises:
+            ValueError: If the command root, a group, or a command definition is invalid.
         """
         clear_command_search_cache()
 
@@ -63,7 +113,7 @@ class MenuBuilder:
                 )
 
             # Resolve the icon path correctly
-            icon_path = self._get_item_icon_path(items.get("icon"), self.tray_app.icon_file)
+            icon_path = self._get_item_icon_path(items.get("icon"), self.dependencies.icon_file)
 
             # Create a submenu for each group
             submenu = QMenu(group, menu)
@@ -76,91 +126,101 @@ class MenuBuilder:
 
         # Add favorites menu
         favorites_menu = QMenu("Favorites", menu)
-        favorites_menu.setIcon(QIcon(self.tray_app.icon_file))
-        self.tray_app.get_favorites().populate_favorites_menu(favorites_menu)
-        self.tray_app.favorites_menu = favorites_menu
+        favorites_menu.setIcon(QIcon(self.dependencies.icon_file))
+        self.dependencies.get_favorites().populate_favorites_menu(favorites_menu)
+        self.dependencies.set_favorites_menu(favorites_menu)
         menu.addMenu(favorites_menu)
 
         # Add history menu
         history_menu = QMenu("Recent Commands", menu)
-        history_menu.setIcon(QIcon(self.tray_app.icon_file))
+        history_menu.setIcon(QIcon(self.dependencies.icon_file))
         menu.addMenu(history_menu)
-        self.tray_app.history_menu = history_menu
-        self.tray_app.reload_history_commands()
-        self.tray_app.reload_favorites_commands()
+        self.dependencies.set_history_menu(history_menu)
+        self.dependencies.reload_history_commands()
+        self.dependencies.reload_favorites_commands()
 
         menu.addSeparator()
 
         # Commands group
         commands_menu = QMenu("Commands", menu)
-        commands_menu.setIcon(QIcon(self.tray_app.icon_file))
-        commands_menu.addAction("Quick Launch (Palette)", self.tray_app.get_palette().show_palette)
-        commands_menu.addAction("App Launcher", self.tray_app.get_palette().show_app_launcher)
-        commands_menu.addAction("Search Commands", self.tray_app.get_search().show_dialog)
-        commands_menu.addAction("Manage Commands", self.tray_app._open_command_manager)
-        commands_menu.addAction("Edit commands file", self.tray_app.open_commands_json)
+        commands_menu.setIcon(QIcon(self.dependencies.icon_file))
         commands_menu.addAction(
-            "Reload Commands", lambda: self.tray_app.reload_commands(rebuild_menu=True)
+            "Quick Launch (Palette)", self.dependencies.get_palette().show_palette
         )
-        commands_menu.addAction("Reload History Commands", self.tray_app.reload_history_commands)
-        commands_menu.addAction("Add to Favorites", self.tray_app.get_favorites().add_to_favorites)
+        commands_menu.addAction("App Launcher", self.dependencies.get_palette().show_app_launcher)
+        commands_menu.addAction("Search Commands", self.dependencies.get_search().show_dialog)
+        commands_menu.addAction("Manage Commands", self.dependencies.open_command_manager)
+        commands_menu.addAction("Edit commands file", self.dependencies.open_commands_json)
+        commands_menu.addAction(
+            "Reload Commands", lambda: self.dependencies.reload_commands(rebuild_menu=True)
+        )
+        commands_menu.addAction(
+            "Reload History Commands", self.dependencies.reload_history_commands
+        )
+        commands_menu.addAction(
+            "Add to Favorites", self.dependencies.get_favorites().add_to_favorites
+        )
         menu.addMenu(commands_menu)
 
         # Tools group
         tools_menu = QMenu("Tools", menu)
-        tools_menu.setIcon(QIcon(self.tray_app.icon_file))
+        tools_menu.setIcon(QIcon(self.dependencies.icon_file))
 
         # Import/Export submenu
         import_export_menu = QMenu("Import/Export", tools_menu)
-        import_export_menu.setIcon(QIcon(self.tray_app.icon_file))
+        import_export_menu.setIcon(QIcon(self.dependencies.icon_file))
         import_export_menu.addAction(
-            "Import Command Group", self.tray_app.get_import_export().import_command_group
+            "Import Command Group", self.dependencies.get_import_export().import_command_group
         )
         import_export_menu.addAction(
-            "Export Command Group", self.tray_app.get_import_export().export_command_group
+            "Export Command Group", self.dependencies.get_import_export().export_command_group
         )
         tools_menu.addMenu(import_export_menu)
 
         # Backup/Restore submenu
         backup_restore_menu = QMenu("Backup/Restore", tools_menu)
-        backup_restore_menu.setIcon(QIcon(self.tray_app.icon_file))
-        backup_restore_menu.addAction("Backup Commands", self.tray_app.get_backup().backup_commands)
+        backup_restore_menu.setIcon(QIcon(self.dependencies.icon_file))
         backup_restore_menu.addAction(
-            "Restore Commands", self.tray_app.get_backup().restore_commands
+            "Backup Commands", self.dependencies.get_backup().backup_commands
+        )
+        backup_restore_menu.addAction(
+            "Restore Commands", self.dependencies.get_backup().restore_commands
         )
         tools_menu.addMenu(backup_restore_menu)
 
         # Encryption submenu
         encryption_menu = QMenu("Encrypt/Decrypt", tools_menu)
-        encryption_menu.setIcon(QIcon(self.tray_app.icon_file))
+        encryption_menu.setIcon(QIcon(self.dependencies.icon_file))
         encryption_menu.addAction(
-            "Encrypt File/Folder", self.tray_app.get_file_encryptor().encrypt_file_or_folder
+            "Encrypt File/Folder", self.dependencies.get_file_encryptor().encrypt_file_or_folder
         )
         encryption_menu.addAction(
-            "Decrypt File/Folder", self.tray_app.get_file_encryptor().decrypt_file_or_folder
+            "Decrypt File/Folder", self.dependencies.get_file_encryptor().decrypt_file_or_folder
         )
         tools_menu.addMenu(encryption_menu)
 
         # Add Create Schedule option
-        tools_menu.addAction("Create Schedule", self.tray_app.get_schedule_creator().show_dialog)
+        tools_menu.addAction(
+            "Create Schedule", self.dependencies.get_schedule_creator().show_dialog
+        )
 
         # Add View Schedules option
-        tools_menu.addAction("View Schedules", self.tray_app.get_schedule_viewer().show_dialog)
+        tools_menu.addAction("View Schedules", self.dependencies.get_schedule_viewer().show_dialog)
 
         menu.addMenu(tools_menu)
-        menu.addAction("Settings", self.tray_app._open_settings)
-        menu.addAction("Quick Launch Bar", self.tray_app.get_quick_launch_bar().toggle)
+        menu.addAction("Settings", self.dependencies.open_settings)
+        menu.addAction("Quick Launch Bar", self.dependencies.get_quick_launch_bar().toggle)
 
         # Dynamic "Running: N" indicator (non-interactive, hidden when idle)
         menu.addSeparator()
         running_action = QAction("Running: 0", menu)
         running_action.setEnabled(False)
         running_action.setVisible(False)
-        self.tray_app._running_action = running_action
+        self.dependencies.set_running_action(running_action)
         menu.addAction(running_action)
 
-        menu.addAction("Restart App", self.tray_app.restart_app)
-        menu.addAction("Exit", self.tray_app.confirm_exit)
+        menu.addAction("Restart App", self.dependencies.restart_app)
+        menu.addAction("Exit", self.dependencies.confirm_exit)
 
     def _add_menu_items(self, menu, items, parent_icon_path, group_name=""):
         """Recursively add items to the menu.
@@ -193,7 +253,16 @@ class MenuBuilder:
                 self._add_command_to_menu(menu, label, item, parent_icon_path, group_name)
 
     def resolve_command_reference(self, group, label, item):
-        """Public entry point used by AppServices; see ``_resolve_command_reference``."""
+        """Resolve a referenced command for favorite and shortcut rendering.
+
+        Args:
+            group: Display group containing the reference.
+            label: Reference label.
+            item: Reference definition.
+
+        Returns:
+            The referenced command definition or the original item when invalid.
+        """
         return self._resolve_command_reference(group, label, item)
 
     def _resolve_command_reference(self, group, label, item):
@@ -217,7 +286,7 @@ class MenuBuilder:
                     return item
 
                 ref_group = path_parts[0]
-                commands = self.tray_app.command_menu
+                commands = self.dependencies.get_command_menu()
 
                 if ref_group not in commands:
                     logger.warning("Referenced group not found: %s", ref_group)
@@ -281,7 +350,7 @@ class MenuBuilder:
                 # Connect the action to execute command
                 action.triggered.connect(
                     lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: (
-                        self.tray_app.execute(lbl, cmd, conf, show, prmpt)
+                        self.dependencies.execute(lbl, cmd, conf, show, prmpt)
                     )
                 )
 
@@ -318,7 +387,7 @@ class MenuBuilder:
         # Connect the action to execute command
         action.triggered.connect(
             lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: (
-                self.tray_app.execute(lbl, cmd, conf, show, prmpt)
+                self.dependencies.execute(lbl, cmd, conf, show, prmpt)
             )
         )
 
@@ -339,7 +408,7 @@ class MenuBuilder:
         """Attach a right-click context menu with 'Pin to Quick-Launch Bar' to *action*."""
         context_menu = QMenu()
         pin_action = QAction("Pin to Quick-Launch Bar", context_menu)
-        pin_action.triggered.connect(partial(self.tray_app._pin_to_quick_launch, cmd_info))
+        pin_action.triggered.connect(partial(self.dependencies.pin_to_quick_launch, cmd_info))
         context_menu.addAction(pin_action)
         action.setMenu(context_menu)
 
@@ -354,7 +423,7 @@ class MenuBuilder:
             Valid icon path (either resolved icon_spec or fallback_path)
         """
         if icon_spec:
-            resolved = self.tray_app._resolve_icon_path(icon_spec)
+            resolved = self.dependencies.resolve_icon_path(icon_spec)
             if resolved and os.path.isfile(resolved):
                 return resolved
         return fallback_path

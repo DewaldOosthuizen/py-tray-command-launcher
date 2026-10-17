@@ -273,6 +273,19 @@ class TestToPynputStr(unittest.TestCase):
         assert "<ctrl>" in result and "<alt>" in result
 
 
+def _menu_builder_dependencies(command_menu):
+    """Create the typed builder contract without involving TrayApp."""
+    from dataclasses import fields
+
+    from core.menu_builder import MenuBuilderDependencies
+
+    values: dict = {field.name: MagicMock() for field in fields(MenuBuilderDependencies)}
+    values["icon_file"] = "/nonexistent/tray_icon.png"
+    values["get_command_menu"].return_value = command_menu
+    values["resolve_icon_path"].return_value = None
+    return MenuBuilderDependencies(**values)
+
+
 # ---------------------------------------------------------------------------
 # CommandPalette lifecycle
 # ---------------------------------------------------------------------------
@@ -449,8 +462,6 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
             def setData(self, _role, command):
                 self.command = command
 
-        tray_app = MagicMock()
-        tray_app.icon_file = "/nonexistent/tray_icon.png"
         tray_menu = MagicMock()
         command_menu = {
             "Tools": {command["label"]: {"command": command["command"]} for command in replacement}
@@ -467,8 +478,8 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
             ]
 
             svc.get_all_commands.return_value = replacement
-            tray_app.command_menu = command_menu
-            MenuBuilder(tray_app).build(tray_menu, command_menu)
+            dependencies = _menu_builder_dependencies(command_menu)
+            MenuBuilder(dependencies).build(tray_menu, command_menu)
             win._cmd_list.addItem.reset_mock()
 
             win._populate_commands("")

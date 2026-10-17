@@ -25,6 +25,19 @@ _QT_KEY_DOWN = 0x01000005
 _QT_KEY_UP = 0x01000006
 
 
+def _menu_builder_dependencies(command_menu):
+    """Create the typed builder contract without involving TrayApp."""
+    from dataclasses import fields
+
+    from core.menu_builder import MenuBuilderDependencies
+
+    values: dict = {field.name: MagicMock() for field in fields(MenuBuilderDependencies)}
+    values["icon_file"] = "/nonexistent/tray_icon.png"
+    values["get_command_menu"].return_value = command_menu
+    values["resolve_icon_path"].return_value = None
+    return MenuBuilderDependencies(**values)
+
+
 # ---------------------------------------------------------------------------
 # Stubs that track their constructed instances
 # ---------------------------------------------------------------------------
@@ -667,9 +680,6 @@ def test_dialog_uses_rebuilt_configuration_for_added_edited_removed_and_renamed_
     mock_services.get_all_commands.return_value = original
     clear_command_search_cache()
 
-    tray_app = MagicMock()
-    tray_app.icon_file = "/nonexistent/tray_icon.png"
-    tray_app.command_menu = {}
     tray_menu = MagicMock()
 
     with _patch_all(), patch("core.menu_builder.QMenu", return_value=MagicMock()):
@@ -680,11 +690,12 @@ def test_dialog_uses_rebuilt_configuration_for_added_edited_removed_and_renamed_
             for item in _TrackedTreeWidget.added_items
         ] == original
 
-        tray_app.command_menu = {
+        command_menu = {
             "Tools": {command["label"]: {"command": command["command"]} for command in replacement}
         }
         mock_services.get_all_commands.return_value = replacement
-        MenuBuilder(tray_app).build(tray_menu, tray_app.command_menu)
+        dependencies = _menu_builder_dependencies(command_menu)
+        MenuBuilder(dependencies).build(tray_menu, command_menu)
 
         line_edit.setText("")
         rendered_commands = [
