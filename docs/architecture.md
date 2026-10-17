@@ -32,7 +32,23 @@ Entry point. Enforces single-instance check, initialises logging, creates the `Q
 
 ### `core/tray_app.py` — `TrayApp`
 
-Main application class. Builds and owns the system tray icon and entire menu hierarchy. Delegates all feature actions to the appropriate module. Manages application-level actions (restart, quit).
+Composition root for the application. Creates the tray icon, shared services, and focused menu, module-wiring, and theme controllers; coordinates application-level startup and shutdown.
+
+### `core/menu_controller.py` — `MenuController`
+
+Owns the lazy first-build flag, tray-menu attachment/show lifecycle, command reload/rebuild decisions, and refresh of history and favorites submenus. It delegates rendering to `MenuBuilder`; menu construction remains deferred until the first tray-menu display.
+
+### `core/menu_builder.py` — `MenuBuilder`
+
+Renders the hierarchical tray menu using an immutable, typed `MenuBuilderDependencies` contract. The contract supplies command data, icon resolution, lazy feature accessors, action callbacks, and menu-state handoffs. The builder neither stores nor accepts a `TrayApp` instance.
+
+### `core/module_controller.py` — `ModuleController`
+
+Owns explicit cache-on-first-use factories for feature modules, `CommandPalette`, and `QuickLaunchBar`. It receives `AppServices`, the tray icon path, and a settings accessor; it does not receive `TrayApp` and does not use dynamic attribute proxies.
+
+### `core/theme_controller.py` — `ThemeController`
+
+Reads the persisted startup theme and delegates theme changes to `ThemeManager`. `ThemeManager` remains responsible for QSS lookup, fallback, and global stylesheet application. Its manager capability is passed to `SettingsDialog` for live preview and rollback.
 
 ### `core/config_manager.py` — `ConfigManager`
 
@@ -137,34 +153,22 @@ class MyNewModule:
 
 ### Step 3: Wire the module into `TrayApp`
 
-Open `src/core/tray_app.py` and add the module to `_build_modules()` (`lines 137-149`). Import the module class at the top of the file (alongside the other module imports at lines 21-30) and instantiate it with `self.services`, storing the instance on `self`:
+Add the module import and an explicit lazy factory to `ModuleController`. The factory must pass `AppServices`, store its instance in a controller-owned slot, and return the same instance on subsequent calls. Add an explicit `TrayApp.get_*()` delegate when an application access point is needed:
 
 ```python
-# src/core/tray_app.py — inside _build_modules(), after the existing module instantiations
-
-def _build_modules(self) -> None:
-    """Construct all feature module instances."""
-    self.history_menu: list = []
-    self.history = CommandHistory(self.services)
-    self.creator = CommandCreator(self.services)
-    self.executor = CommandExecutor(self.services)
-    self.search = CommandSearch(self.services)
-    self.backup = BackupRestore(self.services)
-    self.importExport = ImportExport(self.services)
-    self.favorites = Favorites(self.services)
-    self.file_encryptor = FileEncryptor(self.services)
-    self.schedule_creator = ScheduleCreator(self.services)
-    self.schedule_viewer = ScheduleViewer(self.services)
-    # NEW:
-    self.my_new_module = MyNewModule(self.services)
+# src/core/module_controller.py
+def get_my_new_module(self):
+    if self._my_new_module is None:
+        self._my_new_module = MyNewModule(self.services)
+    return self._my_new_module
 ```
 
 ### Step 4: Register tray-menu actions (if needed)
 
-If your module adds tray-menu items, register them in `_build_menu()` (`src/core/tray_app.py` lines 164-168) or in the module's own initialisation. The existing pattern is:
+If your module adds tray-menu items, add its action through the typed rendering contract consumed by `MenuBuilder`; keep lifecycle and refresh decisions in `MenuController`. The existing pattern is:
 
-- `_build_menu()` calls `MenuBuilder(self).build(self.menu, self.command_menu)` to render the command menu from the loaded `commands.json`.
-- Modules that contribute submenus (e.g. `CommandHistory`, `Favorites`) expose methods like `populate_menu()` or `populate_favorites_menu()` that `TrayApp.reload_history_commands()` / `TrayApp.reload_favorites_commands()` call on reload.
+- `TrayApp` composes `MenuBuilderDependencies` from command data, `IconResolver`, explicit module accessors, and application action callbacks; `MenuController` invokes the builder on first show or explicit rebuild.
+- Modules that contribute submenus (e.g. `CommandHistory`, `Favorites`) expose methods like `populate_menu()` or `populate_favorites_menu()` that `MenuController` calls only when their submenu exists.
 
 Follow whichever pattern matches your module's needs. If your module only reacts to menu-triggered signals connected elsewhere, no changes to `_build_menu()` are required.
 
@@ -277,11 +281,12 @@ main.py
   ├─ QApplication()
   └─ TrayApp()
        │
-       ├─ config_manager (singleton)     # load commands.json
-       ├─ QSystemTrayIcon + QMenu        # build menu from commands
-       └─ Register modules               # executor, search, creator, history…
-            │
-            └─ Qt event loop (app.exec())
+       ├─ config_manager (singleton)     # load commands.json and settings
+       ├─ ThemeController                # apply startup theme via ThemeManager
+       ├─ ModuleController               # explicit lazy feature/UI factories
+       ├─ MenuController                 # attach now; render on first display
+       │    └─ MenuBuilder               # render via typed dependencies
+       └─ Qt event loop (app.exec())
 ```
 
 ---
@@ -298,29 +303,30 @@ Log level resolution order (highest priority first):
 
 Log format: `2026-01-01 12:00:00,000 | INFO | core.config_manager | message`
 
-## Lazy construction contract (Issue #133)
+## Lazy construction and controller ownership
 
-TrayApp defers construction of feature modules until first use. Feature-module
-attributes on `TrayApp` are typed `Optional[FeatureModule] = None`; explicit
-factory accessors `get_palette()`, `get_quick_launch_bar()`, `get_history()`,
-etc. construct on first call and cache the result. No transparent `__getattr__`
-proxy is used, so Qt identity, `isinstance`, and slot semantics are preserved.
+`ModuleController` owns explicit factories and cached slots for each feature
+module and UI module. `TrayApp` keeps explicit `get_*()` methods as composition
+boundary delegates; there is no transparent `__getattr__` proxy, so Qt identity,
+`isinstance`, and slot semantics are preserved. Feature modules receive only
+`AppServices`, never the `TrayApp` instance.
 
 ### Delayed hotkey registration API
 
-Hotkey re-registration (`_reregister_hotkey`, `_reregister_app_launcher_hotkey`,
-`_reregister_bar_hotkey`) only touches a module when it has already been
-loaded; guards use `is not None` (or `has_loaded()`), so never-used features are
-never instantiated during settings changes.
+Hotkey registration remains settings-driven at first construction. Hotkey
+re-registration (`_reregister_hotkey`, `_reregister_app_launcher_hotkey`,
+`_reregister_bar_hotkey`) checks the controller's already-loaded slots and
+never instantiates an unused module during settings changes.
 
 ### Factory registration sites
 
-Module factories are registered in `TrayApp._build_modules()`; `AppServices`
-fields are unchanged, wiring remains in `TrayApp._build_services()`.
+Module factories are explicit methods on `ModuleController`; their constructor
+dependencies are composed in `TrayApp`. `AppServices` remains the feature-module
+dependency contract and its fields are unchanged.
 
 ### Cleanup invariants
 
-`cleanup()` never instantiates a lazy module; every access is guarded with
-`is not None`. Deferred heavy menu items are built on first tray-icon
-interaction via the menu `aboutToShow` signal, so startup does not construct
-lazy modules.
+`ModuleController.cleanup()` only unregisters/closes already-loaded UI modules;
+settings callbacks likewise inspect loaded slots without constructing them.
+`MenuController` attaches the context menu and defers heavy rendering until the
+first `aboutToShow` signal, so startup does not construct lazy feature modules.

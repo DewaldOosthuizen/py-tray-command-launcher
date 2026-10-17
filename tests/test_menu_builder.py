@@ -11,7 +11,10 @@ from unittest.mock import MagicMock, patch
 
 # The PyQt6 stub is already injected by conftest.py. Import MenuBuilder
 # after the stub is in place — the src/ path is on sys.path via conftest.py.
-from core.menu_builder import MenuBuilder  # noqa: E402  # after conftest installs Qt stub
+from core.menu_builder import (  # noqa: E402  # after conftest installs Qt stub
+    MenuBuilder,
+    MenuBuilderDependencies,
+)
 
 
 def _stub_icon_file():
@@ -19,46 +22,40 @@ def _stub_icon_file():
     return "/nonexistent/tray_icon.png"
 
 
-def _make_tray_app(command_menu=None):
-    """Build a minimal tray_app stub that MenuBuilder methods touch."""
-    tray_app = MagicMock()
-    tray_app.icon_file = _stub_icon_file()
-    tray_app.command_menu = command_menu if command_menu is not None else {}
-    tray_app.favorites = MagicMock()
-    tray_app.favorites_menu = None
-    tray_app.history_menu = None
-    tray_app.palette = MagicMock()
-    tray_app.palette.show_palette = MagicMock()
-    tray_app.palette.show_app_launcher = MagicMock()
-    tray_app.search = MagicMock()
-    tray_app.search.show_dialog = MagicMock()
-    tray_app._open_command_manager = MagicMock()
-    tray_app.open_commands_json = MagicMock()
-    tray_app.reload_history_commands = MagicMock()
-    tray_app.reload_favorites_commands = MagicMock()
-    tray_app.importExport = MagicMock()
-    tray_app.importExport.import_command_group = MagicMock()
-    tray_app.importExport.export_command_group = MagicMock()
-    tray_app.backup = MagicMock()
-    tray_app.backup.backup_commands = MagicMock()
-    tray_app.backup.restore_commands = MagicMock()
-    tray_app.file_encryptor = MagicMock()
-    tray_app.file_encryptor.encrypt_file_or_folder = MagicMock()
-    tray_app.file_encryptor.decrypt_file_or_folder = MagicMock()
-    tray_app.schedule_creator = MagicMock()
-    tray_app.schedule_creator.show_dialog = MagicMock()
-    tray_app.schedule_viewer = MagicMock()
-    tray_app.schedule_viewer.show_dialog = MagicMock()
-    tray_app._open_settings = MagicMock()
-    # Lazy slot: unset until first use, as in the real TrayApp
-    tray_app.quick_launch_bar = None
-    tray_app.get_quick_launch_bar = MagicMock()
-    tray_app.restart_app = MagicMock()
-    tray_app.confirm_exit = MagicMock()
-    tray_app.execute = MagicMock()
-    tray_app._pin_to_quick_launch = MagicMock()
-    tray_app._resolve_icon_path = MagicMock(return_value=None)
-    return tray_app
+def _make_dependencies(command_menu=None):
+    """Build only the rendering inputs and callbacks declared by MenuBuilder."""
+
+    def feature():
+        return MagicMock()
+
+    callbacks = {
+        "icon_file": _stub_icon_file(),
+        "get_command_menu": MagicMock(return_value=command_menu or {}),
+        "resolve_icon_path": MagicMock(return_value=None),
+        "execute": MagicMock(),
+        "pin_to_quick_launch": MagicMock(),
+        "get_favorites": MagicMock(return_value=feature()),
+        "set_favorites_menu": MagicMock(),
+        "reload_favorites_commands": MagicMock(),
+        "set_history_menu": MagicMock(),
+        "reload_history_commands": MagicMock(),
+        "get_palette": MagicMock(return_value=feature()),
+        "get_search": MagicMock(return_value=feature()),
+        "open_command_manager": MagicMock(),
+        "open_commands_json": MagicMock(),
+        "reload_commands": MagicMock(),
+        "get_import_export": MagicMock(return_value=feature()),
+        "get_backup": MagicMock(return_value=feature()),
+        "get_file_encryptor": MagicMock(return_value=feature()),
+        "get_schedule_creator": MagicMock(return_value=feature()),
+        "get_schedule_viewer": MagicMock(return_value=feature()),
+        "open_settings": MagicMock(),
+        "get_quick_launch_bar": MagicMock(return_value=feature()),
+        "set_running_action": MagicMock(),
+        "restart_app": MagicMock(),
+        "confirm_exit": MagicMock(),
+    }
+    return MenuBuilderDependencies(**callbacks)
 
 
 def _qmenu_factory():
@@ -80,6 +77,15 @@ def _qmenu_factory():
     return make, menus
 
 
+def test_builder_uses_only_its_typed_dependency_contract():
+    """The builder retains its dependency object, never an application object."""
+    dependencies = _make_dependencies()
+    builder = MenuBuilder(dependencies)
+
+    assert builder.dependencies is dependencies
+    assert not hasattr(builder, "tray_app")
+
+
 # ---------------------------------------------------------------------------
 # 1. test_build_flat_groups_creates_one_submenu_per_group
 # ---------------------------------------------------------------------------
@@ -97,8 +103,8 @@ def test_build_flat_groups_creates_one_submenu_per_group():
             "Cmd3": {"command": "echo three"},
         },
     }
-    tray_app = _make_tray_app(command_menu)
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
     parent_menu = MagicMock()
 
     qmenu_make, qmenus = _qmenu_factory()
@@ -129,8 +135,8 @@ def test_nested_groups_recurse_correctly():
             },
         },
     }
-    tray_app = _make_tray_app(command_menu)
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
     parent_menu = MagicMock()
 
     qmenu_make, qmenus = _qmenu_factory()
@@ -160,13 +166,13 @@ def test_unknown_icon_path_falls_back_to_tray_icon():
             "Cmd": {"command": "echo x", "icon": "nonexistent.png"},
         },
     }
-    tray_app = _make_tray_app(command_menu)
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
 
-    result = builder._get_item_icon_path("nonexistent.png", tray_app.icon_file)
+    result = builder._get_item_icon_path("nonexistent.png", dependencies.icon_file)
 
-    assert result == tray_app.icon_file
-    tray_app._resolve_icon_path.assert_called_once_with("nonexistent.png")
+    assert result == dependencies.icon_file
+    dependencies.resolve_icon_path.assert_called_once_with("nonexistent.png")
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +182,7 @@ def test_unknown_icon_path_falls_back_to_tray_icon():
 
 def test_reference_entry_resolves_and_links_to_target_command():
     """A {"ref": "Group.Label"} entry causes _resolve_command_reference to look
-    up the target command in tray_app.command_menu and return its data."""
+    up the target command in dependencies.command_menu and return its data."""
     command_menu = {
         "TargetGroup": {
             "TargetCmd": {"command": "real-cmd", "icon": "real.png"},
@@ -185,8 +191,8 @@ def test_reference_entry_resolves_and_links_to_target_command():
             "RefCmd": {"ref": "TargetGroup.TargetCmd"},
         },
     }
-    tray_app = _make_tray_app(command_menu)
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
 
     ref_item = {"ref": "TargetGroup.TargetCmd"}
     resolved = builder._resolve_command_reference("RefGroup", "RefCmd", ref_item)
@@ -197,8 +203,8 @@ def test_reference_entry_resolves_and_links_to_target_command():
 def test_resolve_reference_invalid_path_returns_item():
     """A ref with no dot separator (e.g. "BadRef") returns the item unchanged
     after logging a warning."""
-    tray_app = _make_tray_app()
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies()
+    builder = MenuBuilder(dependencies)
 
     with patch("core.menu_builder.logger") as mock_logger:
         result = builder._resolve_command_reference("G", "L", {"ref": "BadRef"})
@@ -210,8 +216,8 @@ def test_resolve_reference_invalid_path_returns_item():
 def test_resolve_reference_missing_group_returns_item():
     """A ref to a group that is not in command_menu returns the item unchanged."""
     command_menu = {"OtherGroup": {"X": {"command": "x"}}}
-    tray_app = _make_tray_app(command_menu)
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
 
     with patch("core.menu_builder.logger") as mock_logger:
         result = builder._resolve_command_reference("G", "L", {"ref": "MissingGroup.Target"})
@@ -230,8 +236,8 @@ def test_resolve_reference_nested_path_resolves():
             },
         },
     }
-    tray_app = _make_tray_app(command_menu)
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
 
     resolved = builder._resolve_command_reference("G", "L", {"ref": "G.Sub.Leaf"})
 
@@ -246,8 +252,8 @@ def test_resolve_reference_invalid_target_returns_item():
             "Bad": {"icon": "x.png"},
         },
     }
-    tray_app = _make_tray_app(command_menu)
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
 
     with patch("core.menu_builder.logger") as mock_logger:
         result = builder._resolve_command_reference("G", "L", {"ref": "G.Bad"})
@@ -267,29 +273,78 @@ def test_add_command_to_menu_reference_resolves_command():
             "RefItem": {"ref": "Target.Real"},
         },
     }
-    tray_app = _make_tray_app(command_menu)
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
     menu = MagicMock()
 
     action = builder._add_command_to_menu(
-        menu, "RefItem", {"ref": "Target.Real"}, tray_app.icon_file, "RefGroup"
+        menu, "RefItem", {"ref": "Target.Real"}, dependencies.icon_file, "RefGroup"
     )
 
     assert action is not None
     assert menu.addAction.called
-    tray_app.execute.assert_not_called()
+    dependencies.execute.assert_not_called()
+
+
+def test_command_and_pin_actions_use_injected_callbacks():
+    """Rendered command actions and context-menu actions call injected handlers."""
+    dependencies = _make_dependencies()
+    builder = MenuBuilder(dependencies)
+    menu = MagicMock()
+
+    class _Signal:
+        def connect(self, callback):
+            self.callback = callback
+
+        def emit(self):
+            self.callback()
+
+    class _Action:
+        def __init__(self, *_args):
+            self.triggered = _Signal()
+
+        def setMenu(self, context_menu):
+            self.context_menu = context_menu
+
+    command_action = _Action()
+    pin_action = _Action()
+    with (
+        patch("core.menu_builder.QAction", side_effect=[command_action, pin_action]),
+        patch("core.menu_builder.QMenu", return_value=MagicMock()),
+    ):
+        builder._add_command_to_menu(
+            menu,
+            "Terminal",
+            {"command": "xterm", "confirm": True, "showOutput": True},
+            dependencies.icon_file,
+            "System",
+        )
+
+    command_action.triggered.emit()
+    pin_action.triggered.emit()
+
+    dependencies.execute.assert_called_once_with("Terminal", "xterm", True, True, None)
+    dependencies.pin_to_quick_launch.assert_called_once_with(
+        {
+            "label": "Terminal",
+            "command": "xterm",
+            "confirm": True,
+            "showOutput": True,
+            "prompt": None,
+        }
+    )
 
 
 def test_add_command_to_menu_missing_command_raises():
     """An item with no 'command' and no 'ref' causes show_error_and_raise to be
     called with a message containing the label."""
-    tray_app = _make_tray_app()
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies()
+    builder = MenuBuilder(dependencies)
     menu = MagicMock()
 
     with patch("core.menu_builder.show_error_and_raise") as mock_error:
         try:
-            builder._add_command_to_menu(menu, "BadItem", {"icon": "x.png"}, tray_app.icon_file)
+            builder._add_command_to_menu(menu, "BadItem", {"icon": "x.png"}, dependencies.icon_file)
         except Exception:
             pass
 
@@ -306,8 +361,8 @@ def test_add_command_to_menu_missing_command_raises():
 def test_build_raises_when_root_is_not_dict():
     """Passing a non-dict root to build() causes show_error_and_raise to be
     called exactly once with the expected message."""
-    tray_app = _make_tray_app()
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies()
+    builder = MenuBuilder(dependencies)
     parent_menu = MagicMock()
 
     with patch("core.menu_builder.show_error_and_raise") as mock_error:
@@ -335,8 +390,8 @@ def test_build_raises_when_group_value_is_not_dict():
     command_menu = {
         "BadGroup": "not-a-dict",
     }
-    tray_app = _make_tray_app(command_menu)
-    builder = MenuBuilder(tray_app)
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
     parent_menu = MagicMock()
 
     with patch("core.menu_builder.show_error_and_raise") as mock_error:
@@ -354,14 +409,14 @@ def test_build_uses_lazy_quick_launch_bar_accessor():
     """Regression: the tray menu must obtain the Quick Launch Bar through the
     lazy accessor. Dereferencing the unset ``quick_launch_bar`` slot raised
     AttributeError inside the aboutToShow slot, which aborts the process."""
-    tray_app = _make_tray_app({"GroupA": {"Cmd1": {"command": "echo one"}}})
+    dependencies = _make_dependencies({"GroupA": {"Cmd1": {"command": "echo one"}}})
     parent_menu = MagicMock()
     qmenu_make, _ = _qmenu_factory()
 
     with patch("core.menu_builder.QMenu", side_effect=qmenu_make):
-        MenuBuilder(tray_app).build(parent_menu, tray_app.command_menu)
+        MenuBuilder(dependencies).build(parent_menu, dependencies.get_command_menu.return_value)
 
-    tray_app.get_quick_launch_bar.assert_called_once_with()
+    dependencies.get_quick_launch_bar.assert_called_once_with()
     labels = [c.args[0] for c in parent_menu.addAction.call_args_list if c.args]
     assert "Quick Launch Bar" in labels
 
@@ -378,11 +433,11 @@ def test_build_invalidates_cached_command_search_results():
     search_commands("terminal", commands)
     assert command_search_cache_info().currsize == 1
 
-    tray_app = _make_tray_app({"Group": {"Terminal": {"command": "terminal"}}})
+    dependencies = _make_dependencies({"Group": {"Terminal": {"command": "terminal"}}})
     parent_menu = MagicMock()
     qmenu_make, _ = _qmenu_factory()
 
     with patch("core.menu_builder.QMenu", side_effect=qmenu_make):
-        MenuBuilder(tray_app).build(parent_menu, tray_app.command_menu)
+        MenuBuilder(dependencies).build(parent_menu, dependencies.get_command_menu.return_value)
 
     assert command_search_cache_info().currsize == 0

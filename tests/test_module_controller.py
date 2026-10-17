@@ -3,29 +3,36 @@
 
 from unittest.mock import MagicMock, patch
 
-from core.module_controller import ModuleController
+
+def _module_controller(*args):
+    """Import after tests with custom Qt stubs have been collected."""
+    from core.module_controller import ModuleController
+
+    return ModuleController(*args)
 
 
 def test_feature_factories_are_lazy_and_cache_first_instance():
     services = MagicMock()
-    controller = ModuleController(services, "icon.png", MagicMock(return_value={}))
+    controller = _module_controller(services, "icon.png", MagicMock(return_value={}))
     with (
         patch("core.module_controller.CommandHistory") as history_factory,
         patch("core.module_controller.CommandCreator") as creator_factory,
     ):
-        assert controller._loaded_modules() == {}
+        assert controller._history is None
+        assert controller._creator is None
         history = controller.get_history()
         assert controller.get_history() is history
         creator = controller.get_creator()
 
     history_factory.assert_called_once_with(services)
     creator_factory.assert_called_once_with(services)
-    assert controller._loaded_modules() == {"history": history, "creator": creator}
+    assert controller._history is history
+    assert controller._creator is creator
 
 
 def test_all_feature_factories_use_app_services_and_cache():
     services = MagicMock()
-    controller = ModuleController(services, "icon.png", MagicMock(return_value={}))
+    controller = _module_controller(services, "icon.png", MagicMock(return_value={}))
     with (
         patch("core.module_controller.CommandHistory") as history,
         patch("core.module_controller.CommandCreator") as creator,
@@ -76,7 +83,7 @@ def test_ui_factories_register_configured_hotkeys_only_on_first_use():
         "quick_launch_bar": {"hotkey": "ctrl+z"},
     }
     get_settings = MagicMock(return_value=settings)
-    controller = ModuleController(services, "icon.png", get_settings)
+    controller = _module_controller(services, "icon.png", get_settings)
 
     with (
         patch("core.module_controller.CommandPalette") as palette_factory,
@@ -95,7 +102,7 @@ def test_ui_factories_register_configured_hotkeys_only_on_first_use():
 
 
 def test_cleanup_hotkeys_does_not_construct_unused_ui_modules():
-    controller = ModuleController(MagicMock(), "icon.png", MagicMock(return_value={}))
+    controller = _module_controller(MagicMock(), "icon.png", MagicMock(return_value={}))
     with (
         patch("core.module_controller.CommandPalette") as palette_factory,
         patch("core.module_controller.QuickLaunchBar") as bar_factory,

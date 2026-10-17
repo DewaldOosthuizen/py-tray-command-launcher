@@ -367,6 +367,8 @@ class TestPromptInputSanitisation(unittest.TestCase):
         tray_app = object.__new__(TrayApp)
         mock_executor = MagicMock()
         tray_app.executor = mock_executor
+        tray_app.module_controller = MagicMock()
+        tray_app.module_controller.get_executor.return_value = mock_executor
         tray_app.reload_history_commands = MagicMock()
         tray_app.reload_favorites_commands = MagicMock()
 
@@ -399,6 +401,8 @@ class TestPromptInputSanitisation(unittest.TestCase):
         tray_app = object.__new__(TrayApp)
         tray_app.executor = CommandExecutor.__new__(CommandExecutor)
         tray_app.executor.services = MagicMock()
+        tray_app.module_controller = MagicMock()
+        tray_app.module_controller.get_executor.return_value = tray_app.executor
         tray_app.reload_history_commands = MagicMock()
         tray_app.reload_favorites_commands = MagicMock()
 

@@ -13,25 +13,15 @@ from PyQt6.QtWidgets import QInputDialog, QMenu, QSystemTrayIcon
 from core.badge_manager import BadgeManager
 from core.config_manager import ConfigurationError, config_manager
 from core.icon_resolver import IconResolver
-from core.menu_builder import MenuBuilder
+from core.menu_builder import MenuBuilder, MenuBuilderDependencies
+from core.menu_controller import MenuController
+from core.module_controller import ModuleController
 from core.process_output_relay import ProcessOutputRelay
 from core.process_tracker import ProcessTracker
 from core.services import AppServices
-from core.theme_manager import ThemeManager
-from modules.backup_restore import BackupRestore
-from modules.command_creator import CommandCreator
-from modules.command_executor import CommandExecutor
-from modules.command_history import CommandHistory
-from modules.command_search import CommandSearch
-from modules.favorites import Favorites
-from modules.file_encryptor import FileEncryptor
-from modules.import_export import ImportExport
-from modules.schedule_creator import ScheduleCreator
-from modules.schedule_viewer import ScheduleViewer
+from core.theme_controller import ThemeController
 from ui.command_manager import CommandManagerDialog
-from ui.command_palette import CommandPalette
 from ui.output_window import RichOutputWindow
-from ui.quick_launch_bar import QuickLaunchBar
 from ui.settings_dialog import SettingsDialog
 from utils.dialogs import confirm_execute, confirm_exit, show_error_and_raise
 
@@ -64,7 +54,6 @@ class TrayApp:
         self._setup_tray_icon()
         self._build_services()
         self._build_modules()
-        self._build_ui()
         self._build_menu()
 
     # ------------------------------------------------------------------ #
@@ -91,10 +80,10 @@ class TrayApp:
         self.icon_resolver.set_cache_ttl(ttl_days)
 
     def _setup_theme(self) -> None:
-        """Construct ThemeManager and apply the configured theme."""
-        self.theme_manager = ThemeManager(self.base_dir)
-        settings = config_manager.get_settings()
-        self.theme_manager.apply_theme(settings.get("theme", "system"))
+        """Initialize theme policy and expose the manager to settings previews."""
+        self.theme_controller = ThemeController(self.base_dir, config_manager)
+        self.theme_controller.initialize()
+        self.theme_manager = self.theme_controller.theme_manager
 
     def _setup_tray_icon(self) -> None:
         """Create QSystemTrayIcon and configure application quit behaviour."""
@@ -139,95 +128,52 @@ class TrayApp:
         self.process_tracker.process_count_changed.connect(self._on_process_count_changed)
 
     def _build_modules(self) -> None:
-        """Initialise lazy feature-module slots (constructed on first use)."""
-        self.history_menu = None
-        self.favorites_menu = None
-        self.history = None
-        self.creator = None
-        self.executor = None
-        self.search = None
-        self.backup = None
-        self.importExport = None
-        self.favorites = None
-        self.file_encryptor = None
-        self.schedule_creator = None
-        self.schedule_viewer = None
-
-    def _build_ui(self) -> None:
-        """Initialise lazy UI widget slots (constructed on first use)."""
-        self.palette = None
-        self.quick_launch_bar = None
+        """Compose the lazy feature and UI module registry."""
+        self.module_controller = ModuleController(
+            self.services,
+            self.icon_file,
+            config_manager.get_settings,
+        )
 
     # ------------------------------------------------------------------ #
     # Lazy factory accessors                                               #
     # ------------------------------------------------------------------ #
 
     def get_history(self):
-        if self.history is None:
-            self.history = CommandHistory(self.services)
-        return self.history
+        return self.module_controller.get_history()
 
     def get_creator(self):
-        if self.creator is None:
-            self.creator = CommandCreator(self.services)
-        return self.creator
+        return self.module_controller.get_creator()
 
     def get_executor(self):
-        if self.executor is None:
-            self.executor = CommandExecutor(self.services)
-        return self.executor
+        return self.module_controller.get_executor()
 
     def get_search(self):
-        if self.search is None:
-            self.search = CommandSearch(self.services)
-        return self.search
+        return self.module_controller.get_search()
 
     def get_backup(self):
-        if self.backup is None:
-            self.backup = BackupRestore(self.services)
-        return self.backup
+        return self.module_controller.get_backup()
 
     def get_import_export(self):
-        if self.importExport is None:
-            self.importExport = ImportExport(self.services)
-        return self.importExport
+        return self.module_controller.get_import_export()
 
     def get_favorites(self):
-        if self.favorites is None:
-            self.favorites = Favorites(self.services)
-        return self.favorites
+        return self.module_controller.get_favorites()
 
     def get_file_encryptor(self):
-        if self.file_encryptor is None:
-            self.file_encryptor = FileEncryptor(self.services)
-        return self.file_encryptor
+        return self.module_controller.get_file_encryptor()
 
     def get_schedule_creator(self):
-        if self.schedule_creator is None:
-            self.schedule_creator = ScheduleCreator(self.services)
-        return self.schedule_creator
+        return self.module_controller.get_schedule_creator()
 
     def get_schedule_viewer(self):
-        if self.schedule_viewer is None:
-            self.schedule_viewer = ScheduleViewer(self.services)
-        return self.schedule_viewer
+        return self.module_controller.get_schedule_viewer()
 
     def get_palette(self):
-        if self.palette is None:
-            settings = config_manager.get_settings()
-            self.palette = CommandPalette(self.services)
-            hotkey = settings.get("hotkey", "ctrl+shift+space")
-            app_launcher_hotkey = settings.get("app_launcher_hotkey", "ctrl+alt+a")
-            self.palette.register_hotkeys(hotkey, app_launcher_hotkey)
-        return self.palette
+        return self.module_controller.get_palette()
 
     def get_quick_launch_bar(self):
-        if self.quick_launch_bar is None:
-            settings = config_manager.get_settings()
-            self.quick_launch_bar = QuickLaunchBar(self.services, self.icon_file)
-            bar_hotkey = settings.get("quick_launch_bar", {}).get("hotkey", "ctrl+shift+b")
-            self.quick_launch_bar.register_hotkey(bar_hotkey)
-        return self.quick_launch_bar
+        return self.module_controller.get_quick_launch_bar()
 
     def _build_menu(self) -> None:
         """Build the tray context menu and attach it to the tray icon.
@@ -235,20 +181,46 @@ class TrayApp:
         Heavy (feature-module-touching) menu construction is deferred to the
         first ``aboutToShow`` so startup does not instantiate lazy modules.
         """
-        self.reload_commands()
-        self._heavy_menu_built = False
-        self.tray_icon.setContextMenu(self.menu)
-
-        def _build_heavy() -> None:
-            if self._heavy_menu_built:
-                return
-            self._heavy_menu_built = True
-            MenuBuilder(self).build(self.menu, self.command_menu)
-
-        self.menu.aboutToShow.connect(_build_heavy)
-        self.tray_icon.show()
-        print("TRAY_ICON_SHOWN", flush=True)
-        self._update_tray_tooltip()
+        self._reload_command_data()
+        dependencies = MenuBuilderDependencies(
+            icon_file=self.icon_file,
+            get_command_menu=lambda: self.command_menu,
+            resolve_icon_path=self._resolve_icon_path,
+            execute=self.execute,
+            pin_to_quick_launch=self._pin_to_quick_launch,
+            get_favorites=self.get_favorites,
+            set_favorites_menu=lambda menu: self.menu_controller.set_favorites_menu(menu),
+            reload_favorites_commands=self.reload_favorites_commands,
+            set_history_menu=lambda menu: self.menu_controller.set_history_menu(menu),
+            reload_history_commands=self.reload_history_commands,
+            get_palette=self.get_palette,
+            get_search=self.get_search,
+            open_command_manager=self._open_command_manager,
+            open_commands_json=self.open_commands_json,
+            reload_commands=self.reload_commands,
+            get_import_export=self.get_import_export,
+            get_backup=self.get_backup,
+            get_file_encryptor=self.get_file_encryptor,
+            get_schedule_creator=self.get_schedule_creator,
+            get_schedule_viewer=self.get_schedule_viewer,
+            open_settings=self._open_settings,
+            get_quick_launch_bar=self.get_quick_launch_bar,
+            set_running_action=lambda action: setattr(self, "_running_action", action),
+            restart_app=self.restart_app,
+            confirm_exit=self.confirm_exit,
+        )
+        builder = MenuBuilder(dependencies)
+        self.menu_controller = MenuController(
+            menu=self.menu,
+            tray_icon=self.tray_icon,
+            menu_builder=builder,
+            get_command_menu=lambda: self.command_menu,
+            reload_command_data=self._reload_command_data,
+            update_tooltip=self._update_tray_tooltip,
+            get_history=self.get_history,
+            get_favorites=self.get_favorites,
+        )
+        self.menu_controller.attach()
 
     # ------------------------------------------------------------------ #
     # Icon path resolution (thin proxy to IconResolver)                   #
@@ -276,9 +248,7 @@ class TrayApp:
 
     def load_tray_menu(self):
         """Load commands into the tray menu."""
-        self.reload_commands()
-        self._heavy_menu_built = True
-        MenuBuilder(self).build(self.menu, self.command_menu)
+        self.menu_controller.load_tray_menu()
 
     def execute(self, title, command, confirm, show_output, prompt):
         """Execute a command with optional confirmation and input prompt."""
@@ -335,7 +305,7 @@ class TrayApp:
         if show_output:
             self.show_command_output(title, command)
         else:
-            self.executor.execute_command(command)
+            self.get_executor().execute_command(command)
 
     def notify_user(self, title: str, message: str) -> None:
         """Show a tray notification."""
@@ -343,7 +313,7 @@ class TrayApp:
 
     def show_command_output(self, title, command):
         """Execute a command, show output in RichOutputWindow, and update badge."""
-        process = self.executor.execute_command_process(self.app, command)
+        process = self.get_executor().execute_command_process(self.app, command)
 
         output_win = RichOutputWindow(self.app.activeWindow(), self.services)
         tab = output_win.open_process_tab(title)
@@ -437,6 +407,13 @@ class TrayApp:
 
     def reload_commands(self, rebuild_menu: bool = False):
         """Reload the commands from the configuration file."""
+        if not hasattr(self, "menu_controller"):
+            self._reload_command_data()
+            return
+        self.menu_controller.reload_commands(rebuild_menu)
+
+    def _reload_command_data(self) -> dict:
+        """Read commands from configuration and retain the latest snapshot."""
         try:
             command_paths = config_manager.get_command_paths()
             logger.info(
@@ -445,25 +422,20 @@ class TrayApp:
                 command_paths["config_dir"],
             )
             self.command_menu = config_manager.get_commands(refresh=True)
-
-            if rebuild_menu:
-                self.menu.clear()
-                self.load_tray_menu()
-                self.tray_icon.setContextMenu(self.menu)
-                self._update_tray_tooltip()
+            return self.command_menu
         except ConfigurationError as e:
             show_error_and_raise(f"Failed to reload commands: {str(e)}")
             self.command_menu = {}
+            return self.command_menu
 
     def reload_history_commands(self):
         """Reload the history commands (no-op until the lazy tray menu exists)."""
-        if self.history_menu is None:
-            return
-        self.get_history().populate_menu(self.history_menu)
+        if hasattr(self, "menu_controller"):
+            self.menu_controller.reload_history_commands()
 
     def resolve_command_reference(self, group, label, item):
         """Resolve a ``ref`` entry (e.g. a favorite) to the command it points at."""
-        return MenuBuilder(self).resolve_command_reference(group, label, item)
+        return self.menu_controller.resolve_command_reference(group, label, item)
 
     def reload_favorites_commands(self):
         """Reload the favorites menu with current favorites.
@@ -471,10 +443,8 @@ class TrayApp:
         The submenu only exists once the lazy tray menu has been built; until
         then there is nothing to refresh (it is populated on first build).
         """
-        if self.favorites_menu is None:
-            return
-        self.favorites_menu.clear()
-        self.get_favorites().populate_favorites_menu(self.favorites_menu)
+        if hasattr(self, "menu_controller"):
+            self.menu_controller.reload_favorites_commands()
 
     # ------------------------------------------------------------------ #
     # Dialog openers                                                       #
@@ -507,8 +477,9 @@ class TrayApp:
             return
         pinned.append(entry)
         config_manager.save_settings(settings)
-        if hasattr(self, "quick_launch_bar") and self.quick_launch_bar:
-            self.quick_launch_bar.refresh()
+        quick_launch_bar = self._loaded_quick_launch_bar()
+        if quick_launch_bar is not None:
+            quick_launch_bar.refresh()
         logger.info("Pinned '%s' to Quick-Launch Bar", entry["label"])
 
         dlg = CommandManagerDialog(self.services, self.process_tracker.processes, parent=None)
@@ -530,35 +501,46 @@ class TrayApp:
     # Hotkey re-registration                                               #
     # ------------------------------------------------------------------ #
 
+    def _loaded_palette(self):
+        """Return the palette only if it has already been constructed."""
+        return self.module_controller.loaded_palette
+
+    def _loaded_quick_launch_bar(self):
+        """Return the quick-launch bar only if it has already been constructed."""
+        return self.module_controller.loaded_quick_launch_bar
+
     def _reregister_hotkey(self, hotkey: str) -> None:
         """Unregister the current palette hotkey and register the new one."""
-        if self.palette is None:
+        palette = self._loaded_palette()
+        if palette is None:
             return
         try:
-            self.palette.unregister_hotkey()
-            self.palette.register_hotkey(hotkey)
+            palette.unregister_hotkey()
+            palette.register_hotkey(hotkey)
             logger.info("Palette hotkey re-registered: %s", hotkey)
         except Exception as exc:
             logger.warning("Failed to re-register palette hotkey '%s': %s", hotkey, exc)
 
     def _reregister_app_launcher_hotkey(self, hotkey: str) -> None:
         """Unregister the app launcher hotkey and register the new one."""
-        if self.palette is None:
+        palette = self._loaded_palette()
+        if palette is None:
             return
         try:
-            self.palette.unregister_hotkey()
-            self.palette.update_app_launcher_hotkey(hotkey)
+            palette.unregister_hotkey()
+            palette.update_app_launcher_hotkey(hotkey)
             logger.info("App Launcher hotkey re-registered: %s", hotkey)
         except Exception as exc:
             logger.warning("Failed to re-register app launcher hotkey '%s': %s", hotkey, exc)
 
     def _reregister_bar_hotkey(self, hotkey: str) -> None:
         """Unregister the current bar hotkey and register the new one."""
-        if self.quick_launch_bar is None:
+        quick_launch_bar = self._loaded_quick_launch_bar()
+        if quick_launch_bar is None:
             return
         try:
-            self.quick_launch_bar.unregister_hotkey()
-            self.quick_launch_bar.register_hotkey(hotkey)
+            quick_launch_bar.unregister_hotkey()
+            quick_launch_bar.register_hotkey(hotkey)
             logger.info("Bar hotkey re-registered: %s", hotkey)
         except Exception as exc:
             logger.warning("Failed to re-register bar hotkey '%s': %s", hotkey, exc)
@@ -583,22 +565,7 @@ class TrayApp:
         logger.info("Cleaning up before exit")
         for window in self.output_windows:
             window.close()
-        palette = getattr(self, "palette", None)
-        if palette is not None:
-            try:
-                palette.unregister_hotkey()
-            except Exception as exc:  # noqa: S110 — hotkey unregister is best-effort during shutdown; failure is logged and non-fatal
-                logger.debug("Palette hotkey cleanup error: %s", exc)
-        bar = getattr(self, "quick_launch_bar", None)
-        if bar is not None:
-            try:
-                bar.unregister_hotkey()
-            except Exception as exc:
-                logger.debug("Bar hotkey cleanup error: %s", exc)
-            try:
-                bar.close()
-            except Exception as exc:
-                logger.debug("Bar close error: %s", exc)
+        self.module_controller.cleanup()
         self.instance_checker.cleanup()
 
     def run(self):

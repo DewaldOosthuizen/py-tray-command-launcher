@@ -29,6 +29,7 @@ def _controller():
         menu=menu,
         tray_icon=tray_icon,
         menu_builder=builder,
+        get_command_menu=lambda: command_data,
         reload_command_data=reload_data,
         update_tooltip=MagicMock(),
         get_history=MagicMock(),
@@ -46,7 +47,7 @@ def test_first_show_builds_menu_and_subsequent_shows_are_idempotent():
     menu.aboutToShow.emit()
 
     builder.build.assert_called_once_with(menu, commands)
-    reload_data.assert_called_once_with()
+    reload_data.assert_not_called()
     tray_icon.setContextMenu.assert_called_once_with(menu)
 
 
@@ -69,8 +70,8 @@ def test_history_and_favorites_refresh_only_when_their_menus_exist():
     controller, _, _, _, _, _ = _controller()
     history = MagicMock()
     favorites = MagicMock()
-    controller.get_history = MagicMock(return_value=history)
-    controller.get_favorites = MagicMock(return_value=favorites)
+    controller._get_history = MagicMock(return_value=history)
+    controller._get_favorites = MagicMock(return_value=favorites)
 
     controller.reload_history_commands()
     controller.reload_favorites_commands()
