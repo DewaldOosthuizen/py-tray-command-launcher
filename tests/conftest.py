@@ -165,6 +165,7 @@ def _make_pyqt6_stub():
 
     pyqt6.QtCore.pyqtSignal = _SignalDescriptor
     pyqt6.QtCore.QObject = _QObject
+    pyqt6.QtCore.QThread = _QObject
     pyqt6.QtWidgets.QWidget = _QWidget
     pyqt6.QtWidgets.QMainWindow = _QWidget
     pyqt6.QtWidgets.QDialog = _QWidget

@@ -25,7 +25,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,31 @@ def _score(query: str, text: str) -> float:
     if _FUZZY_AVAILABLE:
         return _fuzz.WRatio(query, text)
     return 100.0 if query.lower() in text.lower() else 0.0
+
+
+def search_apps(query: str, apps: list["AppEntry"]) -> list["AppEntry"]:
+    """Filter and rank an already-loaded application list for a query.
+
+    Args:
+        query: User-entered application search text.
+        apps: Discovered entries to filter without triggering filesystem I/O.
+
+    Returns:
+        Matching entries in alphabetical order for a blank query, otherwise
+        ordered by fuzzy relevance.
+    """
+    if not query.strip():
+        return apps
+
+    q = query.strip()
+    scored = []
+    for app in apps:
+        text = f"{app.name} {app.categories_str}"
+        score = _score(q, text)
+        if score > 30 or q.lower() in app.name.lower():
+            scored.append((score, app))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return [app for _score_value, app in scored]
 
 
 # Preferred icon sizes to try when scanning icon theme directories
@@ -128,6 +153,11 @@ class AppDiscovery:
         self._pixmap_cache: dict[str, QPixmap] = _LRUCache()
         if not IS_WINDOWS:
             threading.Thread(target=self._build_icon_index, daemon=True, name="icon-index").start()
+
+    @property
+    def is_loaded(self) -> bool:
+        """Whether application entries have been discovered and cached."""
+        return self._apps is not None
 
     # ------------------------------------------------------------------
     # Loading
@@ -277,19 +307,7 @@ class AppDiscovery:
 
         When *query* is blank all apps are returned alphabetically.
         """
-        apps = self.get_all()
-        if not query.strip():
-            return apps
-
-        q = query.strip()
-        scored = []
-        for app in apps:
-            text = f"{app.name} {app.categories_str}"
-            s = _score(q, text)
-            if s > 30 or q.lower() in app.name.lower():
-                scored.append((s, app))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [app for _s, app in scored]
+        return search_apps(query, self.get_all())
 
     # ------------------------------------------------------------------
     # Icon resolution
@@ -499,6 +517,36 @@ class AppDiscovery:
     def is_windows_lnk_entry(entry: "AppEntry") -> bool:
         """Return True if *entry* was discovered from a Windows .lnk shortcut."""
         return IS_WINDOWS and entry.exec_cmd.lower().endswith(".lnk")
+
+
+class AppDiscoveryWorker(QThread):
+    """Run the cold installed-application scan away from the Qt main thread.
+
+    Args:
+        discovery: Discovery service whose lazy platform loader will be called.
+        parent: Optional Qt owner for callers that can guarantee safe teardown.
+
+    The worker emits ``completed`` with the discovered entries, or ``failed``
+    with a user-displayable error message. Exceptions from platform discovery
+    are reported through ``failed`` rather than escaping the thread.
+    """
+
+    completed = pyqtSignal(object)
+    failed = pyqtSignal(str)
+
+    def __init__(self, discovery: AppDiscovery, parent=None):
+        super().__init__(parent)
+        self._discovery = discovery
+
+    def run(self) -> None:
+        """Load all installed applications and emit exactly one terminal result."""
+        try:
+            entries = self._discovery.get_all()
+        except Exception as exc:
+            logger.exception("Application discovery failed")
+            self.failed.emit(str(exc) or type(exc).__name__)
+        else:
+            self.completed.emit(entries)
 
 
 # Module-level singleton
