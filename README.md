@@ -8,240 +8,35 @@ A Python system tray application for launching custom commands and scripts from 
 
 ---
 
-## Table of Contents
-
-- [py-tray-command-launcher](#py-tray-command-launcher)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Installation](#installation)
-    - [1. Clone the repository](#1-clone-the-repository)
-    - [2. Install system dependencies](#2-install-system-dependencies)
-    - [3. Create and activate a virtual environment](#3-create-and-activate-a-virtual-environment)
-    - [4. Install Python dependencies](#4-install-python-dependencies)
-  - [Configuration](#configuration)
-  - [Running the App](#running-the-app)
-  - [Download](#download)
-  - [Packaging (local builds)](#packaging-local-builds)
-  - [Publishing a Release](#publishing-a-release)
-  - [Documentation](#documentation)
-  - [Screenshots](#screenshots)
-  - [Contributing](#contributing)
-  - [License](#license)
-
----
-
-## Features
-
-- **Hierarchical Command Menu** — Organise commands into categories, each with a custom icon
-- **Command Execution** — Run shell commands with optional output display, confirmation dialogs, and user-input prompts (`{promptInput}`)
-- **Fuzzy Command Search** — Find and execute any command by name using `rapidfuzz` scoring; falls back gracefully to substring search
-- **Command Palette** — Spotlight-style popup overlay (default hotkey: `Ctrl+Shift+Space`) for instant command access with live fuzzy filtering
-- **Quick-Launch Bar** — Floating, draggable toolbar populated from a user-defined pinned list; drag to reposition; toggle from the tray menu
-- **Settings UI** — GUI settings dialog for theme, hotkey, history limit, output font, quick-launch bar, and log level — no JSON editing required
-- **Theming** — Dark (Catppuccin Mocha) and Light (Catppuccin Latte) QSS themes; live preview in the Settings dialog; theme applies immediately without restart
-- **Rich Output Window** — Tabbed output window with ANSI colour support, auto-scroll toggle, copy, clear, and configurable font
-- **Run Status Badge** — Tray icon shows a red badge with the count of running processes; dynamically updated
-- **Command Manager** — Full CRUD GUI for commands and groups; reorder, edit, delete — changes take effect immediately without restart
-- **Favorites** — Pin frequently used commands for one-click access
-- **Recent Commands** — Re-run previously executed commands from the history submenu
-- **Backup and Restore** — Timestamped backups of your command set; restore or import/export configurations
-- **File Encryption** — Password-based encryption and decryption of files and folders (PBKDF2-HMAC-SHA256 with 600,000 iterations per OWASP 2023 + Fernet/AES)
-- **Command Scheduling** — Schedule commands via user crontab (`crontab -l` / `crontab`); Edit and Delete existing schedules from the viewer
-- **Single-Instance Enforcement** — Only one running instance allowed; stale locks are cleared automatically
-- **Multi-platform** — Linux (binary, .deb, AppImage) and Windows (.exe)
-
----
-
-## Installation
-
-### 1. Clone the repository
-
-```sh
-git clone https://github.com/DewaldOosthuizen/py-tray-command-launcher.git
-cd py-tray-command-launcher
-```
-
-### 2. Install system dependencies
-
-```sh
-sudo bash scripts/install_packages.sh
-```
-
-### 3. Create and activate a virtual environment
-
-```sh
-python3 -m venv venv
-source venv/bin/activate        # Linux / macOS
-# venv\Scripts\activate         # Windows
-```
-
-### 4. Install Python dependencies
-
-```sh
-# Standard install (runtime deps only):
-pip install .
-
-# Developer / contributor install (runtime + test tooling):
-pip install -e ".[dev]"
-```
-
-> **Dependency convention:** `pyproject.toml` is the single source of truth for all
-> runtime dependencies (including the `PyQt6>=6.11.0` lower-bound constraint).
-> `requirements.txt` is a dev-install convenience shim (`-e ".[dev]"`) and must never
-> declare standalone version pins — add or change deps only in `pyproject.toml`.
-
----
-
-## Configuration
-
-Commands are defined in `commands.json` inside your user config directory (`~/.config/py-tray-command-launcher/` on Linux). A working copy is created automatically on first launch from the bundled `config/commands.json`.
-
-Quick example:
-
-```json
-{
-  "System": {
-    "icon": "icons/system.jpeg",
-    "Disk Usage": {
-      "command": "df -h",
-      "showOutput": true,
-      "confirm": false
-    },
-    "Reboot": {
-      "command": "pkexec reboot",
-      "showOutput": false,
-      "confirm": true
-    },
-    "Kill Port": {
-      "command": "pkexec fuser -k {promptInput}/tcp",
-      "confirm": true,
-      "prompt": "Enter port number:"
-    }
-  }
-}
-```
-
-See [docs/configuration.md](docs/configuration.md) for the full field reference and examples.
-
----
-
-## Running the App
-
-```sh
-source venv/bin/activate
-python3 src/main.py
-```
-
-**Background:**
-
-```sh
-nohup python3 src/main.py &
-```
-
----
-
-## Download
-
-Pre-built AppImages for every release are available on the
-[GitHub Releases](../../releases) page.
-
-Download the latest `.AppImage`, make it executable, and run it:
-
-```bash
-chmod +x py-tray-command-launcher-v*.AppImage
-./py-tray-command-launcher-v*.AppImage
-```
-
-No installation required. Config is stored at `~/.config/py-tray-command-launcher/`.
-
-## Packaging (local builds)
-
-```sh
-./scripts/build-all.sh          # all formats
-./scripts/build-linux.sh        # Linux executable
-./scripts/build-deb.sh          # Debian package
-./scripts/build-appimage.sh     # AppImage
-scripts\build-windows.bat       # Windows .exe (run on Windows)
-```
-
-See [docs/packaging.md](docs/packaging.md) for prerequisites, output locations, and troubleshooting.
-
-## Publishing a Release
-
-Releases are automated via GitHub Actions. Push a version tag to build and publish:
-
-```bash
-git tag v1.2.0 -m "Release v1.2.0"
-git push origin v1.2.0
-```
-
-The workflow builds the AppImage and attaches it to a GitHub Release automatically.
-See [docs/packaging.md](docs/packaging.md#automated-releases-cicd) for full details.
-
----
-
 ## Documentation
+
+All project documentation lives in [docs/](docs/index.md).
 
 | Document | Description |
 |---|---|
-| [docs/add/README.md](docs/add/README.md) | Architecture Design Decisions (ADD) records |
-| [docs/configuration.md](docs/configuration.md) | Full `commands.json` and `settings.json` field reference |
-| [docs/features.md](docs/features.md) | Detailed guide to all application features |
-| [docs/architecture.md](docs/architecture.md) | Module structure, responsibilities, and data flow |
-| [docs/packaging.md](docs/packaging.md) | Build instructions for all package formats |
-| [docs/contributing.md](docs/contributing.md) | Development setup, code standards, and PR process |
+| [Features](docs/features.md) | Detailed guide to all application features |
+| [Configuration](docs/configuration.md) | Full `commands.json` and `settings.json` field reference |
+| [Installation & Usage](docs/contributing.md) | Development setup and running the app |
+| [Architecture](docs/architecture.md) | Module structure and data flow |
+| [Packaging](docs/packaging.md) | Build instructions for all package formats |
+| [AI Agent Guide](docs/ai-agent-guide.md) | Code exploration and design decisions |
+| [Architecture Design Decisions](docs/add/README.md) | ADD records |
 
 ---
 
-## Screenshots
+## Quick Start
 
-<img width="629" height="359" alt="Screenshot from 2026-01-13 20-21-56" src="https://github.com/user-attachments/assets/9ef2015e-7685-4826-919a-6bbe591b6472" />
-
----
-
-## File Encryption — Breaking Change (v2+)
-
-### Salt file format change
-
-Starting with this version, the `.salt` file written alongside encrypted files is **20 bytes**:
-4-byte big-endian uint32 iteration count + 16-byte random salt. Previous versions wrote a
-16-byte raw salt only.
-
-**Impact:** `.salt` files produced by this version **cannot** be read by older versions of
-the application. `.salt` files produced by older versions are handled transparently by the
-legacy fallback (iteration count assumed to be 100,000).
-
-### Migration path
-
-To benefit from the stronger PBKDF2 work factor (600,000 iterations, OWASP 2023 minimum):
-
-1. Decrypt your existing files using the current version (the legacy fallback handles the
-   old 16-byte salt file automatically).
-2. Re-encrypt the files using the current version — the new `.salt` file will be written in
-   the 20-byte format with 600,000 iterations.
-
-Do **not** copy `.salt` files between machines running different versions of the application
-without verifying the file length (16 bytes = legacy, 20 bytes = current).
-
----
-
-## Contributing
-
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for
-the full workflow, including how to pick up an issue, branch naming conventions,
-local validation steps, and the pull request process.
-
-### Dependency updates
-
-Dependency version updates are managed automatically by Dependabot (`.github/dependabot.yml`),
-which opens pull requests for outdated pip packages every Monday.
-A `pip-audit` step in the lint workflow scans all installed packages for known CVEs on every
-push and pull request. When merging a Dependabot PR, confirm the audit step passes before
-approving.
+```bash
+git clone https://github.com/DewaldOosthuizen/py-tray-command-launcher.git
+cd py-tray-command-launcher
+python3 -m venv venv
+source venv/bin/activate
+pip install -e ".[dev]"
+python3 src/main.py
+```
 
 ---
 
 ## License
 
 This project is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for details.
-

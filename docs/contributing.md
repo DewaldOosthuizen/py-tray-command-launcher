@@ -1,145 +1,354 @@
-# Contributing
-
-Guidelines for setting up a development environment, coding standards, and submitting changes.
+# Contributing to py-tray-command-launcher
+Thank you for contributing. This guide covers the full workflow, architecture
+conventions, and standards for making clean, reviewable contributions.
 
 ---
+
+## Table of Contents
+
+1. [Code of Conduct](#1-code-of-conduct)
+2. [Getting Started](#2-getting-started)
+3. [Picking Up an Issue](#3-picking-up-an-issue)
+4. [Branch Naming](#4-branch-naming)
+5. [Development Setup](#development-setup)
+6. [Local CI Validation](#local-ci-validation)
+7. [Adding a New Feature](#adding-a-new-feature)
+8. [Linting](#linting)
+9. [Running Tests](#running-tests)
+10. [Commit Message Style](#commit-message-style)
+11. [Pull Request Checklist](#pull-request-checklist)
+12. [Architecture Overview](#architecture-overview)
+
+---
+
+## 1. Code of Conduct
+
+Be respectful, constructive, and collaborative. Contributions that are
+disrespectful, dismissive, or harmful will not be accepted.
+
+---
+
+## 2. Getting Started
+
+1. Fork the repository.
+2. Clone your fork locally.
+3. Follow the [Development Setup](#development-setup) section below.
+
+---
+
+## 3. Picking Up an Issue
+
+**Before you write a single line of code:**
+
+1. Browse the [GitHub Issues](../../issues) tab and find an issue you want to work on.
+2. **Assign the issue to yourself** before starting any work.
+   Go to the issue page → Assignees (right sidebar) → assign yourself.
+   This signals to all other contributors that the issue is claimed.
+3. Leave a comment on the issue stating you are picking it up and your
+   intended approach — especially for larger changes.
+4. Only then create your branch and begin work.
+
+> Why this matters: two contributors working on the same issue in parallel
+> wastes effort and creates painful merge conflicts. A self-assignment takes
+> five seconds and saves hours.
+
+If you were assigned an issue but can no longer work on it, unassign yourself
+and leave a comment so someone else can pick it up.
+
+---
+
+## 4. Branch Naming
+
+| Prefix     | Pattern                         | When to use                                |
+|------------|---------------------------------|--------------------------------------------|
+| `feature/` | `feature/<issue-id>-<topic>`    | New feature or capability                  |
+| `fix/`     | `fix/<issue-id>-<topic>`        | Bug fix                                    |
+| `chore/`   | `chore/<topic>`                 | Tooling, deps, CI, config updates          |
+| `docs/`    | `docs/<topic>`                  | Documentation only                         |
+
+Always branch from `main`.
+
+---
+
+## Architecture Overview
+
+See the [AI Agent Guide](ai-agent-guide.md#architecture-overview) for the full
+source tree layout, module responsibilities, and key design decisions.
+
+The source tree is organised into four top-level areas: `core/` (orchestration
+and DI), `modules/` (feature logic), `ui/` (PyQt6 widgets), and `utils/`
+(cross-cutting helpers).
+
+## Dependency Convention
+
+`pyproject.toml` is the single source of truth for all runtime dependencies.
+The `requirements.txt` file is only a dev-install convenience shim:
+
+    -e ".[dev]"
+
+It must never declare standalone version pins. If you need to add, remove, or
+tighten a dependency (e.g. `PyQt6>=6.11.0`), edit `[project].dependencies` in
+`pyproject.toml` only.
 
 ## Development Setup
 
-### 1. Install system dependencies
-
 ```bash
-sudo bash scripts/install_packages.sh
-```
-
-### 2. Create and activate a virtual environment
-
-```bash
-python3 -m venv venv
-source venv/bin/activate       # Linux / macOS
-# venv\Scripts\activate        # Windows
-```
-
-### 3. Install Python dependencies
-
-```bash
+git clone https://github.com/DewaldOosthuizen/py-tray-command-launcher.git
+cd py-tray-command-launcher
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-pip install -r requirements-build.txt
+pip install ruff
 ```
 
-### 4. Install development tools
+Verify the setup:
 
 ```bash
-pip install "ruff>=0.5.0"
+python3 -m pytest tests/           # all tests should pass
+bash scripts/lint.sh               # no lint errors (mirrors CI exactly)
 ```
 
-### 5. Validate the installation
+## Local CI Validation
+
+Use the repository `Makefile` to run the same flow groups that CI executes.
+Run these before committing to avoid avoidable CI failures.
+
+Primary targets:
 
 ```bash
-python3 -c "import sys; sys.path.append('src'); from core.tray_app import TrayApp; print('OK')"
+make ci-workflow           # mirrors .github/workflows/ci.yml
+make tests-workflow        # mirrors .github/workflows/tests.yml
+make lint-workflow         # mirrors .github/workflows/lint.yml
+make release-workflow      # mirrors build/verify from .github/workflows/release.yml
 ```
 
----
-
-## Running the Application
-
-**With a display server (normal use):**
+Recommended pre-commit command:
 
 ```bash
-source venv/bin/activate
-python3 src/main.py
+make ci
 ```
 
-**Headless validation (no display required):**
+This runs the CI, tests, and lint workflow groups locally.
+
+Full local validation (including release build emulation):
 
 ```bash
-QT_QPA_PLATFORM=offscreen timeout 5 python3 src/main.py
+make ci-full
 ```
 
-The headless run should start cleanly, print configuration loading messages, then exit (the timeout kills it — that is expected, not a failure).
-
----
-
-## Code Quality
-
-All contributions must pass both checks before committing. Use the local lint
-script to replicate the CI lint job exactly:
+If you need release artifact naming to match a version tag locally:
 
 ```bash
-bash scripts/lint.sh
+make release-workflow VERSION=v1.2.3
 ```
 
-To auto-fix violations before reviewing:
+## Adding a New Feature
 
-```bash
-bash scripts/lint.sh --fix
-```
+Follow these steps to add a new capability to the launcher:
 
-### Syntax / import errors
+1. **Create a module** in `src/modules/my_feature.py`.
+   - Accept `AppServices` in the constructor or as a function parameter.
+   - Keep all business logic here; no PyQt6 imports unless you need QProcess.
 
-```bash
-find src -name "*.py" -exec python3 -m py_compile {} \;
-```
+2. **Expose it via AppServices** (`src/core/services.py`).
+   - Add a typed callable field to the `AppServices` dataclass.
+   - Wire it in `src/core/tray_app.py` where `AppServices` is instantiated.
 
-No output means no errors.
+3. **Add a menu entry** (`src/core/menu_builder.py`).
+   - Call `services.<your_field>` from the action's triggered slot.
 
-### Linting and formatting (ruff)
+4. **Add a widget** (optional) in `src/ui/my_feature_dialog.py`.
+   - Prefer receiving data via AppServices callables instead of importing from
+     `modules/` directly.
+
+5. **Write tests** in `tests/test_my_feature.py`.
+   - Use the `mock_services` fixture from `conftest.py` to provide a fake AppServices.
+   - If the module uses PyQt6, stub the import at the top of the test file (see
+     "Test Conventions" below).
+
+6. **Run lint and tests** before opening a PR:
+   ```bash
+   bash scripts/lint.sh
+   python3 -m pytest tests/
+   ```
+
+## Linting
+
+Run the linter before opening a PR using the local script that mirrors CI exactly:
 
 ```bash
 bash scripts/lint.sh
 ```
 
 The script runs `ruff check src/ tests/` and `ruff format --check src/ tests/`
-in sequence — identical to what the CI lint job in `.github/workflows/lint.yml`
-executes. Pass `--fix` to apply safe auto-fixes first.
+in sequence — identical to what the CI lint job executes. A non-zero exit means
+lint would also fail in CI.
+
+To auto-fix violations before reviewing manually:
+
+```bash
+bash scripts/lint.sh --fix
+```
+
+The `--fix` flag runs `ruff format` and `ruff check --fix` first, then
+re-runs the check. The output shows what remains after auto-fixing (if anything).
+
+The CI workflow (`.github/workflows/lint.yml`) runs both commands on every push
+and pull request. A PR cannot merge if either check fails.
+
+## noqa Suppression Convention
+
+All `noqa` suppressions must include a human-readable reason string after the
+rule code. A bare suppression is not acceptable:
+
+```python
+# Bad
+subprocess.Popen(command, shell=True)  # noqa: S602
+
+# Good
+subprocess.Popen(command, shell=True)  # noqa: S602 — intentional: user-authored command, see method docstring
+```
+
+The reason must explain *why* the violation is safe or intentional so that
+future reviewers can audit suppressions without having to reconstruct the
+original context.
+
+## Running Tests
+
+```bash
+python3 -m pytest tests/
+```
+
+### Test Conventions
+
+**PyQt6 headless stub** — Tests that import any `src/` module which transitively
+imports PyQt6 must stub the entire PyQt6 namespace before the import. The canonical
+pattern (already applied in all existing tests via `conftest.py`):
+
+```python
+import sys
+from unittest.mock import MagicMock
+
+# Must appear before any src/ import
+_pyqt6_stub = MagicMock()
+sys.modules.setdefault("PyQt6", _pyqt6_stub)
+sys.modules.setdefault("PyQt6.QtWidgets", _pyqt6_stub.QtWidgets)
+sys.modules.setdefault("PyQt6.QtCore", _pyqt6_stub.QtCore)
+sys.modules.setdefault("PyQt6.QtGui", _pyqt6_stub.QtGui)
+```
+
+This is centralised in `tests/conftest.py`; individual test files do not need to
+repeat it.
+
+**Available fixtures** (defined in `tests/conftest.py`):
+
+| Fixture            | What it provides                                       |
+|--------------------|--------------------------------------------------------|
+| `mock_services`    | A MagicMock-based AppServices with all fields stubbed  |
+| `tmp_config_dir`   | A temporary directory wired as the app config path     |
+| `tmp_commands_file`| A temporary commands.json with sample data             |
+
+## Project-Level Ruff Ignores
+
+The following rules are suppressed globally in `pyproject.toml` with documented
+justifications:
+
+- `E501`  — line length is managed by the formatter, not enforced manually.
+- `S602`  — `subprocess` with `shell=True` is intentional in `CommandExecutor`
+            (commands are user-authored, not external input).
+- `S603`  — `subprocess` without shell is low-risk (fixed arg lists, no user
+            string interpolation).
+- `S606`  — `os.startfile` is intentional for launching user-configured paths
+            on Windows.
+- `S607`  — partial executable paths (`open`, `xdg-open`, `crontab`, `schtasks`)
+            are platform-standard helpers, not user-controlled input.
+
+## Commit and PR Guidelines
+
+**Branch naming:**
+
+```
+feature/<short-description>    e.g. feature/schedule-timezone-support
+fix/<short-description>        e.g. fix/icon-resolver-fallback
+docs/<short-description>       e.g. docs/contributing-architecture
+```
+
+**Commit messages:**
+Use the imperative mood in the subject line (50 chars max):
+
+```
+Add schedule timezone support
+Fix icon resolver fallback for missing XDG path
+Docs: expand CONTRIBUTING with architecture overview
+```
+
+Reference the issue in the body:
+
+```
+Closes #51
+```
+
+**PR checklist before opening:**
+- [ ] `bash scripts/lint.sh` — zero errors and zero formatting diffs
+- [ ] `python3 -m pytest tests/` — all tests pass
+- [ ] New feature includes at least one test
+- [ ] Issue number referenced in the PR description
 
 ---
 
-## Project Conventions
+## Releasing a New Version
 
-- **Logging**: Use `logging.getLogger(__name__)` in every module. Do not use `print()` for diagnostic output.
-- **Configuration access**: All file I/O for config and state must go through `config_manager` (the singleton from `core/config_manager.py`). Do not read or write JSON files directly.
-- **Qt threading**: Long-running operations (encryption, external processes with large output) must run in a `QThread` to keep the UI responsive.
-- **License header**: Every new Python module under `src/` must include `# SPDX-License-Identifier: GPL-3.0-or-later` as the first line. Files under `tests/` should follow the existing test-file conventions used in the repository.
+Releases are fully automated via `.github/workflows/release.yml`. There is no manual
+build step — pushing a version tag is the entire release process.
 
----
+### Steps
 
-## Documentation Policy
+1. Merge all intended changes to `main` and push:
 
-Any pull request that adds or changes a user-facing feature **must** update the relevant file in `docs/`:
+   ```bash
+   git push origin main
+   ```
 
-| Change type | Update |
-|---|---|
-| New feature | `docs/features.md` |
-| New config field | `docs/configuration.md` |
-| New module or architectural change | `docs/architecture.md` |
-| Build / packaging change | `docs/packaging.md` |
+2. Pick a version following [Semantic Versioning](https://semver.org):
 
----
+   | Change type                  | Example bump        |
+   |------------------------------|---------------------|
+   | Bug fixes only               | v1.0.0 → v1.0.1     |
+   | Backward-compatible feature  | v1.0.0 → v1.1.0     |
+   | Breaking change              | v1.0.0 → v2.0.0     |
 
-## Testing
+3. Create an annotated tag and push it:
 
-The repository includes unit tests under `tests/`:
+   ```bash
+   git tag v1.2.0 -m "Release v1.2.0"
+   git push origin v1.2.0
+   ```
 
-Run the unit tests with:
+4. The workflow runs automatically on GitHub Actions:
+   - Builds the Linux executable with PyInstaller
+   - Assembles the AppImage
+   - Creates a GitHub Release with auto-generated release notes
+   - Attaches `py-tray-command-launcher-v1.2.0-x86_64.AppImage` as a release asset
 
- ```bash
- python3 -m unittest discover -s tests -p "test_*.py"
- ```
+5. Verify the release on the repository's **Releases** page.
 
- In addition to the unit tests, contributors should still run the following validation steps:
+### Pre-releases
 
- 1. Syntax check with `python3 -m py_compile` (see above).
- 2. Headless startup test with `QT_QPA_PLATFORM=offscreen`.
- 3. Manual GUI validation — requires a display server or VNC.
- New tests should be placed in `tests/` and follow the `test_*.py` naming pattern so they are picked up by `unittest` discovery.
+Tags with a hyphen suffix are marked as pre-releases automatically:
 
----
+```bash
+git tag v1.2.0-beta.1 -m "Beta release v1.2.0-beta.1"
+git push origin v1.2.0-beta.1
+```
 
-## Submitting Changes
+### Re-building a release
 
-1. Fork the repository and create a feature branch.
-2. Make your changes, following the conventions above.
-3. Run the syntax and style checks.
-4. Update the relevant `docs/` file if applicable.
-5. Open a pull request with a clear description of what changed and why.
+If you need to redo a release (e.g. after a broken tag), delete the release on GitHub
+first, then force-push the tag:
+
+```bash
+git tag -f v1.2.0 -m "Re-release v1.2.0"
+git push origin v1.2.0 --force
+```
+
+See [docs/packaging.md](packaging.md#automated-releases-cicd) for full CI/CD details.
