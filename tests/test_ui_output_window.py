@@ -1,5 +1,5 @@
-from pathlib import Path
 import re
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -453,9 +453,7 @@ def test_open_window_keeps_rendered_contrast_when_application_theme_changes(
 
     theme_manager.apply_theme("dark")
     effective_stylesheet = widget_stylesheets.get(tab, Application.stylesheet)
-    text_edit = re.search(
-        r"QTextEdit,\s*QPlainTextEdit\s*\{([^}]*)\}", effective_stylesheet
-    )
+    text_edit = re.search(r"QTextEdit,\s*QPlainTextEdit\s*\{([^}]*)\}", effective_stylesheet)
     declarations = text_edit.group(1) if text_edit else effective_stylesheet
     surface_match = re.search(r"background-color:\s*(#[0-9a-fA-F]{6})", declarations)
     assert surface_match is not None

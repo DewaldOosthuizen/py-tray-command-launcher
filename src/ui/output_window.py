@@ -269,6 +269,12 @@ class _OutputTab(QTextEdit):
         self.setReadOnly(True)
         self.setFont(font)
         self._output_theme = output_theme or resolve_output_theme("system", QApplication.palette())
+        self.setStyleSheet(
+            "QTextEdit { "
+            f"background-color: {self._output_theme.surface.name()}; "
+            f"color: {self._output_theme.inherited_text.name()}; "
+            "}"
+        )
         self._fmt = QTextCharFormat()
         self._fmt.setProperty(_REQUESTED_FOREGROUND_PROPERTY, self._output_theme.inherited_text)
         _apply_effective_foreground(self._fmt, self._output_theme)
