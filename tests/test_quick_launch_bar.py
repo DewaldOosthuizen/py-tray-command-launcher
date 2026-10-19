@@ -272,6 +272,19 @@ class TestQuickLaunchBarButtonLogic(unittest.TestCase):
         bar._build_buttons()
         assert bar._layout.addWidget.call_count == 0
 
+    def test_legacy_pin_without_group_resolves_by_unique_label_and_command(self):
+        """Existing label/command pins remain usable after group references are added."""
+        services = _make_services(
+            pinned=[{"label": "Terminal", "command": "xterm"}],
+            commands=[{"group": "System", "label": "Terminal", "command": "xterm"}],
+        )
+        bar = QuickLaunchBar(services)
+        bar._layout.addWidget.reset_mock()
+
+        bar._build_buttons()
+
+        assert bar._layout.addWidget.call_count == 1
+
     def test_clicking_button_triggers_command(self):
         """Generated button click handler executes the command."""
         services = _make_services(pinned=[{"group": "System", "label": "Terminal"}])

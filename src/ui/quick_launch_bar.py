@@ -96,6 +96,19 @@ class QuickLaunchBar(QWidget):
             group = pin.get("group", "")
             label = pin.get("label", "")
             cmd = all_cmds.get((group, label))
+            if cmd is None and not group:
+                label_matches = [
+                    candidate for candidate in all_cmds.values() if candidate["label"] == label
+                ]
+                command_matches = [
+                    candidate
+                    for candidate in label_matches
+                    if candidate["command"] == pin.get("command")
+                ]
+                if len(command_matches) == 1:
+                    cmd = command_matches[0]
+                elif len(label_matches) == 1:
+                    cmd = label_matches[0]
             if not cmd:
                 logger.warning("Pinned command not found: %s / %s", group, label)
                 continue

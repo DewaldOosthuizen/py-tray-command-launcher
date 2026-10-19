@@ -119,6 +119,22 @@ def test_build_flat_groups_creates_one_submenu_per_group():
     assert group_b.addAction.call_count == 1
 
 
+def test_build_passes_root_group_name_to_command_actions():
+    """Commands rendered from a root category retain that category as context."""
+    command_menu = {"System": {"Terminal": {"command": "xterm"}}}
+    builder = MenuBuilder(_make_dependencies(command_menu))
+    parent_menu = MagicMock()
+    qmenu_make, _ = _qmenu_factory()
+
+    with (
+        patch("core.menu_builder.QMenu", side_effect=qmenu_make),
+        patch.object(builder, "_add_command_to_menu") as add_command,
+    ):
+        builder.build(parent_menu, command_menu)
+
+    assert add_command.call_args.args[4] == "System"
+
+
 # ---------------------------------------------------------------------------
 # 2. test_nested_groups_recurse_correctly
 # ---------------------------------------------------------------------------
@@ -326,6 +342,7 @@ def test_command_and_pin_actions_use_injected_callbacks():
     dependencies.execute.assert_called_once_with("Terminal", "xterm", True, True, None)
     dependencies.pin_to_quick_launch.assert_called_once_with(
         {
+            "group": "System",
             "label": "Terminal",
             "command": "xterm",
             "confirm": True,
