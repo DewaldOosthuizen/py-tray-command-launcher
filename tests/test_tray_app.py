@@ -382,6 +382,7 @@ def test_on_finished_removes_process_and_updates_badge():
     app.app = MagicMock()
     app.services = MagicMock()
     app.services.config_manager = MagicMock()
+    app.theme_manager = MagicMock()
     app.executor = MagicMock()
     app.module_controller = MagicMock()
     app.module_controller.get_executor.return_value = app.executor
@@ -391,8 +392,12 @@ def test_on_finished_removes_process_and_updates_badge():
 
     process = app.executor.execute_command_process.return_value
 
-    with patch("core.tray_app.RichOutputWindow"):
+    with patch("core.tray_app.RichOutputWindow") as window_factory:
         app.show_command_output("Status", "git status")
+
+    window_factory.assert_called_once_with(
+        app.app.activeWindow(), app.services, theme_manager=app.theme_manager
+    )
 
     # Registration side effects.
     assert app.process_tracker.count() == 1

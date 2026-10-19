@@ -315,7 +315,9 @@ class TrayApp:
         """Execute a command, show output in RichOutputWindow, and update badge."""
         process = self.get_executor().execute_command_process(self.app, command)
 
-        output_win = RichOutputWindow(self.app.activeWindow(), self.services)
+        output_win = RichOutputWindow(
+            self.app.activeWindow(), self.services, theme_manager=self.theme_manager
+        )
         tab = output_win.open_process_tab(title)
         self.output_windows.append(output_win)
         output_win.destroyed.connect(lambda _, w=output_win: self._on_output_window_closed(w))

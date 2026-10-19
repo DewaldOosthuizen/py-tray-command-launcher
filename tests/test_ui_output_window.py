@@ -151,10 +151,28 @@ class _Format:
         pass
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def color_format_types(monkeypatch):
     monkeypatch.setattr(output_window, "QColor", _Color)
     monkeypatch.setattr(output_window, "QTextCharFormat", _Format)
+    monkeypatch.setattr(
+        output_window,
+        "QPalette",
+        type(
+            "PaletteRoles", (), {"ColorRole": type("Roles", (), {"Base": "base", "Text": "text"})}
+        ),
+    )
+
+    class SystemPalette:
+        def color(self, role):
+            return _Color("#e6e9ef" if role == "base" else "#4c4f69")
+
+    class Application:
+        @staticmethod
+        def palette():
+            return SystemPalette()
+
+    monkeypatch.setattr(output_window, "QApplication", Application)
     return _Color, _Format
 
 
@@ -162,16 +180,20 @@ def _color_name(brush):
     return brush.color().name() if brush.style() else None
 
 
-def _render(text, mode, color_format_types):
+def _render(text, mode, color_format_types, theme=None):
     """Run ANSI parsing through the tab insertion path and return inserted formats."""
     _color, format_type = color_format_types
     tab = _OutputTab.__new__(_OutputTab)
     tab._fmt = format_type()
-    tab._output_theme = output_window._OutputTheme(
+    tab._output_theme = theme or output_window._OutputTheme(
         surface=_color(output_window._THEME_SURFACES[mode]),
         inherited_text=_color(output_window._THEME_TEXT[mode]),
         mode=mode,
     )
+    tab._fmt.setProperty(
+        output_window._REQUESTED_FOREGROUND_PROPERTY, tab._output_theme.inherited_text
+    )
+    output_window._apply_effective_foreground(tab._fmt, tab._output_theme)
     inserted = []
 
     class Cursor:
@@ -223,6 +245,26 @@ def test_theme_ansi_background_palettes(mode, background, expected):
 
 
 @pytest.mark.parametrize(
+    ("mode", "surface", "inherited"),
+    [
+        ("light", "#e6e9ef", "#4c4f69"),
+        ("dark", "#181825", "#cdd6f4"),
+    ],
+)
+def test_explicit_theme_uses_qtextedit_surface_and_text(mode, surface, inherited):
+    resolved = output_window.resolve_output_theme(mode, None)
+    assert resolved.surface.name() == surface
+    assert resolved.inherited_text.name() == inherited
+    assert resolved.mode == mode
+
+
+@pytest.mark.parametrize("mode", ["light", "dark"])
+def test_window_uses_theme_manager_current_theme(mode):
+    window = RichOutputWindow(services=MagicMock(), theme_manager=MagicMock(current_theme=mode))
+    assert window._output_theme.mode == mode
+
+
+@pytest.mark.parametrize(
     ("mode", "sequence", "expected_background"),
     [
         ("light", "\x1b[107mtext", "#4c4f69"),
@@ -248,21 +290,37 @@ def test_background_only_sgr_uses_contrast_safe_rendered_foreground(
         ("dark", "\x1b[104;91mbright red on bright blue"),
     ],
 )
-def test_explicit_foreground_background_order_is_contrast_safe(
-    mode, sequence, color_format_types
-):
+def test_explicit_foreground_background_order_is_contrast_safe(mode, sequence, color_format_types):
     rendered = _render(sequence, mode, color_format_types)[0][1]
     assert _ratio(_color_name(rendered.foreground()), _color_name(rendered.background())) >= 4.5
 
 
+@pytest.mark.parametrize("mode", ["light", "dark"])
+def test_all_ansi_foreground_background_pairs_remain_legible(mode, color_format_types):
+    foreground_codes = sorted(output_window._ANSI_FOREGROUND_CODES)
+    background_codes = sorted(output_window._ANSI_BACKGROUND_CODES)
+    for foreground_code in foreground_codes:
+        for background_code in background_codes:
+            rendered = _render(
+                f"\x1b[{foreground_code};{background_code}mtext",
+                mode,
+                color_format_types,
+            )[0][1]
+            background = _color_name(rendered.background())
+            assert background == output_window._ANSI_PALETTES[mode][background_code]
+            assert _ratio(_color_name(rendered.foreground()), background) >= 4.5
+
+
 def test_sgr_foreground_background_and_full_reset_restore_theme_colors(color_format_types):
     rendered = _render(
-        "\x1b[31;44mcolored\x1b[39mdefault foreground\x1b[49mdefault surface"
-        "\x1b[0mreset",
+        "\x1b[31;44mcolored\x1b[39mdefault foreground\x1b[49mdefault surface\x1b[0mreset",
         "light",
         color_format_types,
     )
-    assert _color_name(rendered[1][1].foreground()) == "#4c4f69"
+    assert (
+        _ratio(_color_name(rendered[1][1].foreground()), _color_name(rendered[1][1].background()))
+        >= 4.5
+    )
     assert _color_name(rendered[1][1].background()) == "#1e66f5"
     assert _color_name(rendered[2][1].foreground()) == "#4c4f69"
     assert _color_name(rendered[2][1].background()) is None
@@ -278,18 +336,24 @@ def test_system_theme_uses_application_base_text_and_luminance(
     base, text, mode, color_format_types
 ):
     _color, _format = color_format_types
+    requested_roles = []
 
     class Palette:
         def color(self, role):
+            requested_roles.append(role)
             return {"base": _color(base), "text": _color(text)}[role]
 
     resolved = output_window.resolve_output_theme("system", Palette())
     assert resolved.surface.name() == base
     assert resolved.inherited_text.name() == text
     assert resolved.mode == mode
+    assert requested_roles == ["base", "text"]
 
-    rendered = _render("\x1b[107mtext", mode, color_format_types)[0][1]
-    assert _ratio(_color_name(rendered.foreground()), _color_name(rendered.background())) >= 4.5
+    for background_code in sorted(output_window._ANSI_BACKGROUND_CODES):
+        rendered = _render(f"\x1b[{background_code}mtext", mode, color_format_types, resolved)[0][1]
+        background = _color_name(rendered.background())
+        assert background == output_window._ANSI_PALETTES[mode][background_code]
+        assert _ratio(_color_name(rendered.foreground()), background) >= 4.5
 
 
 def test_low_contrast_native_palette_text_uses_black_or_white_fallback(color_format_types):
@@ -300,7 +364,7 @@ def test_low_contrast_native_palette_text_uses_black_or_white_fallback(color_for
             return _color("#ffffff" if role == "base" else "#fefefe")
 
     resolved = output_window.resolve_output_theme("system", Palette())
-    rendered = _render("native text", resolved.mode, color_format_types)[0][1]
+    rendered = _render("native text", resolved.mode, color_format_types, resolved)[0][1]
     foreground = _color_name(rendered.foreground())
     assert foreground in {"#000000", "#ffffff"}
     assert _ratio(foreground, "#ffffff") >= 4.5
