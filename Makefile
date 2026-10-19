@@ -205,7 +205,16 @@ ci:
 	@echo "[ci] Skipping tests-workflow (requires sudo apt-get — not available in this environment)"
 	@echo "[ci] Running lint-workflow..."
 	@$(MAKE) lint-workflow || { echo "[FAIL] ci stopped at lint-workflow"; exit 1; }
+	@echo "[ci] Running ci-workflow-parity..."
+	@$(MAKE) ci-workflow-parity || { echo "[FAIL] ci stopped at ci-workflow-parity"; exit 1; }
 	@echo "[OK] ci passed"
+
+.PHONY: ci-workflow-parity ci-full
+## ci-workflow-parity: verify release.yml and pr_gate.yml test jobs share identical Qt system-dependency lists
+ci-workflow-parity:
+	@echo "[ci-workflow-parity] Verifying release.yml test-job qt deps == pr_gate.yml test-job qt deps..."
+	@test "$$(sed -n '75,77p' .github/workflows/release.yml | sha256sum)" = "$$(sed -n '64,66p' .github/workflows/pr_gate.yml | sha256sum)" || { echo "[FAIL] ci-workflow-parity: workflow Qt dependency lists diverged"; exit 1; }
+	@echo "[OK] ci-workflow-parity: release.yml and pr_gate.yml test jobs share identical Qt system-dependency lists"
 
 .PHONY: ci-full
 ci-full:
