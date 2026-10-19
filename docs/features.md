@@ -24,6 +24,10 @@ Click any command in the menu to run it. The command is executed via the system 
 
 Set `"showOutput": true` on a command to capture its stdout/stderr and display results in a scrollable output window after execution. Useful for diagnostic commands such as `df -h` or `uname -a`.
 
+ANSI SGR output uses separate light and dark color palettes. In explicit light and dark themes, the output window uses the same surface and inherited text colors as the theme's `QTextEdit` styles. In `system` mode, the surface and inherited text come from the active Qt application palette's `Base` and `Text` roles; the Base color's relative luminance selects the light or dark ANSI palette. Standalone output windows without a theme manager use this same system-palette behavior.
+
+For each output run, foreground contrast is checked against the active ANSI background or the inherited output surface. If the requested foreground would fall below WCAG's 4.5:1 contrast ratio, it is rendered in whichever of black or white provides higher contrast. This safeguard also applies to inherited text and background-only ANSI sequences; it does not change the requested ANSI background color, including bright white and neutral background colors. Existing output windows keep the rendering context captured when they were created, so close and reopen them after changing the application theme to refresh their colors.
+
 ### Confirmation dialogs
 
 Set `"confirm": true` on a command to require the user to confirm before execution. Recommended for destructive or irreversible commands such as reboot or shutdown.

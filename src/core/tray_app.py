@@ -315,7 +315,9 @@ class TrayApp:
         """Execute a command, show output in RichOutputWindow, and update badge."""
         process = self.get_executor().execute_command_process(self.app, command)
 
-        output_win = RichOutputWindow(self.app.activeWindow(), self.services)
+        output_win = RichOutputWindow(
+            self.app.activeWindow(), self.services, theme_manager=self.theme_manager
+        )
         tab = output_win.open_process_tab(title)
         self.output_windows.append(output_win)
         output_win.destroyed.connect(lambda _, w=output_win: self._on_output_window_closed(w))
@@ -452,6 +454,8 @@ class TrayApp:
 
     def _open_command_manager(self):
         """Open the Command Manager dialog."""
+        dialog = CommandManagerDialog(self.services, self.process_tracker.processes, parent=None)
+        dialog.exec()
 
     # ------------------------------------------------------------------ #
     # Quick-Launch Bar pinning                                             #
@@ -467,6 +471,7 @@ class TrayApp:
         qlb = settings.setdefault("quick_launch_bar", {})
         pinned: list = qlb.setdefault("pinned", [])
         entry = {
+            "group": cmd_info.get("group", ""),
             "label": cmd_info.get("label", ""),
             "command": cmd_info.get("command", ""),
             "confirm": cmd_info.get("confirm", False),
@@ -481,9 +486,6 @@ class TrayApp:
         if quick_launch_bar is not None:
             quick_launch_bar.refresh()
         logger.info("Pinned '%s' to Quick-Launch Bar", entry["label"])
-
-        dlg = CommandManagerDialog(self.services, self.process_tracker.processes, parent=None)
-        dlg.exec()
 
     def _open_settings(self):
         """Open the Settings dialog."""

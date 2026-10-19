@@ -120,7 +120,7 @@ class MenuBuilder:
             submenu.setIcon(QIcon(icon_path))
 
             # Recursively add items to the submenu
-            self._add_menu_items(submenu, items, icon_path)
+            self._add_menu_items(submenu, items, icon_path, group)
 
             menu.addMenu(submenu)
 
@@ -358,6 +358,7 @@ class MenuBuilder:
                 self._attach_pin_context_menu(
                     action,
                     {
+                        "group": group_name,
                         "label": label,
                         "command": command,
                         "confirm": confirm,
@@ -395,6 +396,7 @@ class MenuBuilder:
         self._attach_pin_context_menu(
             action,
             {
+                "group": group_name,
                 "label": label,
                 "command": command,
                 "confirm": confirm,

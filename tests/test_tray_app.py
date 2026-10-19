@@ -382,6 +382,7 @@ def test_on_finished_removes_process_and_updates_badge():
     app.app = MagicMock()
     app.services = MagicMock()
     app.services.config_manager = MagicMock()
+    app.theme_manager = MagicMock()
     app.executor = MagicMock()
     app.module_controller = MagicMock()
     app.module_controller.get_executor.return_value = app.executor
@@ -391,8 +392,12 @@ def test_on_finished_removes_process_and_updates_badge():
 
     process = app.executor.execute_command_process.return_value
 
-    with patch("core.tray_app.RichOutputWindow"):
+    with patch("core.tray_app.RichOutputWindow") as window_factory:
         app.show_command_output("Status", "git status")
+
+    window_factory.assert_called_once_with(
+        app.app.activeWindow(), app.services, theme_manager=app.theme_manager
+    )
 
     # Registration side effects.
     assert app.process_tracker.count() == 1
@@ -474,3 +479,54 @@ def test_reload_menus_are_noops_before_tray_menu_is_built():
 
     app.get_favorites.assert_not_called()
     app.get_history.assert_not_called()
+
+
+def test_open_command_manager_displays_the_command_manager_dialog():
+    """The Manage Commands action opens the manager with current app services."""
+    app = object.__new__(TrayApp)
+    app.services = MagicMock()
+    app.process_tracker = MagicMock()
+
+    with patch("core.tray_app.CommandManagerDialog") as dialog_factory:
+        app._open_command_manager()
+
+    dialog_factory.assert_called_once_with(
+        app.services,
+        app.process_tracker.processes,
+        parent=None,
+    )
+    dialog_factory.return_value.exec.assert_called_once_with()
+
+
+def test_pin_to_quick_launch_persists_group_reference_without_opening_manager():
+    """Pinning stores the command's group and does not open command management."""
+    app = _make_app()
+    app.module_controller.loaded_quick_launch_bar = None
+    settings = {"quick_launch_bar": {"pinned": []}}
+
+    with (
+        patch("core.tray_app.config_manager") as config,
+        patch("core.tray_app.CommandManagerDialog") as dialog_factory,
+    ):
+        config.get_settings.return_value = settings
+        app._pin_to_quick_launch(
+            {
+                "group": "System",
+                "label": "Terminal",
+                "command": "xterm",
+                "confirm": False,
+                "showOutput": True,
+            }
+        )
+
+    assert settings["quick_launch_bar"]["pinned"] == [
+        {
+            "group": "System",
+            "label": "Terminal",
+            "command": "xterm",
+            "confirm": False,
+            "showOutput": True,
+        }
+    ]
+    config.save_settings.assert_called_once_with(settings)
+    dialog_factory.assert_not_called()

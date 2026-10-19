@@ -287,8 +287,9 @@ class TestQuickLaunchBarPinnedSchema:
     """Schema validation for quick_launch_bar.pinned items.
 
     _pin_to_quick_launch() stores each pinned entry as an object with
-    label, command, confirm, and showOutput keys (see tray_app.py:388-393).
-    The schema must describe that object shape so that settings.json written
+    group, label, command, confirm, and showOutput keys. The group is optional
+    to preserve pins written by older versions. The schema must describe that
+    object shape so that settings.json written
     by the app passes validation on next load — otherwise validation fails
     and the user's pinned commands are silently reset to defaults.
     """
@@ -299,6 +300,7 @@ class TestQuickLaunchBarPinnedSchema:
             "quick_launch_bar": {
                 "pinned": [
                     {
+                        "group": "System",
                         "label": "My Tool",
                         "command": "my-tool --flag",
                         "confirm": False,

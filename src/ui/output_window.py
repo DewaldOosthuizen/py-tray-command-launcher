@@ -18,9 +18,10 @@ Toolbar actions:
 
 import logging
 import re
+from dataclasses import dataclass
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QColor, QFont, QTextCharFormat, QTextCursor
+from PyQt6.QtGui import QAction, QColor, QFont, QPalette, QTextCharFormat, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
     QFontDialog,
@@ -40,35 +41,176 @@ logger = logging.getLogger(__name__)
 # Unknown and OSC sequences are stripped silently.
 _ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\-_]|\x1B\[[^@-~]*[@-~]")
 
-_ANSI_COLORS_FG = {
-    30: "#4c4f69",  # black  (uses theme fg light/dark neutrals)
-    31: "#d20f39",  # red
-    32: "#40a02b",  # green
-    33: "#df8e1d",  # yellow
-    34: "#1e66f5",  # blue
-    35: "#ea76cb",  # magenta
-    36: "#04a5e5",  # cyan
-    37: "#cdd6f4",  # white
-    90: "#585b70",  # bright black
-    91: "#f38ba8",  # bright red
-    92: "#a6e3a1",  # bright green
-    93: "#f9e2af",  # bright yellow
-    94: "#89b4fa",  # bright blue
-    95: "#f5c2e7",  # bright magenta
-    96: "#89dceb",  # bright cyan
-    97: "#ffffff",  # bright white
+_LIGHT_ANSI_COLORS = {
+    30: "#4c4f69",
+    31: "#d20f39",
+    32: "#40a02b",
+    33: "#df8e1d",
+    34: "#1e66f5",
+    35: "#ea76cb",
+    36: "#04a5e5",
+    37: "#5c5f77",
+    90: "#5c5f77",
+    91: "#d20f39",
+    92: "#40a02b",
+    93: "#df8e1d",
+    94: "#1e66f5",
+    95: "#ea76cb",
+    96: "#04a5e5",
+    97: "#4c4f69",
 }
 
-_ANSI_COLORS_BG = {k + 10: v for k, v in _ANSI_COLORS_FG.items()}
+_DARK_ANSI_COLORS = {
+    30: "#585b70",
+    31: "#f38ba8",
+    32: "#a6e3a1",
+    33: "#f9e2af",
+    34: "#89b4fa",
+    35: "#f5c2e7",
+    36: "#89dceb",
+    37: "#cdd6f4",
+    90: "#585b70",
+    91: "#f38ba8",
+    92: "#a6e3a1",
+    93: "#f9e2af",
+    94: "#89b4fa",
+    95: "#f5c2e7",
+    96: "#89dceb",
+    97: "#ffffff",
+}
+
+_ANSI_PALETTES = {
+    "light": {
+        **_LIGHT_ANSI_COLORS,
+        **{code + 10: color for code, color in _LIGHT_ANSI_COLORS.items()},
+    },
+    "dark": {
+        **_DARK_ANSI_COLORS,
+        **{code + 10: color for code, color in _DARK_ANSI_COLORS.items()},
+    },
+}
+
+_THEME_SURFACES = {"light": "#e6e9ef", "dark": "#181825"}
+_THEME_TEXT = {"light": "#4c4f69", "dark": "#cdd6f4"}
+_ANSI_FOREGROUND_CODES = frozenset(_LIGHT_ANSI_COLORS)
+_ANSI_BACKGROUND_CODES = frozenset(code + 10 for code in _ANSI_FOREGROUND_CODES)
+_ANSI_COLOR_CODES = _ANSI_FOREGROUND_CODES | _ANSI_BACKGROUND_CODES
+_REQUESTED_FOREGROUND_PROPERTY = 0x100001
+_CONTRAST_THRESHOLD = 4.5
 
 
-def _parse_sgr(codes: list[int], fmt: QTextCharFormat) -> QTextCharFormat:
-    """Apply a list of SGR codes to *fmt* and return the updated format."""
+@dataclass(frozen=True)
+class _OutputTheme:
+    """Resolved surface, inherited text color, and ANSI palette variant."""
+
+    surface: QColor
+    inherited_text: QColor
+    mode: str
+
+
+def _relative_luminance(color: QColor) -> float:
+    """Return WCAG relative luminance for a color's sRGB channels."""
+
+    def linearize(channel: int) -> float:
+        value = channel / 255
+        return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+    red, green, blue = (
+        linearize(channel) for channel in (color.red(), color.green(), color.blue())
+    )
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def contrast_ratio(first: QColor, second: QColor) -> float:
+    """Return the WCAG contrast ratio between two colors, from 1 to 21.
+
+    Args:
+        first: Foreground or background color.
+        second: The other color in the pair.
+
+    Returns:
+        The contrast ratio, where 1 is no contrast and 21 is maximum contrast.
+    """
+    first_luminance = _relative_luminance(first)
+    second_luminance = _relative_luminance(second)
+    lighter, darker = sorted((first_luminance, second_luminance), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def resolve_output_theme(theme: str, palette) -> _OutputTheme:
+    """Resolve output colors from an explicit theme or the active Qt palette.
+
+    Args:
+        theme: ``"light"``, ``"dark"``, or ``"system"``.
+        palette: The active ``QApplication`` palette used for system mode.
+
+    Returns:
+        A construction-time output theme containing the surface, inherited
+        text color, and the corresponding ANSI palette variant.
+
+    Raises:
+        AttributeError: If system mode receives an object without ``color(role)``.
+    """
+    normalized_theme = (theme or "system").lower().strip()
+    if normalized_theme in _THEME_SURFACES:
+        return _OutputTheme(
+            QColor(_THEME_SURFACES[normalized_theme]),
+            QColor(_THEME_TEXT[normalized_theme]),
+            normalized_theme,
+        )
+
+    surface = QColor(palette.color(QPalette.ColorRole.Base))
+    inherited_text = QColor(palette.color(QPalette.ColorRole.Text))
+    mode = "light" if _relative_luminance(surface) > 0.5 else "dark"
+    return _OutputTheme(surface, inherited_text, mode)
+
+
+def _apply_effective_foreground(fmt: QTextCharFormat, theme: _OutputTheme) -> None:
+    """Set the readable foreground without changing the requested ANSI background.
+
+    Args:
+        fmt: The format whose requested foreground is stored in a user property.
+        theme: The output surface and inherited text used when no ANSI color applies.
+
+    Returns:
+        None. The format is updated in place.
+    """
+    requested = fmt.property(_REQUESTED_FOREGROUND_PROPERTY)
+    if not requested:
+        requested = theme.inherited_text
+        fmt.setProperty(_REQUESTED_FOREGROUND_PROPERTY, requested)
+
+    background_brush = fmt.background()
+    background = background_brush.color() if background_brush.style() else theme.surface
+    effective = requested
+    if contrast_ratio(requested, background) < _CONTRAST_THRESHOLD:
+        black = QColor("#000000")
+        white = QColor("#ffffff")
+        effective = max((black, white), key=lambda color: contrast_ratio(color, background))
+    fmt.setForeground(effective)
+
+
+def _parse_sgr(
+    codes: list[int], fmt: QTextCharFormat, theme: _OutputTheme | None = None
+) -> QTextCharFormat:
+    """Apply SGR codes and recalculate readable foreground for each color change.
+
+    Args:
+        codes: SGR integer codes to apply in stream order.
+        fmt: The current character format, including requested color intent.
+        theme: Optional resolved theme; omitted only for legacy direct parser calls.
+
+    Returns:
+        The updated text format.
+    """
     i = 0
+    palette = _ANSI_PALETTES[theme.mode] if theme else _ANSI_PALETTES["dark"]
     while i < len(codes):
         code = codes[i]
         if code == 0:
             fmt = QTextCharFormat()
+            if theme:
+                fmt.setProperty(_REQUESTED_FOREGROUND_PROPERTY, theme.inherited_text)
         elif code == 1:
             fmt.setFontWeight(QFont.Weight.Bold)
         elif code == 3:
@@ -81,14 +223,23 @@ def _parse_sgr(codes: list[int], fmt: QTextCharFormat) -> QTextCharFormat:
             fmt.setFontItalic(False)
         elif code == 24:
             fmt.setFontUnderline(False)
-        elif code in _ANSI_COLORS_FG:
-            fmt.setForeground(QColor(_ANSI_COLORS_FG[code]))
-        elif code in _ANSI_COLORS_BG:
-            fmt.setBackground(QColor(_ANSI_COLORS_BG[code]))
+        elif code in _ANSI_FOREGROUND_CODES:
+            color = QColor(palette[code])
+            if theme:
+                fmt.setProperty(_REQUESTED_FOREGROUND_PROPERTY, color)
+            else:
+                fmt.setForeground(color)
+        elif code in _ANSI_BACKGROUND_CODES:
+            fmt.setBackground(QColor(palette[code]))
         elif code == 39:
-            fmt.clearForeground()
+            if theme:
+                fmt.setProperty(_REQUESTED_FOREGROUND_PROPERTY, theme.inherited_text)
+            else:
+                fmt.clearForeground()
         elif code == 49:
             fmt.clearBackground()
+        if theme and (code in _ANSI_COLOR_CODES or code in {0, 39, 49}):
+            _apply_effective_foreground(fmt, theme)
         i += 1
     return fmt
 
@@ -101,14 +252,42 @@ def _parse_sgr(codes: list[int], fmt: QTextCharFormat) -> QTextCharFormat:
 class _OutputTab(QTextEdit):
     """A single read-only output tab with ANSI rendering support."""
 
-    def __init__(self, font: QFont, parent: QWidget | None = None):
+    def __init__(
+        self,
+        font: QFont,
+        parent: QWidget | None = None,
+        output_theme: _OutputTheme | None = None,
+    ):
+        """Create a read-only tab using the window's construction-time theme.
+
+        Args:
+            font: Font used for command output.
+            parent: Optional owning widget.
+            output_theme: Resolved colors shared by tabs in the parent window.
+        """
         super().__init__(parent)
         self.setReadOnly(True)
         self.setFont(font)
+        self._output_theme = output_theme or resolve_output_theme("system", QApplication.palette())
+        self.setStyleSheet(
+            "QTextEdit { "
+            f"background-color: {self._output_theme.surface.name()}; "
+            f"color: {self._output_theme.inherited_text.name()}; "
+            "}"
+        )
         self._fmt = QTextCharFormat()
+        self._fmt.setProperty(_REQUESTED_FOREGROUND_PROPERTY, self._output_theme.inherited_text)
+        _apply_effective_foreground(self._fmt, self._output_theme)
 
     def append_ansi(self, text: str) -> None:
-        """Append *text* which may contain ANSI SGR sequences."""
+        """Append text with SGR styles and contrast-safe per-run foregrounds.
+
+        Args:
+            text: Output text that may contain ANSI escape sequences.
+
+        Returns:
+            None.
+        """
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
 
@@ -123,7 +302,7 @@ class _OutputTab(QTextEdit):
             if sgr_match:
                 raw = sgr_match.group(1)
                 codes = [int(c) for c in raw.split(";") if c] if raw else [0]
-                self._fmt = _parse_sgr(codes, self._fmt)
+                self._fmt = _parse_sgr(codes, self._fmt, self._output_theme)
 
             last_end = match.end()
 
@@ -143,9 +322,24 @@ class _OutputTab(QTextEdit):
 class RichOutputWindow(QMainWindow):
     """Tabbed, ANSI-aware output window."""
 
-    def __init__(self, parent=None, services=None):
+    def __init__(self, parent=None, services=None, theme_manager=None):
+        """Initialize an output window with an immutable theme rendering context.
+
+        Args:
+            parent: Optional parent widget.
+            services: Application services used to load and persist font settings.
+            theme_manager: Active theme manager, or ``None`` for system palette mode.
+
+        Returns:
+            None.
+
+        Raises:
+            AttributeError: If required application services are not provided.
+        """
         super().__init__(parent)
         self.services = services
+        theme = theme_manager.current_theme if theme_manager else "system"
+        self._output_theme = resolve_output_theme(theme, QApplication.palette())
         self.setWindowTitle("Command Output")
         self.setGeometry(100, 100, 900, 600)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -197,8 +391,18 @@ class RichOutputWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def open_process_tab(self, title: str) -> "_OutputTab":
-        """Open a new tab for *title* and return the output widget."""
-        tab = _OutputTab(self._font, self)
+        """Create and display a tab for one running process.
+
+        Args:
+            title: Tab label shown to the user.
+
+        Returns:
+            The newly created output widget.
+
+        Raises:
+            RuntimeError: If Qt cannot create or attach the tab widget.
+        """
+        tab = _OutputTab(self._font, self, self._output_theme)
         tab.verticalScrollBar().rangeChanged.connect(
             lambda _min, _max, t=tab: self._maybe_scroll(t)
         )
@@ -209,7 +413,15 @@ class RichOutputWindow(QMainWindow):
         return tab
 
     def append_output(self, tab: "_OutputTab", text: str) -> None:
-        """Append *text* to *tab* and optionally scroll to the bottom."""
+        """Append command output and scroll when auto-scroll is enabled.
+
+        Args:
+            tab: Output tab receiving the text.
+            text: Command output, optionally containing ANSI SGR sequences.
+
+        Returns:
+            None.
+        """
         tab.append_ansi(text)
         if self._auto_scroll:
             tab.verticalScrollBar().setValue(tab.verticalScrollBar().maximum())
@@ -222,10 +434,26 @@ class RichOutputWindow(QMainWindow):
 
     @classmethod
     def show_output(
-        cls, title: str, output: str, parent: QWidget | None = None, services=None
+        cls,
+        title: str,
+        output: str,
+        parent: QWidget | None = None,
+        services=None,
+        theme_manager=None,
     ) -> "RichOutputWindow":
-        """Create a stand-alone window showing *output* for *title*."""
-        win = cls(parent, services)
+        """Create a stand-alone themed window and display one output stream.
+
+        Args:
+            title: Process label for the output tab.
+            output: Complete output text to render.
+            parent: Optional parent widget.
+            services: Application services used for window preferences.
+            theme_manager: Optional theme manager; absent means system palette mode.
+
+        Returns:
+            The shown output window.
+        """
+        win = cls(parent, services, theme_manager)
         tab = win.open_process_tab(title)
         win.append_output(tab, output)
         return win
