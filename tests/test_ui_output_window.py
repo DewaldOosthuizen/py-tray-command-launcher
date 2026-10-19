@@ -1,9 +1,13 @@
+from pathlib import Path
+import re
 from unittest.mock import MagicMock
 
 import pytest
 from PyQt6.QtGui import QTextCharFormat
 
+import core.theme_manager as theme_manager_module
 import ui.output_window as output_window
+from core.theme_manager import ThemeManager
 from ui.output_window import RichOutputWindow, _OutputTab, _parse_sgr
 
 
@@ -389,3 +393,74 @@ def test_standalone_window_uses_system_palette_without_theme_manager(
     assert window._output_theme.surface.name() == "#181825"
     assert window._output_theme.inherited_text.name() == "#cdd6f4"
     assert window._output_theme.mode == "dark"
+
+
+def test_open_window_keeps_rendered_contrast_when_application_theme_changes(
+    monkeypatch, color_format_types
+):
+    """An open output tab keeps its captured surface when global QSS changes."""
+    color_type, format_type = color_format_types
+
+    class Application:
+        stylesheet = ""
+
+        @classmethod
+        def instance(cls):
+            return cls
+
+        @classmethod
+        def palette(cls):
+            return type(
+                "Palette",
+                (),
+                {
+                    "color": lambda _self, role: color_type(
+                        "#e6e9ef" if role == "base" else "#4c4f69"
+                    )
+                },
+            )()
+
+        @classmethod
+        def setStyleSheet(cls, stylesheet):
+            cls.stylesheet = stylesheet
+
+    monkeypatch.setattr(output_window, "QApplication", Application)
+    monkeypatch.setattr(theme_manager_module, "QApplication", Application)
+    widget_stylesheets = {}
+    monkeypatch.setattr(
+        _OutputTab,
+        "setStyleSheet",
+        lambda tab, stylesheet: widget_stylesheets.__setitem__(tab, stylesheet),
+        raising=False,
+    )
+
+    theme_manager = ThemeManager(str(Path(__file__).resolve().parents[1]))
+    theme_manager.apply_theme("light")
+    window = RichOutputWindow(services=MagicMock(), theme_manager=theme_manager)
+    tab = window.open_process_tab("Theme transition")
+    inserted = []
+
+    class Cursor:
+        def movePosition(self, _position):
+            pass
+
+        def insertText(self, text, fmt):
+            inserted.append((text, format_type(fmt)))
+
+    cursor = Cursor()
+    tab.textCursor = lambda: cursor
+    window.append_output(tab, "inherited foreground")
+
+    theme_manager.apply_theme("dark")
+    effective_stylesheet = widget_stylesheets.get(tab, Application.stylesheet)
+    text_edit = re.search(
+        r"QTextEdit,\s*QPlainTextEdit\s*\{([^}]*)\}", effective_stylesheet
+    )
+    declarations = text_edit.group(1) if text_edit else effective_stylesheet
+    surface_match = re.search(r"background-color:\s*(#[0-9a-fA-F]{6})", declarations)
+    assert surface_match is not None
+    actual_surface = color_type(surface_match.group(1))
+    rendered_foreground = inserted[0][1].foreground().color()
+
+    assert actual_surface.name() == "#e6e9ef"
+    assert output_window.contrast_ratio(rendered_foreground, actual_surface) >= 4.5
