@@ -41,9 +41,11 @@ def placements():
         del sys.modules["ui.command_palette"]
     if "ui.output_window" in sys.modules:
         del sys.modules["ui.output_window"]
-    from PyQt6.QtGui import QGuiApplication, QCursor  # noqa: F401
+    from PyQt6.QtGui import QCursor, QGuiApplication  # noqa: F401
     from PyQt6.QtWidgets import QApplication  # noqa: F401
+
     import ui.command_palette  # noqa: E402
+
     importlib.reload(ui.command_palette)
     real_palette = ui.command_palette
     import ui.output_window  # noqa: E402
@@ -56,8 +58,7 @@ def placements():
 
     # Build the _PaletteWindow bound to a MagicMock palette that never touches
     # the command/search services.
-    from ui.command_palette import _PaletteWindow, _TAB_COMMANDS
-    from unittest.mock import MagicMock
+    from ui.command_palette import _TAB_COMMANDS
 
     services = MagicMock()
     services.get_all_commands.return_value = [
@@ -122,7 +123,7 @@ def test_opens_on_screen_containing_cursor(placements):
     with patch.object(window, "_populate", return_value=None):
         window.show_on_tab(placements.tab_commands)
 
-    cursor_screen = QGuiApplication.screenAt(QCursor.pos())
+    cursor_screen = QGuiApplication.screenAt(placements.QCursor.pos())
     assert cursor_screen is not None
     assert cursor_screen is other
     assert cursor_screen is not QGuiApplication.primaryScreen()

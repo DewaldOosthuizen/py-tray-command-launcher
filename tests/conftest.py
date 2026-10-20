@@ -21,7 +21,16 @@ import pytest
 # the stub and re-import real Qt), and skipped only when it is set to a truthy
 # value (e.g. PY_TRAY_NO_STUB=1).  Set PY_TRAY_NO_STUB=1 to run the whole suite
 # against real Qt.
-_INSTALL_STUB = os.environ.get("PY_TRAY_NO_STUB") in (None, "", "0", "false", "False", "FALSE", "no", "NO")
+_INSTALL_STUB = os.environ.get("PY_TRAY_NO_STUB") in (
+    None,
+    "",
+    "0",
+    "false",
+    "False",
+    "FALSE",
+    "no",
+    "NO",
+)
 
 
 def _make_pyqt6_stub():

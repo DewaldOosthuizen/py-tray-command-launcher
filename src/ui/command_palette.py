@@ -33,7 +33,7 @@ import sys
 import weakref
 
 from PyQt6.QtCore import QEvent, QObject, QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QKeyEvent, QGuiApplication, QCursor, QScreen
+from PyQt6.QtGui import QCursor, QGuiApplication, QKeyEvent, QScreen
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
