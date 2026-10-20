@@ -8,6 +8,7 @@ afterwards, so every other (stub-dependent) test keeps seeing the stub.
 """
 
 import importlib
+import os
 import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -27,6 +28,11 @@ def placements():
     modules are restored when the fixture tears down, so every other
     (stub-dependent) test keeps seeing the stub.
     """
+    # Headless CI may not provide a display server. Select Qt's offscreen
+    # backend before importing real Qt so QApplication construction is safe.
+    if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
     # Save the (stub) state.
     stub = sys.modules.get("PyQt6")
     stub_palette = sys.modules.get("ui.command_palette")
