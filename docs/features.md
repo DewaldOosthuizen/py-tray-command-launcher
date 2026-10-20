@@ -244,3 +244,24 @@ If an installed application does not appear in the App Launcher palette, use the
 ## Branding
 
 Branded assets live under `resources/icons/branding/` (base `icon.png`, optional `icon-running.png`/`icon-error.png` variants). They are consumed by: tray icon, window icon, quick-launch bar, badge manager, desktop entry, and the packaged executable. Swap them by replacing the PNG files in that directory; `resources/icons/icon.png` remains as a legacy fallback.
+
+## Quick-Launch Bar Pins
+
+The Quick-Launch Bar shows the commands listed in `quick_launch_bar.pinned`
+in `settings.json`. The Settings dialog's **Pinned Commands** group box
+(below the Quick-Launch Bar visibility and hotkey options) provides the GUI
+controls for curating that list without hand-editing the file:
+
+- **Add >>** — move the currently selected command from the available list
+  into the pinned list.
+- **Remove** — remove the currently selected pinned command.
+- **Move Up** / **Move Down** — change the order in which pinned commands
+  appear on the bar.
+
+Pins are stored as an ordered list of full `{group, label, command,
+confirm, showOutput}` dictionaries. When the dialog is saved, `commit()`
+resolves each pin against the known command set through the shared
+`_resolve_pin_command()` helper; any pin whose command no longer resolves is
+dropped (a warning is logged) and the visible bar is refreshed, so the saved
+list and the on-screen bar always stay in sync. Reordering pins preserves
+the order end to end, and the bar is refreshed automatically on save.
