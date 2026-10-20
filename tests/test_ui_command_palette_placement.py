@@ -134,6 +134,12 @@ def test_opens_on_screen_containing_cursor(placements):
     assert cursor_screen is other
     assert cursor_screen is not QGuiApplication.primaryScreen()
 
+    geo = other.availableGeometry()
+    assert window.pos().x() >= geo.x()
+    assert window.pos().y() >= geo.y()
+    assert window.pos().x() + window.width() <= geo.x() + geo.width()
+    assert window.pos().y() + window.height() <= geo.y() + geo.height()
+
 
 # --- Geometry clamping ---------------------------------------------------
 @pytest.mark.needs_offscreen_screen
