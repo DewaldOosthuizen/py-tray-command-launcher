@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from ui.quick_launch_pin_manager import QuickLaunchPinManager
 from utils.dialogs import show_error
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class SettingsDialog(QDialog):
         hotkey_callback=None,
         bar_hotkey_callback=None,
         app_launcher_hotkey_callback=None,
+        quick_launch_bar=None,
     ):
         super().__init__(parent)
         self.services = services
@@ -50,10 +52,12 @@ class SettingsDialog(QDialog):
         self._hotkey_callback = hotkey_callback
         self._bar_hotkey_callback = bar_hotkey_callback
         self._app_launcher_hotkey_callback = app_launcher_hotkey_callback
+        self._quick_launch_bar = quick_launch_bar
         self.setWindowTitle("Settings")
         self.setMinimumWidth(420)
 
         settings = self.services.config_manager.get_settings()
+        self._settings = settings
 
         layout = QVBoxLayout(self)
 
@@ -131,6 +135,19 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(qlb_box)
 
+        # --- Pinned Commands --------------------------------------------
+        self._qlb_pin_manager = QuickLaunchPinManager(
+            self.services,
+            self._settings,
+        )
+        if self._quick_launch_bar is not None:
+            self._qlb_pin_manager.pins_committed.connect(lambda: self._quick_launch_bar.refresh())
+
+        pinned_box = QGroupBox("Pinned Commands")
+        pinned_layout = QVBoxLayout(pinned_box)
+        pinned_layout.addWidget(self._qlb_pin_manager)
+        layout.addWidget(pinned_box)
+
         # --- Logging ----------------------------------------------------
         logging_box = QGroupBox("Logging")
         logging_form = QFormLayout(logging_box)
@@ -177,7 +194,7 @@ class SettingsDialog(QDialog):
     def _save(self) -> None:
         """Persist settings and accept the dialog."""
         try:
-            settings = self.services.config_manager.get_settings(refresh=True)
+            settings = self.services.config_manager.get_settings()
 
             settings["theme"] = self._theme_combo.currentText()
             settings["hotkey"] = self._hotkey_edit.text().strip()
@@ -200,6 +217,8 @@ class SettingsDialog(QDialog):
                 log_cfg = {}
             log_cfg["level"] = self._log_level_combo.currentText()
             settings["logging"] = log_cfg
+
+            self._qlb_pin_manager.commit()
 
             self.services.config_manager.save_settings(settings)
             logger.info("Settings saved")

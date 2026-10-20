@@ -95,21 +95,8 @@ class QuickLaunchBar(QWidget):
         for pin in pinned:
             group = pin.get("group", "")
             label = pin.get("label", "")
-            cmd = all_cmds.get((group, label))
-            if cmd is None and not group:
-                label_matches = [
-                    candidate for candidate in all_cmds.values() if candidate["label"] == label
-                ]
-                command_matches = [
-                    candidate
-                    for candidate in label_matches
-                    if candidate["command"] == pin.get("command")
-                ]
-                if len(command_matches) == 1:
-                    cmd = command_matches[0]
-                elif len(label_matches) == 1:
-                    cmd = label_matches[0]
-            if not cmd:
+            cmd = _resolve_pin_command(pin, all_cmds)
+            if cmd is None:
                 logger.warning("Pinned command not found: %s / %s", group, label)
                 continue
 
@@ -256,3 +243,30 @@ class QuickLaunchBar(QWidget):
     def unregister_hotkey(self) -> None:
         """Unregister the current bar hotkey, if any."""
         self._hotkey_handle = safe_unregister(self._hotkey_handle, timeout=2.0)
+
+
+def _resolve_pin_command(pin, all_cmds):
+    """Resolve a pinned entry to its command dict.
+
+    This is the shared algorithm used by both ``QuickLaunchBar._build_buttons``
+    and :class:`QuickLaunchPinManager.commit`. Exact ``(group, label)`` keyed
+    lookup; if that misses and the pin has no group, fall back to a
+    command-filtered label match when exactly one candidate matches, otherwise a
+    unique label-only match. Returns the matched command dict, or ``None``.
+    """
+
+    group = pin.get("group", "")
+    label = pin.get("label", "")
+    cmd = all_cmds.get((group, label))
+    if cmd is None and not group:
+        label_matches = [
+            candidate for candidate in all_cmds.values() if candidate["label"] == label
+        ]
+        command_matches = [
+            candidate for candidate in label_matches if candidate["command"] == pin.get("command")
+        ]
+        if len(command_matches) == 1:
+            cmd = command_matches[0]
+        elif len(label_matches) == 1:
+            cmd = label_matches[0]
+    return cmd

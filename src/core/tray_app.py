@@ -496,6 +496,7 @@ class TrayApp:
             hotkey_callback=self._reregister_hotkey,
             bar_hotkey_callback=self._reregister_bar_hotkey,
             app_launcher_hotkey_callback=self._reregister_app_launcher_hotkey,
+            quick_launch_bar=self._loaded_quick_launch_bar(),
         )
         dlg.exec()
 

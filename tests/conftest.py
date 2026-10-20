@@ -133,8 +133,13 @@ def _make_pyqt6_stub():
         def __init__(self):
             self._slots: list = []
 
-        def connect(self, slot):
-            self._slots.append(slot)
+        def connect(self, *a, **kw):
+            # Harvest the slot from positional args (the previous signature
+            # accepted a single slot) so that multi-argument connects such as
+            # ``connect(slot, ConnectionType.QueuedConnection)`` work.
+            slot = a[0] if a else kw.get("slot")
+            if slot is not None:
+                self._slots.append(slot)
 
         def disconnect(self, slot=None):
             if slot is None:
