@@ -47,14 +47,14 @@ def placements():
         del sys.modules["ui.command_palette"]
     if "ui.output_window" in sys.modules:
         del sys.modules["ui.output_window"]
-    from PyQt6.QtGui import QCursor, QGuiApplication  # noqa: F401
-    from PyQt6.QtWidgets import QApplication  # noqa: F401
+    from PyQt6.QtGui import QCursor, QGuiApplication
+    from PyQt6.QtWidgets import QApplication
 
-    import ui.command_palette  # noqa: E402
+    import ui.command_palette
 
     importlib.reload(ui.command_palette)
     real_palette = ui.command_palette
-    import ui.output_window  # noqa: E402
+    import ui.output_window
 
     # Create a real QApplication *before* constructing the window so the
     # offscreen platform's QWidget constructor does not abort.
@@ -171,12 +171,11 @@ def test_falls_back_to_primary_screen_when_cursor_outside(placements):
         pytest.skip("requires QT_QPA_PLATFORM=offscreen")
 
     window = _make_window(placements)
-    # The offscreen virtual screen is 800x800 at 0,0, so (-1000, -1000) is outside
-    # every screen's geometry and screenAt() returns None.
-    placements.QCursor.setPos(-1000, -1000)
+    with patch.object(QGuiApplication, "screenAt", return_value=None):
+        assert window._screen_for_cursor() is QGuiApplication.primaryScreen()
 
-    with patch.object(window, "_populate", return_value=None):
-        window.show_on_tab(placements.tab_commands)
+        with patch.object(window, "_populate", return_value=None):
+            window.show_on_tab(placements.tab_commands)
 
     geo = QGuiApplication.primaryScreen().availableGeometry()
     assert window.width() == min(520, geo.width())
