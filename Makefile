@@ -28,11 +28,16 @@ help:
 	@echo "  make ci-full            # Run all flows, including release build"
 	@echo ""
 	@echo "Helpers:"
+	@echo "  make start             # Start the application"
 	@echo "  make install-dev        # pip install -e .[dev]"
 	@echo "  make install-system-deps"
 	@echo ""
 	@echo "Optional:"
 	@echo "  make release-workflow VERSION=v1.2.3"
+
+.PHONY: start
+start:
+	source venv/bin/activate && python src/main.py
 
 .PHONY: install-dev
 install-dev:
