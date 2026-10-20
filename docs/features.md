@@ -241,6 +241,42 @@ If an installed application does not appear in the App Launcher palette, use the
 
 5. **Check for exclusion flags** — open the `.desktop` file and confirm it does not contain `NoDisplay=true` or `Hidden=true`, and that `Type=Application` is present.
 
+## Command Palette
+
+The command palette is a spotlight-style popup overlay that displays commands
+and installed applications. It opens from a global hotkey and is searchable as
+you type.
+
+### Placement
+
+The palette opens on the screen that owns the cursor. When no screen owns the
+cursor (or the cursor is on the primary display), the primary screen is used as
+a fallback. The window is therefore anchored to the display the user is working
+on rather than always the primary display.
+
+### Sizing and containment
+
+The palette's size and position are clamped to the selected screen's
+`availableGeometry()` so it is always fully visible:
+
+- **Minimum width**: the lesser of 520 px and the selected display's width, so a
+  narrow display still receives a usable window instead of one that overruns the
+  right edge.
+- **Maximum width**: the selected display's width, preventing horizontal
+  overflow.
+- **Maximum height**: the lesser of 460 px and the selected display's height, so
+  the window never overflows the bottom edge.
+
+The window is centred horizontally on the selected display and, vertically,
+retains the historical one-quarter offset from the top of the screen. A window
+created with no screen available (for example, a headless environment with no
+screen at all) is shown without an anchor rather than blocking the hotkey.
+
+> **Note:** the offscreen CI platform provides a single virtual screen whose
+> geometry cannot be narrowed. The genuinely narrow-display case is therefore
+> exercised manually on a real multi-display machine and is documented here as an
+> outstanding manual check.
+
 ## Branding
 
 Branded assets live under `resources/icons/branding/` (base `icon.png`, optional `icon-running.png`/`icon-error.png` variants). They are consumed by: tray icon, window icon, quick-launch bar, badge manager, desktop entry, and the packaged executable. Swap them by replacing the PNG files in that directory; `resources/icons/icon.png` remains as a legacy fallback.

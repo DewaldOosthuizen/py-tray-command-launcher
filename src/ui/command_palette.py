@@ -33,7 +33,7 @@ import sys
 import weakref
 
 from PyQt6.QtCore import QEvent, QObject, QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtGui import QCursor, QGuiApplication, QKeyEvent, QScreen
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
@@ -512,15 +512,44 @@ class _PaletteWindow(QWidget):
                 btn.style().polish(btn)
         self._show_centered()
 
+    def _screen_for_cursor(self) -> QScreen | None:
+        """Return the screen containing the cursor, falling back to the primary screen."""
+        screen = QGuiApplication.screenAt(QCursor.pos())
+        return screen if screen is not None else QApplication.primaryScreen()
+
     def _show_centered(self) -> None:
-        """Show the palette centred on the primary screen."""
-        screen = QApplication.primaryScreen()
-        if screen:
-            geo = screen.availableGeometry()
-            self.adjustSize()
-            x = geo.center().x() - self.width() // 2
-            y = geo.top() + geo.height() // 4
-            self.move(x, y)
+        """Show the palette on the display containing the cursor, clamped to its geometry."""
+        screen = self._screen_for_cursor()
+        if screen is None:
+            # No screen is available (should not happen on a desktop); show the window
+            # without an explicit anchor rather than blocking the hotkey.
+            self._search.clear()
+            self._search_timer.stop()  # cancel any pending timer from clear()
+            self._populate("")
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            self._search.setFocus()
+            return
+
+        geo = screen.availableGeometry()
+        # Width: keep a 520 px floor on large displays; shrink that floor to the display's
+        # width on a narrow display. Height: cap at 460 px, or the display's height if it
+        # is shorter, so the window always fits.
+        self.setMinimumWidth(min(520, geo.width()))
+        self.setMaximumWidth(geo.width())
+        self.setMaximumHeight(min(460, geo.height()))
+        self.adjustSize()
+        width = self.width()
+        height = self.height()
+        # Centre horizontally; honour the historical 1/4 vertical offset.
+        x = geo.center().x() - width // 2
+        y = geo.top() + geo.height() // 4
+        # Clamp both coordinates so the window rectangle is fully inside geo.
+        x = max(geo.x(), min(x, geo.x() + geo.width() - width))
+        y = max(geo.y(), min(y, geo.y() + geo.height() - height))
+        self.move(x, y)
+
         self._search.clear()
         self._search_timer.stop()  # cancel any pending timer from clear()
         self._populate("")

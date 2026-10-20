@@ -7,12 +7,30 @@ explicitly requests the ``qt_app`` fixture).
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 from unittest.mock import MagicMock as _MagicMock
 
 import pytest
+
+# Whether the PyQt6 MagicMock stub is installed.  The stub is installed when
+# PY_TRAY_NO_STUB is absent or set to a falsy value (so real Qt is importable for
+# the placement tests in tests/test_ui_command_palette_placement.py that delete
+# the stub and re-import real Qt), and skipped only when it is set to a truthy
+# value (e.g. PY_TRAY_NO_STUB=1).  Set PY_TRAY_NO_STUB=1 to run the whole suite
+# against real Qt.
+_INSTALL_STUB = os.environ.get("PY_TRAY_NO_STUB") in (
+    None,
+    "",
+    "0",
+    "false",
+    "False",
+    "FALSE",
+    "no",
+    "NO",
+)
 
 
 def _make_pyqt6_stub():
@@ -240,28 +258,29 @@ def _make_pyqt6_stub():
     return pyqt6
 
 
-if "PyQt6" in sys.modules:
-    # The real PyQt6 may already be importable (e.g. installed in the user
-    # environment, or pulled in by pytest-qt). Replace it wholesale with our
-    # stub so test modules always see the same mocked surface regardless of
-    # what is physically installed.
-    _stub = _make_pyqt6_stub()
-    # Remove every PyQt6 entry from sys.modules so that subsequent "import
-    # PyQt6" or "from PyQt6.QtWidgets import QDialog" statements resolve to
-    # our stub instead of the real package.
-    for _name in list(sys.modules):
-        if _name == "PyQt6" or _name.startswith("PyQt6."):
-            sys.modules.pop(_name, None)
-    sys.modules["PyQt6"] = _stub
-    sys.modules["PyQt6.QtCore"] = _stub.QtCore
-    sys.modules["PyQt6.QtWidgets"] = _stub.QtWidgets
-    sys.modules["PyQt6.QtGui"] = _stub.QtGui
-elif "PyQt6" not in sys.modules:
-    _stub = _make_pyqt6_stub()
-    sys.modules["PyQt6"] = _stub
-    sys.modules["PyQt6.QtCore"] = _stub.QtCore
-    sys.modules["PyQt6.QtWidgets"] = _stub.QtWidgets
-    sys.modules["PyQt6.QtGui"] = _stub.QtGui
+if _INSTALL_STUB:
+    if "PyQt6" in sys.modules:
+        # The real PyQt6 may already be importable (e.g. installed in the user
+        # environment, or pulled in by pytest-qt). Replace it wholesale with our
+        # stub so test modules always see the same mocked surface regardless of
+        # what is physically installed.
+        _stub = _make_pyqt6_stub()
+        # Remove every PyQt6 entry from sys.modules so that subsequent "import
+        # PyQt6" or "from PyQt6.QtWidgets import QDialog" statements resolve to
+        # our stub instead of the real package.
+        for _name in list(sys.modules):
+            if _name == "PyQt6" or _name.startswith("PyQt6."):
+                sys.modules.pop(_name, None)
+        sys.modules["PyQt6"] = _stub
+        sys.modules["PyQt6.QtCore"] = _stub.QtCore
+        sys.modules["PyQt6.QtWidgets"] = _stub.QtWidgets
+        sys.modules["PyQt6.QtGui"] = _stub.QtGui
+    elif "PyQt6" not in sys.modules:
+        _stub = _make_pyqt6_stub()
+        sys.modules["PyQt6"] = _stub
+        sys.modules["PyQt6.QtCore"] = _stub.QtCore
+        sys.modules["PyQt6.QtWidgets"] = _stub.QtWidgets
+        sys.modules["PyQt6.QtGui"] = _stub.QtGui
 
 # Make src/ importable without installing the package
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

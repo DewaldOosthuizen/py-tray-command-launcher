@@ -30,6 +30,10 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --cov=src --cov-report=term-missing --cov-fail-under=50"
+markers = [
+    "needs_multi_display: place placement assertions under a real multi-display setup; skipped under QT_QPA_PLATFORM=offscreen.",
+    "needs_offscreen_screen: run only when the Qt platform plugin is offscreen.",
+]
 
 [tool.coverage.run]
 source = ["src"]
