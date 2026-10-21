@@ -875,3 +875,24 @@ def test_partial_sgr_sequence_survives_batch_flush_boundary(qtbot):
 
     requested = tab._fmt.property(output_window._REQUESTED_FOREGROUND_PROPERTY)
     assert requested.name() == output_window._ANSI_PALETTES[tab._output_theme.mode][31]
+
+
+def test_partial_sgr_sequence_survives_oversized_chunk_boundary(qtbot):
+    """An oversized direct insert carries an incomplete SGR to the next chunk."""
+    tab = _new_tab(qtbot, max_output_chars=8, batch_enabled=True, batch_chunk_count=1000)
+    tab.append_ansi("oversized output\x1b[3")
+    tab.append_ansi("1mred")
+    tab.flush()
+
+    requested = tab._fmt.property(output_window._REQUESTED_FOREGROUND_PROPERTY)
+    assert requested.name() == output_window._ANSI_PALETTES[tab._output_theme.mode][31]
+
+
+def test_partial_sgr_sequence_survives_when_batching_is_disabled(qtbot):
+    """Unbatched output carries an incomplete SGR to the next process chunk."""
+    tab = _new_tab(qtbot, batch_enabled=False)
+    tab.append_ansi("\x1b[3")
+    tab.append_ansi("1mred")
+
+    requested = tab._fmt.property(output_window._REQUESTED_FOREGROUND_PROPERTY)
+    assert requested.name() == output_window._ANSI_PALETTES[tab._output_theme.mode][31]
