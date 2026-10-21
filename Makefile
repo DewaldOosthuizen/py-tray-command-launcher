@@ -5,6 +5,7 @@ PIP ?= pip
 PYTEST ?= pytest
 RUFF ?= ruff
 PIP_MIN_SAFE ?= 26.1.2
+WHEEL_MIN_SAFE ?= 0.46.2
 PYINSTALLER ?= pyinstaller
 CI_VENV ?= .venv
 CI_VENV_PIP = $(CI_VENV)/bin/pip
@@ -31,7 +32,21 @@ test: ## Run tests with Qt in offscreen mode
 	QT_QPA_PLATFORM=offscreen $(PYTEST)
 
 audit: ## Install audit tooling and scan project dependencies in an isolated environment
-	$(PYTHON) -m venv $(CI_VENV) && $(CI_VENV_PIP) install --upgrade "pip>=$(PIP_MIN_SAFE)" "setuptools>=83.0.0" && $(CI_VENV_PIP) install pip-audit && $(CI_VENV_PIP) install -e ".[dev]" && $(CI_VENV_PIP_AUDIT)
+	$(PYTHON) -m venv $(CI_VENV)
+	$(CI_VENV_PIP) install --upgrade "pip>=$(PIP_MIN_SAFE)" "wheel>=$(WHEEL_MIN_SAFE)" "setuptools>=83.0.0"
+	$(CI_VENV_PIP) install pip-audit
+	$(CI_VENV_PIP) install -e ".[dev]"
+	@mkdir -p $(LOG_DIR)
+	@echo "[audit] Auditing declared project dependencies..."
+	@set -o pipefail; $(CI_VENV_PIP_AUDIT) -r requirements.txt 2>&1 | tee "$(LOG_DIR)/pip-audit.log"; status=$${PIPESTATUS[0]}; if [[ $$status -ne 0 ]]; then \
+		echo "[FAIL] audit: pip-audit found vulnerabilities"; \
+		echo "[DETAIL] This failure is dependency vulnerabilities, not source file linting."; \
+		echo "[DETAIL] Vulnerable packages:"; \
+		awk 'BEGIN{in_table=0} /^Name[[:space:]]+Version[[:space:]]+ID[[:space:]]+Fix Versions/{in_table=1; next} in_table && /^-/{next} in_table && /^$$/{in_table=0} in_table && NF>=4 {printf "  - %s %s (%s) -> fix: %s\n", $$1, $$2, $$3, $$4}' "$(LOG_DIR)/pip-audit.log" || true; \
+		echo "[DETAIL] Full log: $(LOG_DIR)/pip-audit.log"; \
+		exit 1; \
+	fi
+	@echo "[OK] audit passed"
 
 build: ## Build and verify the application executable with PyInstaller
 	$(PYTHON) -m venv $(CI_VENV) && $(CI_VENV_PIP) install -r requirements.txt && $(CI_VENV_PIP) install -r requirements-build.txt && $(CI_VENV_PYINSTALLER) py-tray-command-launcher.spec && test -f dist/py-tray-command-launcher
