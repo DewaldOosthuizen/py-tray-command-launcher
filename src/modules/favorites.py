@@ -8,6 +8,7 @@ from PyQt6.QtGui import QAction, QCursor, QIcon
 from PyQt6.QtWidgets import QInputDialog, QMenu, QMessageBox
 
 from utils.dialogs import prompt_text
+from utils.execution_cues import describe_execution_cues, format_execution_cues
 
 logger = logging.getLogger(__name__)
 
@@ -172,12 +173,17 @@ class Favorites:
                             self.services.config_manager.get_base_dir(), "resources/icons/icon.png"
                         )
 
-                    action = QAction(QIcon(icon_path), label, menu)
-
                     command = resolved_item.get("command")
                     show_output = resolved_item.get("showOutput", False)
                     confirm = resolved_item.get("confirm", False)
                     prompt = resolved_item.get("prompt", None)
+                    cues = format_execution_cues(resolved_item, concise=True)
+                    action_label = f"{label} · {cues}" if cues else label
+                    action = QAction(QIcon(icon_path), action_label, menu)
+                    description = describe_execution_cues(resolved_item)
+                    if description:
+                        action.setToolTip(description)
+                        action.setWhatsThis(description)
 
                     action.triggered.connect(
                         lambda checked=False, cmd=command, lbl=label, conf=confirm, show=show_output, prmpt=prompt: (

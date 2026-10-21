@@ -119,6 +119,37 @@ class TestFavorites(unittest.TestCase):
         # At least one addAction call per favorite entry
         self.assertGreaterEqual(mock_menu.addAction.call_count, 2)
 
+    def test_favorite_action_shows_execution_cues_and_executes_original_label(self):
+        mock_menu = MagicMock()
+        self.mock_config_manager.get_favorites.return_value = {
+            "Configured favorite": {
+                "command": "run --exactly",
+                "confirm": True,
+                "prompt": "Input",
+                "showOutput": True,
+            }
+        }
+        self.mock_services.resolve_command_reference.side_effect = lambda group, label, item: item
+        self.mock_services.resolve_icon_path.return_value = None
+        self.mock_config_manager.get_base_dir.return_value = str(PROJECT_ROOT)
+        action = MagicMock()
+
+        with (
+            patch("modules.favorites.QIcon", return_value=MagicMock()),
+            patch("modules.favorites.QAction", return_value=action) as action_factory,
+            patch("modules.favorites.os.path.isfile", return_value=False),
+        ):
+            self.favorites.populate_favorites_menu(mock_menu)
+
+        rendered_name = action_factory.call_args.args[1]
+        self.assertIn("Configured favorite", rendered_name)
+        self.assertIn("Confirm", rendered_name)
+        callback = action.triggered.connect.call_args.args[0]
+        callback(False)
+        self.mock_services.execute.assert_called_once_with(
+            "Configured favorite", "run --exactly", True, True, "Input"
+        )
+
     def test_populate_favorites_menu_empty(self):
         """populate_favorites_menu should show placeholder when no favorites exist."""
         mock_menu = MagicMock()

@@ -8,7 +8,7 @@ Welcome to the documentation for py-tray-command-launcher.
 |---|---|
 | [Architecture](architecture.md) | Module structure, responsibilities, and data flow |
 | [Configuration](configuration.md) | Full `commands.json` and `settings.json` field reference |
-| [Features](features.md) | Detailed guide to all application features |
+| [Features](features.md) | Tray navigation, Command Palette, execution, and other application features |
 | [Packaging](packaging.md) | Build instructions for all package formats |
 | [Contributing](contributing.md) | Development setup, code standards, and PR process |
 | [AI Agent Guide](ai-agent-guide.md) | Guide for AI agents working in this codebase |

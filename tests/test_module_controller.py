@@ -33,6 +33,7 @@ def test_feature_factories_are_lazy_and_cache_first_instance():
 def test_all_feature_factories_use_app_services_and_cache():
     services = MagicMock()
     controller = _module_controller(services, "icon.png", MagicMock(return_value={}))
+    controller._palette = MagicMock()
     with (
         patch("core.module_controller.CommandHistory") as history,
         patch("core.module_controller.CommandCreator") as creator,
@@ -70,7 +71,14 @@ def test_all_feature_factories_use_app_services_and_cache():
             schedule_viewer,
         )
         for factory in factories:
-            factory.assert_called_once_with(services)
+            if factory is search:
+                assert factory.call_count == 1
+                assert factory.call_args.args == (services,)
+                callback = factory.call_args.kwargs["show_palette"]
+                callback()
+                controller._palette.show_palette.assert_called_once_with()
+            else:
+                factory.assert_called_once_with(services)
         for name, module in expected.items():
             assert getattr(controller, f"get_{name}")() is module
 

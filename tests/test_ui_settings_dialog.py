@@ -1,9 +1,37 @@
 import os
+import subprocess
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
 from ui.settings_dialog import SettingsDialog
+
+
+@pytest.mark.skipif(
+    os.environ.get("PY_TRAY_NO_STUB") == "1",
+    reason="The dedicated probe is already running with real Qt widgets.",
+)
+def test_settings_dialog_responsive_real_qt_regressions():
+    """Run #163 display regressions in an isolated process using real Qt."""
+    project_root = Path(__file__).resolve().parents[1]
+    environment = os.environ.copy()
+    environment["PY_TRAY_NO_STUB"] = "1"
+    environment["QT_QPA_PLATFORM"] = "offscreen"
+    test_file = project_root / "tests" / "qt_integration" / "test_settings_dialog_responsive.py"
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--no-cov", str(test_file)],
+        cwd=project_root,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def _make_services_with_settings(settings):

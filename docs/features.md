@@ -45,19 +45,31 @@ Use `{promptInput}` anywhere in a command string to request user input at runtim
 
 ---
 
-## Command Search
+## Command Palette and tray navigation
 
-Open the command search dialog from the tray menu to find any command by name across all categories. Select a result and press Enter (or double-click) to execute immediately.
+The tray menu starts with **Command Palette**, **Favorites**, and **Recent
+Commands**, followed by configured command categories. Management actions and
+Tools are grouped separately; **Quick Launch Bar**, **Settings**, the active
+process indicator, and **Exit** follow those groups.
 
-- Fuzzy-style filtering: results narrow as you type.
-- Works across all categories and nested submenus.
-- Accessible from the tray menu without scrolling through long category lists.
+Open **Command Palette** for the single searchable Commands and Apps surface.
+Type to filter, use Tab to move between the Commands and Apps views, use the
+arrow keys to move through results, and press Enter to launch the selected
+result. Press Escape to dismiss the palette. The Apps view uses the same
+keyboard-operable palette rather than opening a second search window.
+
+Command results and launch shortcuts can show **Confirm**, **Input**, and
+**Output** cues when the configured command uses `confirm`, `prompt`, or
+`showOutput`. These presentation cues do not rename the configured command or
+change its execution behavior. Confirmation, prompt input, and output handling
+continue to use the existing command execution flow.
 
 ---
 
 ## Favorites
 
-Mark any command as a favorite to pin it to the Favorites section at the top of the tray menu for quick access.
+Mark any command as a favorite to pin it to the Favorites submenu near the top
+of the tray menu for quick access.
 
 - Access "Add to Favorites" from the command's context menu or from the Command Creator.
 - Favorites persist between sessions in `favorites.json`.
@@ -314,3 +326,7 @@ resolves each pin against the known command set through the shared
 dropped (a warning is logged) and the visible bar is refreshed, so the saved
 list and the on-screen bar always stay in sync. Reordering pins preserves
 the order end to end, and the bar is refreshed automatically on save.
+
+The tray menu's **Quick Launch Bar** action controls visibility. Pinned buttons
+retain the configured command name and expose confirmation, input, and output
+cues when those execution options are enabled.

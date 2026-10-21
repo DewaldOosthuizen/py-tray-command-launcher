@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from utils.execution_cues import describe_execution_cues, format_execution_cues
 from utils.hotkey_helpers import safe_unregister, to_pynput_str
 
 logger = logging.getLogger(__name__)
@@ -101,8 +102,15 @@ class QuickLaunchBar(QWidget):
                 continue
 
             btn = QToolButton(self)
-            btn.setToolTip(f"{group} → {label}")
-            btn.setText(label[:12])  # truncate for compact display
+            description = describe_execution_cues(cmd)
+            btn.setAccessibleName(f"{label} — {group}")
+            btn.setAccessibleDescription(description)
+            btn.setToolTip(f"{group} → {label}" + (f"; {description}" if description else ""))
+            visible_text = label[:12]
+            concise_cues = format_execution_cues(cmd, concise=True)
+            if concise_cues:
+                visible_text = f"{visible_text} · {concise_cues}"
+            btn.setText(visible_text)
             if self._icon_path:
                 btn.setIcon(QIcon(self._icon_path))
             btn.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)

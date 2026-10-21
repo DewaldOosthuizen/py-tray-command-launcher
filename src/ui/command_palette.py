@@ -50,6 +50,7 @@ from PyQt6.QtWidgets import (
 )
 
 from modules.command_search import search_commands
+from utils.execution_cues import describe_execution_cues, format_execution_cues
 from utils.hotkey_helpers import safe_unregister, to_pynput_str
 
 logger = logging.getLogger(__name__)
@@ -136,17 +137,19 @@ class _PaletteWindow(QWidget):
         frame.setObjectName("PaletteFrame")
         frame.setFrameShape(QFrame.Shape.StyledPanel)
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
 
         # Tab row
         tab_row = QHBoxLayout()
         tab_row.setSpacing(4)
         self._cmd_tab_btn = QPushButton("Commands")
+        self._cmd_tab_btn.setAccessibleName("Commands view")
         self._cmd_tab_btn.setObjectName("PaletteTabActive")
         self._cmd_tab_btn.setFlat(True)
         self._cmd_tab_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self._app_tab_btn = QPushButton("Apps")
+        self._app_tab_btn.setAccessibleName("Apps view")
         self._app_tab_btn.setObjectName("PaletteTab")
         self._app_tab_btn.setFlat(True)
         self._app_tab_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -203,6 +206,11 @@ class _PaletteWindow(QWidget):
         layout.addWidget(footer)
 
         outer.addWidget(frame)
+        self.setTabOrder(self._cmd_tab_btn, self._app_tab_btn)
+        self.setTabOrder(self._app_tab_btn, self._search)
+        self.setTabOrder(self._search, self._cmd_list)
+        self.setTabOrder(self._cmd_list, self._app_list)
+        self.setTabOrder(self._app_list, self._retry_button)
 
         # Debounce timer — waits 150 ms after the last keystroke before
         # updating the list, preventing floods of work during fast typing
@@ -262,8 +270,20 @@ class _PaletteWindow(QWidget):
         scored = search_commands(query, all_cmds)
 
         for _s, cmd in scored:
-            item = QListWidgetItem(f"{cmd['label']}  —  {cmd['group']}")
+            cues = format_execution_cues(cmd, concise=True)
+            row_text = f"{cmd['label']}  —  {cmd['group']}"
+            if cues:
+                row_text = f"{row_text}  ·  {cues}"
+            item = QListWidgetItem(row_text)
             item.setData(Qt.ItemDataRole.UserRole, cmd)
+            item.setData(
+                Qt.ItemDataRole.AccessibleTextRole,
+                f"{cmd['label']}, {cmd['group']}",
+            )
+            description = describe_execution_cues(cmd)
+            item.setData(Qt.ItemDataRole.AccessibleDescriptionRole, description)
+            if description:
+                item.setToolTip(description)
             self._cmd_list.addItem(item)
 
         if self._cmd_list.count() > 0:

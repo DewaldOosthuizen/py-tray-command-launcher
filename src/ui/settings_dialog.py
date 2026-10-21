@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ui.dialog_conventions import configure_dialog_layout
 from ui.quick_launch_pin_manager import QuickLaunchPinManager
 from utils.dialogs import show_error
 
@@ -50,7 +51,7 @@ class SettingsDialog(QDialog):
         app_launcher_hotkey_callback=None,
         quick_launch_bar=None,
     ):
-        """Initialize the settings controls and anchor the dialog to the cursor display.
+        """Initialize settings controls and anchor the dialog to the cursor display.
 
         Args:
             services: Application services used to load and save settings.
@@ -84,8 +85,8 @@ class SettingsDialog(QDialog):
             and screen_width > 0
             and screen_height > 0
         ):
-            max_width = min(int(screen_width * 0.8), 860)
-            max_height = min(int(screen_height * 0.8), 720)
+            max_width = max(1, min(int(screen_width * 0.8), 860))
+            max_height = max(1, min(int(screen_height * 0.8), 720))
             self.setMaximumSize(max_width, max_height)
             self.setMinimumWidth(min(420, max_width))
             self.resize(max_width, max_height)
@@ -95,15 +96,18 @@ class SettingsDialog(QDialog):
         settings = self.services.config_manager.get_settings()
         self._settings = settings
 
-        dialog_layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
+        configure_dialog_layout(layout)
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
         settings_content = QWidget()
         settings_layout = QVBoxLayout(settings_content)
+        configure_dialog_layout(settings_layout)
 
         # --- Appearance -------------------------------------------------
         appearance_box = QGroupBox("Appearance")
         appearance_form = QFormLayout(appearance_box)
+        configure_dialog_layout(appearance_form)
 
         self._theme_combo = QComboBox()
         self._theme_combo.addItems(["system", "dark", "light"])
@@ -121,6 +125,7 @@ class SettingsDialog(QDialog):
         # --- Behaviour --------------------------------------------------
         behaviour_box = QGroupBox("Behaviour")
         behaviour_form = QFormLayout(behaviour_box)
+        configure_dialog_layout(behaviour_form)
 
         self._hotkey_edit = QLineEdit(settings.get("hotkey", "ctrl+shift+space"))
         self._hotkey_edit.setPlaceholderText("e.g. ctrl+shift+space")
@@ -142,6 +147,7 @@ class SettingsDialog(QDialog):
         # --- Output Window ----------------------------------------------
         output_box = QGroupBox("Output Window")
         output_form = QFormLayout(output_box)
+        configure_dialog_layout(output_form)
 
         font_cfg = settings.get("output_font", {})
         if not isinstance(font_cfg, dict):
@@ -160,6 +166,7 @@ class SettingsDialog(QDialog):
         # --- Quick-Launch Bar -------------------------------------------
         qlb_box = QGroupBox("Quick-Launch Bar")
         qlb_form = QFormLayout(qlb_box)
+        configure_dialog_layout(qlb_form)
 
         qlb_cfg = settings.get("quick_launch_bar", {})
         if not isinstance(qlb_cfg, dict):
@@ -191,6 +198,7 @@ class SettingsDialog(QDialog):
         # --- Logging ----------------------------------------------------
         logging_box = QGroupBox("Logging")
         logging_form = QFormLayout(logging_box)
+        configure_dialog_layout(logging_form)
 
         log_cfg = settings.get("logging", {})
         if not isinstance(log_cfg, dict):
@@ -214,30 +222,71 @@ class SettingsDialog(QDialog):
         settings_layout.addWidget(help_label)
 
         scroll_area.setWidget(settings_content)
-        dialog_layout.addWidget(scroll_area)
+        layout.addWidget(scroll_area, 1)
 
         # --- Buttons ----------------------------------------------------
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
         )
+        save_button = buttons.button(QDialogButtonBox.StandardButton.Save)
+        cancel_button = buttons.button(QDialogButtonBox.StandardButton.Cancel)
+        if save_button is None or cancel_button is None:
+            raise RuntimeError("Settings dialog could not create Save and Cancel buttons")
+        save_button.setDefault(True)
+        cancel_button.setDefault(False)
+        cancel_button.setAutoDefault(False)
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self._cancel)
-        dialog_layout.addWidget(buttons)
-        self.setLayout(dialog_layout)
-
-        if geometry is not None and max_width > 0 and max_height > 0:
-            x = geometry.center().x() - self.width() // 2
-            y = geometry.center().y() - self.height() // 2
-            x = max(geometry.left(), min(x, geometry.right() - self.width() + 1))
-            y = max(geometry.top(), min(y, geometry.bottom() - self.height() + 1))
-            self.move(x, y)
+        layout.addWidget(buttons)
+        tab_order = (
+            self._theme_combo,
+            self._hotkey_edit,
+            self._app_launcher_hotkey_edit,
+            self._history_spin,
+            self._font_family_edit,
+            self._font_size_spin,
+            self._qlb_visible_check,
+            self._qlb_hotkey_edit,
+            self._qlb_pin_manager,
+            self._log_level_combo,
+            save_button,
+            cancel_button,
+        )
+        for current, following in zip(tab_order[:-1], tab_order[1:], strict=True):
+            self.setTabOrder(current, following)
 
         self._original_theme = current_theme
+        self._place_on_screen(geometry, max_width, max_height)
+        self._theme_combo.setFocus()
 
-    def _screen_for_cursor(self):
-        """Return the cursor's screen, falling back to the primary screen or None."""
+    @staticmethod
+    def _screen_for_cursor():
+        """Return the cursor's screen, falling back to the primary screen or None.
+
+        Returns:
+            The screen containing the cursor, the primary screen, or ``None``.
+        """
         screen = QGuiApplication.screenAt(QCursor.pos())
         return screen if screen is not None else QApplication.primaryScreen()
+
+    def _place_on_screen(self, geometry, max_width: int, max_height: int) -> None:
+        """Centre the bounded dialog in the selected screen's available area.
+
+        Args:
+            geometry: Available screen rectangle, or ``None`` when no screen exists.
+            max_width: Configured screen-bounded width; zero means no usable geometry.
+            max_height: Configured screen-bounded height; zero means no usable geometry.
+
+        Returns:
+            None.
+        """
+        if geometry is None or max_width <= 0 or max_height <= 0:
+            return
+        x = geometry.center().x() - self.width() // 2
+        y = geometry.center().y() - self.height() // 2
+        x = max(geometry.left(), min(x, geometry.right() - self.width() + 1))
+        y = max(geometry.top(), min(y, geometry.bottom() - self.height() + 1))
+        self.move(x, y)
 
     # ------------------------------------------------------------------
     # Slots

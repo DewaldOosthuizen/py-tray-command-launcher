@@ -297,6 +297,34 @@ class TestQuickLaunchBarButtonLogic(unittest.TestCase):
         callback()
         services.execute.assert_called_once_with("Terminal", "xterm", False, False, None)
 
+    def test_button_exposes_full_accessible_name_and_visible_execution_cues(self):
+        services = _make_services(
+            pinned=[{"group": "System", "label": "Terminal"}],
+            commands=[
+                {
+                    "group": "System",
+                    "label": "Terminal",
+                    "command": "xterm",
+                    "confirm": True,
+                    "prompt": "Host",
+                    "showOutput": True,
+                }
+            ],
+        )
+        bar = QuickLaunchBar(services)
+        import ui.quick_launch_bar as qlb
+
+        qlb.QToolButton.reset_mock()
+        bar._build_buttons()
+        button = qlb.QToolButton.return_value
+
+        button.setAccessibleName.assert_called_once_with("Terminal — System")
+        button.setAccessibleDescription.assert_called_once_with(
+            "Confirmation required; Input required; Output shown"
+        )
+        button.setText.assert_called_once_with("Terminal · Confirm · Input · Output")
+        self.assertIn("Confirm", button.setText.call_args.args[0])
+
     def test_bar_instantiation_with_no_pinned_does_not_raise(self):
         """QuickLaunchBar can be created with no pinned commands."""
         services = _make_services(pinned=[])
