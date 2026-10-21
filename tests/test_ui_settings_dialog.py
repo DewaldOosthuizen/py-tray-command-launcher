@@ -39,9 +39,7 @@ def _make_services_with_settings(settings):
 
 
 def test_settings_dialog_instantiates(qtbot):
-    mock_services = MagicMock()
-    theme_manager = MagicMock()
-    dialog = SettingsDialog(mock_services, theme_manager=theme_manager)
+    dialog, _, _ = _real_qt_settings_dialog()
     qtbot.addWidget(dialog)
     assert dialog is not None
 
@@ -405,17 +403,14 @@ def test_settings_dialog_bar_refreshed_via_signal_when_bar_injected(qtbot):
     )
     qtbot.addWidget(dialog)
 
-    # The pin manager is wired to the injected bar during construction. The
-    # harness's lighter stub does not dispatch pyqtSignal, so redirect the
-    # signal's emit onto a recorder so the bar is refreshed by save().
-    emit_recorder = MagicMock()
-
-    def record():
-        return dialog._quick_launch_bar.refresh()
-
-    emit_recorder.side_effect = record
-    dialog._qlb_pin_manager.pins_committed.emit = emit_recorder
-    dialog._save()
-
-    emit_recorder.assert_called_once()
+    if os.environ.get("PY_TRAY_NO_STUB") == "1":
+        dialog._save()
+        assert len(refresh_calls) == 1
+    else:
+        # The lighter stub signal does not dispatch the connected refresh slot.
+        emit_recorder = MagicMock()
+        emit_recorder.side_effect = lambda: dialog._quick_launch_bar.refresh()
+        dialog._qlb_pin_manager.pins_committed.emit = emit_recorder
+        dialog._save()
+        emit_recorder.assert_called_once()
     assert len(refresh_calls) == 1
