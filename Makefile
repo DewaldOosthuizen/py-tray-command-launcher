@@ -144,6 +144,11 @@ lint-audit:
 		echo "[FAIL] lint-audit: failed to install project dependencies"; \
 		exit 1; \
 	}
+	@echo "[lint-audit] Upgrading vulnerable base packages before scanning..."
+	@$(PIP) install --break-system-packages --upgrade "certifi>=2026.10.19" "Pillow>=13.0.0" || { \
+		echo "[FAIL] lint-audit: failed to install secure certifi/Pillow versions"; \
+		exit 1; \
+	}
 	@echo "[lint-audit] Running vulnerability scan..."
 	@set -o pipefail; $(PIP_AUDIT) 2>&1 | tee "$(LOG_DIR)/pip-audit.log"; status=$${PIPESTATUS[0]}; if [[ $$status -ne 0 ]]; then \
 		echo "[FAIL] lint-audit: pip-audit found vulnerabilities"; \
