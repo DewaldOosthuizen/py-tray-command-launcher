@@ -169,6 +169,12 @@ class ConfigManager:
         "app_launcher_hotkey": "ctrl+alt+a",
         "history_limit": 50,
         "output_font": {"family": "monospace", "size": 10},
+        "output_history": {
+            "max_output_chars": 1_000_000,
+            "batch_enabled": True,
+            "batch_chunk_count": 200,
+            "batch_delay_ms": 50,
+        },
         "icon_cache_ttl_days": 7,
     }
 

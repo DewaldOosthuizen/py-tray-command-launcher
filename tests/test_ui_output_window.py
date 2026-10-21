@@ -1,9 +1,10 @@
 import re
+from collections import deque
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt6.QtGui import QTextCharFormat
+from PyQt6.QtGui import QFont, QTextCharFormat
 
 import core.theme_manager as theme_manager_module
 import ui.output_window as output_window
@@ -198,6 +199,16 @@ def _render(text, mode, color_format_types, theme=None):
         output_window._REQUESTED_FOREGROUND_PROPERTY, tab._output_theme.inherited_text
     )
     output_window._apply_effective_foreground(tab._fmt, tab._output_theme)
+    # Retention/batching state required by the non-batched insertion path.
+    tab._max_output_chars = 1_000_000
+    tab._batch_enabled = False
+    tab._batch_chunk_count = 200
+    tab._batch_delay_ms = 50
+    tab._scroll_to_bottom = False
+    tab._pending = []
+    tab._pending_chars = 0
+    tab._insert_history = deque()
+    tab._document_length = 0
     inserted = []
 
     class Cursor:
@@ -208,10 +219,19 @@ def _render(text, mode, color_format_types, theme=None):
             if value:
                 inserted.append((value, format_type(fmt)))
 
+        def beginEditBlock(self):
+            pass
+
+        def endEditBlock(self):
+            pass
+
+        def remove(self, *args, **kwargs):
+            pass
+
     cursor = Cursor()
     tab.textCursor = lambda: cursor
     tab.setTextCursor = lambda value: None
-    tab.append_ansi(text)
+    tab.append_ansi(text, batch=False)
     return inserted
 
 
@@ -447,9 +467,20 @@ def test_open_window_keeps_rendered_contrast_when_application_theme_changes(
         def insertText(self, text, fmt):
             inserted.append((text, format_type(fmt)))
 
+        def beginEditBlock(self):
+            pass
+
+        def endEditBlock(self):
+            pass
+
+        def remove(self, *args, **kwargs):
+            pass
+
     cursor = Cursor()
     tab.textCursor = lambda: cursor
     window.append_output(tab, "inherited foreground")
+    # The live path batches output; flush so the document sees the text.
+    tab.flush()
 
     theme_manager.apply_theme("dark")
     effective_stylesheet = widget_stylesheets.get(tab, Application.stylesheet)
@@ -462,3 +493,158 @@ def test_open_window_keeps_rendered_contrast_when_application_theme_changes(
 
     assert actual_surface.name() == "#e6e9ef"
     assert output_window.contrast_ratio(rendered_foreground, actual_surface) >= 4.5
+
+
+# ---------------------------------------------------------------------------
+# Issue #170: bounded retained output and batched high-volume updates
+# ---------------------------------------------------------------------------
+
+
+def _new_tab(qtbot, **kwargs):
+    """Create a real ``_OutputTab`` for retention/batching tests."""
+    font = QFont()
+    tab = _OutputTab(font, **kwargs)
+    qtbot.addWidget(tab)
+    return tab
+
+
+def test_window_applies_output_history_settings_to_tabs(qtbot):
+    """``output_history`` settings flow into every tab opened by the window."""
+
+    class FakeConfigManager:
+        def get_settings(self):
+            return {
+                "output_font": {"family": "monospace", "size": 10},
+                "output_history": {
+                    "max_output_chars": 1234,
+                    "batch_enabled": False,
+                    "batch_chunk_count": 7,
+                    "batch_delay_ms": 15,
+                },
+            }
+
+    class FakeServices:
+        config_manager = FakeConfigManager()
+
+    window = RichOutputWindow(services=FakeServices())
+    qtbot.addWidget(window)
+
+    assert window._max_output_chars == 1234
+    assert window._batch_enabled is False
+    assert window._batch_chunk_count == 7
+    assert window._batch_delay_ms == 15
+
+    tab = window.open_process_tab("Configured")
+    assert tab._max_output_chars == 1234
+    assert tab._batch_enabled is False
+    assert tab._batch_chunk_count == 7
+    assert tab._batch_delay_ms == 15
+
+
+def test_output_tab_bounds_retained_output_and_keeps_tail(qtbot):
+    """Emitting more than the cap drops the oldest content and keeps the tail."""
+    tab = _new_tab(qtbot, batch_enabled=False, max_output_chars=200, scroll_to_bottom=False)
+    chunk = "X" * 100
+    for _ in range(3):
+        tab.append_ansi(chunk)
+
+    assert tab._document_length == 200
+    assert sum(length - consumed for length, consumed in tab._insert_history) == 200
+    # The most recent chunk is retained untouched (its content is the tail).
+    assert tab._insert_history[-1] == (100, 0)
+
+
+def test_output_tab_trims_partial_oldest_insert_at_cap_boundary(qtbot):
+    """A cap boundary inside the oldest insert keeps the tail slice intact."""
+    tab = _new_tab(qtbot, batch_enabled=False, max_output_chars=150, scroll_to_bottom=False)
+    tab.append_ansi("A" * 100)
+    tab.append_ansi("B" * 100)
+
+    assert tab._document_length == 150
+    # The oldest insert is partially consumed; the newest insert is untouched.
+    assert tab._insert_history[0] == (100, 50)
+    assert tab._insert_history[-1] == (100, 0)
+
+
+def test_output_tab_batches_and_flushes_by_chunk_count(qtbot):
+    """Chunks are coalesced and flushed once the chunk count is reached."""
+    tab = _new_tab(
+        qtbot, batch_enabled=True, batch_chunk_count=3, batch_delay_ms=1000, scroll_to_bottom=False
+    )
+    tab.append_ansi("a")
+    tab.append_ansi("b")
+    assert tab._pending == ["a", "b"]
+    assert tab._pending_chars == 2
+    assert tab._document_length == 0
+
+    tab.append_ansi("c")  # reaches the chunk count -> immediate flush
+    assert tab._pending == []
+    assert tab._pending_chars == 0
+    assert tab._document_length == 3
+    assert len(tab._insert_history) == 3
+
+    # Chunks below the count stay pending until flushed explicitly.
+    tab.append_ansi("d")
+    tab.append_ansi("e")
+    assert tab._pending == ["d", "e"]
+    assert tab._document_length == 3
+    tab.flush()
+    assert tab._pending == []
+    assert tab._document_length == 5
+
+
+def test_output_tab_flush_hook_drains_batched_chunks(qtbot):
+    """The flush hook drains buffered chunks (what the single-shot timer does).
+
+    The timer is a stub in the test environment, so we verify the flush
+    behaviour directly rather than introspecting the timer object's mock
+    internals, which differ across test-collection order.
+    """
+    tab = _new_tab(
+        qtbot, batch_enabled=True, batch_chunk_count=1000, batch_delay_ms=25, scroll_to_bottom=False
+    )
+    tab.append_ansi("x")
+    tab.append_ansi("y")
+    assert tab._pending == ["x", "y"]
+    assert tab._document_length == 0
+
+    tab.flush()  # simulates a single-shot timer firing
+    assert tab._pending == []
+    assert tab._document_length == 2
+
+
+def test_output_tab_preserves_ansi_formatting_across_batch_flush(qtbot):
+    """SGR state set in one chunk still applies to the next chunk in the batch."""
+    tab = _new_tab(
+        qtbot, batch_enabled=True, batch_chunk_count=2, batch_delay_ms=1000, scroll_to_bottom=False
+    )
+    tab.append_ansi("\x1b[31m")  # SGR foreground red
+    tab.append_ansi("red text")
+    tab.flush()
+
+    requested = tab._fmt.property(output_window._REQUESTED_FOREGROUND_PROPERTY)
+    assert requested.name() == output_window._ANSI_PALETTES[tab._output_theme.mode][31]
+
+
+def test_show_output_bypasses_batch_queue(qtbot):
+    """The legacy bulk path inserts immediately instead of queueing."""
+    from unittest.mock import patch
+
+    mock_services = MagicMock()
+    captured = {}
+    original_open = RichOutputWindow.open_process_tab
+
+    def _capture(self, title):
+        tab = original_open(self, title)
+        captured["tab"] = tab
+        return tab
+
+    with patch.object(RichOutputWindow, "open_process_tab", _capture):
+        win = RichOutputWindow.show_output("title", "bulk output", services=mock_services)
+    qtbot.addWidget(win)
+
+    tab = captured["tab"]
+    assert tab is not None
+    assert tab._pending == []
+    assert tab._document_length <= tab._max_output_chars
+    assert len(tab._insert_history) == 1
