@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-import sys
 import textwrap
 from pathlib import Path
 
@@ -23,9 +22,7 @@ def test_help_lists_every_target_with_a_description() -> None:
             if target not in {".DEFAULT_GOAL"}:
                 targets[target] = "##" in line
 
-    result = subprocess.run(
-        ["make", "help"], cwd=ROOT, check=True, capture_output=True, text=True
-    )
+    result = subprocess.run(["make", "help"], cwd=ROOT, check=True, capture_output=True, text=True)
     help_targets = {
         line.split(maxsplit=1)[0]
         for line in result.stdout.splitlines()
@@ -37,7 +34,9 @@ def test_help_lists_every_target_with_a_description() -> None:
     assert help_targets == set(targets)
 
 
-def _make_with_recorder(tmp_path: Path, fail_target: str = "") -> tuple[subprocess.CompletedProcess[str], list[str], int]:
+def _make_with_recorder(
+    tmp_path: Path, fail_target: str = ""
+) -> tuple[subprocess.CompletedProcess[str], list[str], int]:
     recorder = tmp_path / "record-submake.py"
     state_file = tmp_path / "state.txt"
     events_file = tmp_path / "events.txt"
@@ -109,7 +108,9 @@ def test_ci_submakes_are_serial_and_stop_after_failure(tmp_path: Path) -> None:
     result, events, maximum = _make_with_recorder(tmp_path)
 
     assert result.returncode == 0, result.stderr
-    assert events == [event for target in CI_TARGETS for event in (f"start {target}", f"finish {target}")]
+    assert events == [
+        event for target in CI_TARGETS for event in (f"start {target}", f"finish {target}")
+    ]
     assert maximum == 1
 
 
