@@ -25,9 +25,10 @@ def test_execution_cues_derive_only_from_execution_metadata(metadata, expected):
 
 
 def test_format_execution_cues_uses_concise_visible_separator():
-    assert format_execution_cues(
-        {"confirm": True, "prompt": "Input", "showOutput": True}
-    ) == "Confirmation required · Input required · Output shown"
+    assert (
+        format_execution_cues({"confirm": True, "prompt": "Input", "showOutput": True})
+        == "Confirmation required · Input required · Output shown"
+    )
     assert format_execution_cues({}) == ""
 
 

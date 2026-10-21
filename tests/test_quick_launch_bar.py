@@ -322,6 +322,7 @@ class TestQuickLaunchBarButtonLogic(unittest.TestCase):
         button.setAccessibleDescription.assert_called_once_with(
             "Confirmation required; Input required; Output shown"
         )
+        button.setText.assert_called_once_with("Terminal · Confirm · Input · Output")
         self.assertIn("Confirm", button.setText.call_args.args[0])
 
     def test_bar_instantiation_with_no_pinned_does_not_raise(self):

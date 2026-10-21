@@ -127,7 +127,7 @@ class TestCommandHistory(unittest.TestCase):
             self.history.populate_menu(mock_menu)
 
         self.assertIn("Original title", action_factory.call_args.args[0])
-        self.assertIn("Confirmation required", action_factory.call_args.args[0])
+        self.assertIn("Confirm", action_factory.call_args.args[0])
         callback = action.triggered.connect.call_args.args[0]
         callback(False)
         self.mock_services.execute.assert_called_once_with(

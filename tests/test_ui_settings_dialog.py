@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from ui.settings_dialog import SettingsDialog
+from tests.test_settings_dialog import SettingsDialog
 
 
 def _make_services_with_settings(settings):

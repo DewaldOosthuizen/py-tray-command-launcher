@@ -20,7 +20,6 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QGroupBox,
-    QHBoxLayout,
     QLineEdit,
     QPushButton,
     QToolBar,
@@ -29,6 +28,11 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from ui.dialog_conventions import (
+    configure_dialog_layout,
+    responsive_dialog_size,
+    responsive_minimum_width,
+)
 from utils.dialogs import confirm_action, show_info, show_warning
 
 logger = logging.getLogger(__name__)
@@ -46,11 +50,13 @@ class _CommandFormDialog(QDialog):
         super().__init__(parent)
         initial = initial or {}
         self.setWindowTitle("Add Command" if not initial else "Edit Command")
-        self.setMinimumWidth(400)
+        responsive_minimum_width(self, 400)
 
         layout = QVBoxLayout(self)
+        configure_dialog_layout(layout)
         form_box = QGroupBox("Command Details")
         form = QFormLayout(form_box)
+        form.setSpacing(8)
 
         # Group
         self._group_combo = QComboBox()
@@ -101,9 +107,26 @@ class _CommandFormDialog(QDialog):
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
+        accept_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        cancel_button = buttons.button(QDialogButtonBox.StandardButton.Cancel)
+        if accept_button is None or cancel_button is None:
+            raise RuntimeError("Command form could not create OK and Cancel buttons")
+        accept_button.setDefault(True)
+        cancel_button.setDefault(False)
+        cancel_button.setAutoDefault(False)
         buttons.accepted.connect(self._validate_and_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        self.setTabOrder(self._group_combo, self._name_edit)
+        self.setTabOrder(self._name_edit, self._cmd_edit)
+        self.setTabOrder(self._cmd_edit, self._icon_edit)
+        self.setTabOrder(self._icon_edit, self._show_output_check)
+        self.setTabOrder(self._show_output_check, self._confirm_check)
+        self.setTabOrder(self._confirm_check, self._prompt_check)
+        self.setTabOrder(self._prompt_check, self._prompt_edit)
+        self.setTabOrder(self._prompt_edit, accept_button)
+        self.setTabOrder(accept_button, cancel_button)
+        self._group_combo.setFocus()
 
     def _validate_and_accept(self):
         if not self._group_combo.currentText().strip():
@@ -150,9 +173,9 @@ class CommandManagerDialog(QDialog):
         self._services = services
         self._running = running_processes
         self.setWindowTitle("Manage Commands")
-        self.setMinimumSize(700, 500)
-
         layout = QVBoxLayout(self)
+        configure_dialog_layout(layout)
+        responsive_dialog_size(self, preferred=(900, 650), minimum=(700, 500))
 
         # Toolbar
         toolbar = QToolBar()
@@ -183,19 +206,27 @@ class CommandManagerDialog(QDialog):
         self._tree.header().setStretchLastSection(False)
         self._tree.setAlternatingRowColors(True)
         layout.addWidget(self._tree)
+        tab_widgets = (add_btn, edit_btn, del_btn, up_btn, down_btn, self._tree)
+        for current, following in zip(tab_widgets[:-1], tab_widgets[1:], strict=True):
+            self.setTabOrder(current, following)
 
-        # Dialog buttons
-        self._save_btn = QPushButton("Save && Rebuild Menu")
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        save_button = buttons.button(QDialogButtonBox.StandardButton.Save)
+        cancel_btn = buttons.button(QDialogButtonBox.StandardButton.Cancel)
+        if save_button is None or cancel_btn is None:
+            raise RuntimeError("Command manager could not create Save and Cancel buttons")
+        self._save_btn = save_button
+        self._save_btn.setText("Save && Rebuild Menu")
         self._save_btn.setDefault(True)
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(self.reject)
-        self._save_btn.clicked.connect(self._save)
-
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
-        btn_row.addWidget(self._save_btn)
-        btn_row.addWidget(cancel_btn)
-        layout.addLayout(btn_row)
+        cancel_btn.setDefault(False)
+        cancel_btn.setAutoDefault(False)
+        buttons.accepted.connect(self._save)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.setTabOrder(self._tree, self._save_btn)
+        self.setTabOrder(self._save_btn, cancel_btn)
 
         # Disable Save while processes are running; poll every second so the
         # button re-enables automatically once all processes finish.
@@ -206,6 +237,7 @@ class CommandManagerDialog(QDialog):
         self._save_btn_timer.start()
 
         self._load_tree()
+        self._tree.setFocus()
 
     # ------------------------------------------------------------------
     # Tree population

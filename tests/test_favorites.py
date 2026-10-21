@@ -143,7 +143,7 @@ class TestFavorites(unittest.TestCase):
 
         rendered_name = action_factory.call_args.args[1]
         self.assertIn("Configured favorite", rendered_name)
-        self.assertIn("Confirmation required", rendered_name)
+        self.assertIn("Confirm", rendered_name)
         callback = action.triggered.connect.call_args.args[0]
         callback(False)
         self.mock_services.execute.assert_called_once_with(
