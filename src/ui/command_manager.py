@@ -529,18 +529,42 @@ class CommandManagerDialog(QDialog):
             if source is None or label not in source:
                 return
 
-            destination = commands
-            for component in new_group_path:
-                existing = destination.get(component)
-                if existing is None:
-                    existing = {}
-                    destination[component] = existing
-                if not isinstance(existing, dict):
+            destination = _resolve_group_path(commands, new_group_path)
+            if destination is not None and new_label in destination:
+                if destination is not source or new_label != label:
+                    show_warning(
+                        self,
+                        "Edit",
+                        f"A command named '{new_label}' already exists in the selected group.",
+                    )
                     return
-                destination = existing
 
-            del source[label]
-            destination[new_label] = cmd_data
+            if destination is None:
+                destination = commands
+                for component in new_group_path:
+                    existing = destination.get(component)
+                    if existing is None:
+                        existing = {}
+                        destination[component] = existing
+                    if not isinstance(existing, dict):
+                        return
+                    destination = existing
+
+            if destination is source:
+                if new_label == label:
+                    source[label] = cmd_data
+                else:
+                    renamed = {}
+                    for existing_label, existing_data in source.items():
+                        if existing_label == label:
+                            renamed[new_label] = cmd_data
+                        else:
+                            renamed[existing_label] = existing_data
+                    source.clear()
+                    source.update(renamed)
+            else:
+                del source[label]
+                destination[new_label] = cmd_data
 
             self._services.config_manager.save_commands(commands)
             self._load_tree()
