@@ -378,6 +378,89 @@ def test_edit_nested_command_in_place_preserves_siblings_and_exact_parent(monkey
     services.config_manager.save_commands.assert_called_once_with(commands)
 
 
+def test_edit_rejects_destination_label_collision_without_overwriting(monkeypatch):
+    commands = _nested_commands()
+    original = {
+        "command": commands["System"]["Tools"]["Editor"]["command"],
+        "confirm": commands["System"]["Tools"]["Editor"]["confirm"],
+    }
+    dialog, services = _real_manager(commands, monkeypatch)
+    _select_nested_command(dialog)
+    form = _accepted_form(
+        {
+            "group_path": ("System", "Tools"),
+            "group": "System / Tools",
+            "label": "Editor",
+            "command": "replacement-command",
+            "showOutput": False,
+            "confirm": False,
+        }
+    )
+    with patch("ui.command_manager._CommandFormDialog", return_value=form):
+        dialog._edit_command()
+
+    assert commands["System"]["Tools"]["Editor"] == original
+    assert commands["System"]["Tools"]["Terminal"]["command"] == "gnome-terminal --window"
+    services.config_manager.save_commands.assert_not_called()
+
+
+def test_editing_command_in_place_preserves_menu_order(monkeypatch):
+    commands = {
+        "System": {
+            "First": {"command": "first"},
+            "Second": {"command": "second"},
+            "Third": {"command": "third"},
+        }
+    }
+    dialog, services = _real_manager(commands, monkeypatch)
+    item = _tree_item(dialog, "System", "Second")
+    dialog._tree.setCurrentItem(item)
+    form = _accepted_form(
+        {
+            "group_path": ("System",),
+            "group": "System",
+            "label": "Second",
+            "command": "updated-second",
+            "showOutput": False,
+            "confirm": False,
+        }
+    )
+    with patch("ui.command_manager._CommandFormDialog", return_value=form):
+        dialog._edit_command()
+
+    assert list(commands["System"]) == ["First", "Second", "Third"]
+    assert commands["System"]["Second"]["command"] == "updated-second"
+    services.config_manager.save_commands.assert_called_once_with(commands)
+
+
+def test_same_group_rename_preserves_original_menu_position(monkeypatch):
+    commands = {
+        "System": {
+            "First": {"command": "first"},
+            "Second": {"command": "second"},
+            "Third": {"command": "third"},
+        }
+    }
+    dialog, services = _real_manager(commands, monkeypatch)
+    item = _tree_item(dialog, "System", "Second")
+    dialog._tree.setCurrentItem(item)
+    form = _accepted_form(
+        {
+            "group_path": ("System",),
+            "group": "System",
+            "label": "Renamed",
+            "command": "second",
+            "showOutput": False,
+            "confirm": False,
+        }
+    )
+    with patch("ui.command_manager._CommandFormDialog", return_value=form):
+        dialog._edit_command()
+
+    assert list(commands["System"]) == ["First", "Renamed", "Third"]
+    services.config_manager.save_commands.assert_called_once_with(commands)
+
+
 def test_edit_nested_command_to_other_path_preserves_siblings(monkeypatch):
     commands = _nested_commands()
     dialog, services = _real_manager(commands, monkeypatch)
