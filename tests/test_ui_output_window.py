@@ -638,7 +638,7 @@ def test_output_tab_batches_and_flushes_by_chunk_count(qtbot):
     assert tab._pending == []
     assert tab._pending_chars == 0
     assert tab._document_length == 3
-    assert len(tab._insert_history) == 3
+    assert len(tab._insert_history) == 1
 
     # Chunks below the count stay pending until flushed explicitly.
     tab.append_ansi("d")
@@ -705,3 +705,91 @@ def test_show_output_bypasses_batch_queue(qtbot):
     assert tab._pending == []
     assert tab._document_length <= tab._max_output_chars
     assert len(tab._insert_history) == 1
+
+
+def test_clear_output_resets_retention_and_pending_batch_state(qtbot):
+    """Clearing a tab discards both visible output and queued retention state."""
+    tab = _new_tab(qtbot, batch_enabled=True, batch_chunk_count=1000)
+    tab.append_ansi("buffered output")
+    assert tab._pending == ["buffered output"]
+
+    tab.clear_output()
+    tab.flush()
+
+    assert tab._pending == []
+    assert tab._pending_chars == 0
+    assert tab._insert_history == deque()
+    assert tab._document_length == 0
+
+
+def test_existing_tab_flush_respects_current_auto_scroll_preference(qtbot):
+    """Turning auto-scroll off affects tabs that were already open."""
+    window = RichOutputWindow(services=MagicMock())
+    qtbot.addWidget(window)
+    tab = window.open_process_tab("Existing tab")
+    scroll_bar = MagicMock()
+    scroll_bar.maximum.return_value = 10
+    tab.verticalScrollBar = lambda: scroll_bar
+
+    window._toggle_auto_scroll(False)
+    tab.append_ansi("output")
+    tab.flush()
+
+    scroll_bar.setValue.assert_not_called()
+
+
+def test_flush_inserts_pending_chunks_as_one_document_batch(qtbot):
+    """A pending stream is parsed and inserted in one document update."""
+    tab = _new_tab(qtbot, batch_enabled=True, batch_chunk_count=1000)
+    tab.append_ansi("first ")
+    tab.append_ansi("second")
+
+    tab.flush()
+
+    assert len(tab._insert_history) == 1
+    assert tab._insert_history[0] == (12, 0)
+
+
+def test_real_pyqt_cursor_prunes_document_head_with_supported_selection_api(
+    qtbot, monkeypatch
+):
+    """Head trimming uses QTextCursor selection APIs available in real PyQt6."""
+    if not isinstance(output_window.QTextCursor, type):
+        pytest.skip("requires the real PyQt6 classes")
+
+    monkeypatch.undo()
+    from PyQt6.QtGui import QFont as RealQFont
+
+    tab = _OutputTab(RealQFont(), max_output_chars=5, batch_enabled=False)
+    qtbot.addWidget(tab)
+    tab.append_ansi("abcdef")
+
+    assert tab.toPlainText() == "bcdef"
+    assert tab._document_length == 5
+
+
+def test_real_pyqt_retained_ansi_format_survives_head_trimming(qtbot, monkeypatch):
+    """The retained ANSI tail keeps its contrast-safe foreground/background."""
+    if not isinstance(output_window.QTextCursor, type):
+        pytest.skip("requires the real PyQt6 classes")
+
+    monkeypatch.undo()
+    from PyQt6.QtGui import QFont as RealQFont
+
+    theme = output_window.resolve_output_theme("dark", output_window.QApplication.palette())
+    tab = _OutputTab(
+        RealQFont(), output_theme=theme, max_output_chars=4, batch_enabled=False
+    )
+    qtbot.addWidget(tab)
+    tab.append_ansi("old")
+    tab.append_ansi("\x1b[31;44mtail")
+
+    cursor = tab.textCursor()
+    cursor.setPosition(0)
+    retained_format = cursor.charFormat()
+    foreground = retained_format.foreground().color()
+    background = retained_format.background().color()
+
+    assert tab.toPlainText() == "tail"
+    assert background.name() == output_window._ANSI_PALETTES["dark"][44]
+    assert output_window.contrast_ratio(foreground, background) >= 4.5
