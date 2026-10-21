@@ -172,9 +172,6 @@ class TrayApp:
     def get_palette(self):
         return self.module_controller.get_palette()
 
-    def get_quick_launch_bar(self):
-        return self.module_controller.get_quick_launch_bar()
-
     def _build_menu(self) -> None:
         """Build the tray context menu and attach it to the tray icon.
 
@@ -187,7 +184,6 @@ class TrayApp:
             get_command_menu=lambda: self.command_menu,
             resolve_icon_path=self._resolve_icon_path,
             execute=self.execute,
-            pin_to_quick_launch=self._pin_to_quick_launch,
             get_favorites=self.get_favorites,
             set_favorites_menu=lambda menu: self.menu_controller.set_favorites_menu(menu),
             reload_favorites_commands=self.reload_favorites_commands,
@@ -203,7 +199,6 @@ class TrayApp:
             get_schedule_creator=self.get_schedule_creator,
             get_schedule_viewer=self.get_schedule_viewer,
             open_settings=self._open_settings,
-            get_quick_launch_bar=self.get_quick_launch_bar,
             set_running_action=lambda action: setattr(self, "_running_action", action),
             restart_app=self.restart_app,
             confirm_exit=self.confirm_exit,
@@ -456,36 +451,6 @@ class TrayApp:
         dialog = CommandManagerDialog(self.services, self.process_tracker.processes, parent=None)
         dialog.exec()
 
-    # ------------------------------------------------------------------ #
-    # Quick-Launch Bar pinning                                             #
-    # ------------------------------------------------------------------ #
-
-    def _pin_to_quick_launch(self, cmd_info: dict) -> None:
-        """Add a command to the Quick-Launch Bar pinned list.
-
-        If the entry is already pinned the call is a no-op and no dialog is shown.
-        The Quick-Launch Bar widget is refreshed immediately if it is visible.
-        """
-        settings = config_manager.get_settings()
-        qlb = settings.setdefault("quick_launch_bar", {})
-        pinned: list = qlb.setdefault("pinned", [])
-        entry = {
-            "group": cmd_info.get("group", ""),
-            "label": cmd_info.get("label", ""),
-            "command": cmd_info.get("command", ""),
-            "confirm": cmd_info.get("confirm", False),
-            "showOutput": cmd_info.get("showOutput", False),
-        }
-        if entry in pinned:
-            logger.debug("Command '%s' is already pinned to Quick-Launch Bar", entry["label"])
-            return
-        pinned.append(entry)
-        config_manager.save_settings(settings)
-        quick_launch_bar = self._loaded_quick_launch_bar()
-        if quick_launch_bar is not None:
-            quick_launch_bar.refresh()
-        logger.info("Pinned '%s' to Quick-Launch Bar", entry["label"])
-
     def _open_settings(self):
         """Open the Settings dialog."""
         dlg = SettingsDialog(
@@ -493,9 +458,7 @@ class TrayApp:
             self.theme_manager,
             parent=None,
             hotkey_callback=self._reregister_hotkey,
-            bar_hotkey_callback=self._reregister_bar_hotkey,
             app_launcher_hotkey_callback=self._reregister_app_launcher_hotkey,
-            quick_launch_bar=self._loaded_quick_launch_bar(),
         )
         dlg.exec()
 
@@ -506,10 +469,6 @@ class TrayApp:
     def _loaded_palette(self):
         """Return the palette only if it has already been constructed."""
         return self.module_controller.loaded_palette
-
-    def _loaded_quick_launch_bar(self):
-        """Return the quick-launch bar only if it has already been constructed."""
-        return self.module_controller.loaded_quick_launch_bar
 
     def _reregister_hotkey(self, hotkey: str) -> None:
         """Unregister the current palette hotkey and register the new one."""
@@ -534,18 +493,6 @@ class TrayApp:
             logger.info("App Launcher hotkey re-registered: %s", hotkey)
         except Exception as exc:
             logger.warning("Failed to re-register app launcher hotkey '%s': %s", hotkey, exc)
-
-    def _reregister_bar_hotkey(self, hotkey: str) -> None:
-        """Unregister the current bar hotkey and register the new one."""
-        quick_launch_bar = self._loaded_quick_launch_bar()
-        if quick_launch_bar is None:
-            return
-        try:
-            quick_launch_bar.unregister_hotkey()
-            quick_launch_bar.register_hotkey(hotkey)
-            logger.info("Bar hotkey re-registered: %s", hotkey)
-        except Exception as exc:
-            logger.warning("Failed to re-register bar hotkey '%s': %s", hotkey, exc)
 
     # ------------------------------------------------------------------ #
     # Lifecycle                                                            #

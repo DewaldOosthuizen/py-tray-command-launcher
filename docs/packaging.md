@@ -129,53 +129,53 @@ a version tag is pushed.
 
 ### How it works
 
-Trigger: push a tag that matches `v*.*.*` (semantic version, e.g. `v1.2.0`).
+Trigger: every push to `main` (and manual `workflow_dispatch`). There is no manual
+tagging step; the workflow computes the next CalVer tag (`YYYY.MM.DD`, or
+`YYYY.MM.DD.N` for further releases on the same day).
 
 The workflow:
-1. Checks out the repository.
-2. Installs all required system and Python dependencies on an `ubuntu-latest` runner.
-3. Builds the Linux executable with PyInstaller.
-4. Downloads `appimagetool`, assembles `AppDir/`, and produces the AppImage.
-5. Creates a GitHub Release named after the tag with auto-generated release notes.
-6. Uploads `py-tray-command-launcher-<tag>-x86_64.AppImage` as a downloadable asset.
+1. Validates the commit (ruff, tests, pip-audit).
+2. Installs system and Python dependencies on an `ubuntu-latest` runner and builds the
+   Linux executable with PyInstaller.
+3. Downloads `appimagetool`, assembles `AppDir/`, and produces the AppImage.
+4. Smoke-tests the AppImage: it is launched headlessly and must still be running after
+   15 seconds. A crash on startup fails the run before anything is published.
+5. Computes the next CalVer tag and pushes it (skipped if `HEAD` is already released).
+6. Creates a GitHub Release with auto-generated notes scoped to the changes since the
+   previous release tag (`--notes-start-tag`), so notes are not repeated between releases.
+7. Uploads two assets: `py-tray-command-launcher-<tag>-x86_64.AppImage` and
+   `py-tray-command-launcher-<tag>-x86_64.AppImage.tar.gz`.
 
-Pre-release detection: if the tag contains a hyphen (e.g. `v1.2.0-beta.1`) the release
-is automatically marked as a pre-release. Clean tags (`v1.2.0`) are full releases.
+### Running a downloaded AppImage
 
-### Publishing a release
+GitHub release assets cannot carry the executable bit, so a file downloaded directly
+(or through a browser) must be made executable once:
 
 ```bash
-# 1. Ensure main is up to date
-git push origin main
-
-# 2. Create and push the version tag
-git tag v1.2.0 -m "Release v1.2.0"
-git push origin v1.2.0
+chmod +x py-tray-command-launcher-<tag>-x86_64.AppImage
+./py-tray-command-launcher-<tag>-x86_64.AppImage
 ```
 
-That is all. Go to the GitHub Actions tab to watch the build, and the Releases page
-to download the finished AppImage.
+Alternatively download the `.tar.gz` asset; extracting it with `tar -xzf` preserves the
+executable bit, so no `chmod` is needed.
 
 ### Version naming
 
-The AppImage is named using the tag directly:
+The AppImage is named using the CalVer tag:
 
-    py-tray-command-launcher-v1.2.0-x86_64.AppImage
+    py-tray-command-launcher-2026.10.21-x86_64.AppImage
 
-The tag is the single source of truth for the release version. No manual edits to
-`pyproject.toml` or any other file are required before tagging.
+The tag is the single source of truth for the release version.
 
 ### Re-building a release
 
-If you need to rebuild an existing release (e.g. after a bad tag), delete the release
-on GitHub first, then force-push the tag:
+Releases are immutable CalVer tags. To redo a bad release, delete the GitHub release and
+its tag, then re-run the **Release** workflow (`workflow_dispatch`) on `main`:
 
 ```bash
-git tag -f v1.2.0 -m "Re-release v1.2.0"
-git push origin v1.2.0 --force
+gh release delete <tag> --cleanup-tag --yes
+gh workflow run release.yml --ref main
 ```
-
-The workflow will not overwrite an existing release — the old one must be deleted first.
 
 ---
 

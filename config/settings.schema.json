@@ -32,34 +32,6 @@
         "size": { "type": "integer", "minimum": 1 }
       }
     },
-    "quick_launch_bar": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "visible": { "type": "boolean" },
-        "position": {
-          "type": "array",
-          "items": { "type": "integer" },
-          "minItems": 2,
-          "maxItems": 2
-        },
-        "pinned": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["label", "command"],
-            "properties": {
-              "group": { "type": "string" },
-              "label": { "type": "string" },
-              "command": { "type": "string" },
-              "confirm": { "type": "boolean" },
-              "showOutput": { "type": "boolean" }
-            }
-          }
-        },
-        "hotkey": { "type": "string" }
-      }
-    },
     "icon_cache_ttl_days": {
       "type": "integer",
       "minimum": 0,

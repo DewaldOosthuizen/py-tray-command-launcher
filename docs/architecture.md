@@ -44,7 +44,7 @@ Renders the hierarchical tray menu using an immutable, typed `MenuBuilderDepende
 
 ### `core/module_controller.py` — `ModuleController`
 
-Owns explicit cache-on-first-use factories for feature modules, `CommandPalette`, and `QuickLaunchBar`. It receives `AppServices`, the tray icon path, and a settings accessor; it does not receive `TrayApp` and does not use dynamic attribute proxies.
+Owns explicit cache-on-first-use factories for feature modules, and `CommandPalette`. It receives `AppServices`, the tray icon path, and a settings accessor; it does not receive `TrayApp` and does not use dynamic attribute proxies.
 
 ### `core/theme_controller.py` — `ThemeController`
 
@@ -314,8 +314,7 @@ boundary delegates; there is no transparent `__getattr__` proxy, so Qt identity,
 ### Delayed hotkey registration API
 
 Hotkey registration remains settings-driven at first construction. Hotkey
-re-registration (`_reregister_hotkey`, `_reregister_app_launcher_hotkey`,
-`_reregister_bar_hotkey`) checks the controller's already-loaded slots and
+re-registration (`_reregister_hotkey`, `_reregister_app_launcher_hotkey`) checks the controller's already-loaded slots and
 never instantiates an unused module during settings changes.
 
 ### Factory registration sites

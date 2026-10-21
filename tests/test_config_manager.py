@@ -283,74 +283,41 @@ class TestSettingsSchemaValidation:
         assert not any("settings.json validation error" in msg for msg in warning_msgs)
 
 
-class TestQuickLaunchBarPinnedSchema:
-    """Schema validation for quick_launch_bar.pinned items.
+class TestLegacyQuickLaunchBarSettings:
+    """The Quick-Launch Bar was removed; stale ``quick_launch_bar`` keys must be ignored.
 
-    _pin_to_quick_launch() stores each pinned entry as an object with
-    group, label, command, confirm, and showOutput keys. The group is optional
-    to preserve pins written by older versions. The schema must describe that
-    object shape so that settings.json written
-    by the app passes validation on next load — otherwise validation fails
-    and the user's pinned commands are silently reset to defaults.
+    The schema forbids unknown top-level keys, so without migration an existing
+    settings.json containing the old block would fail validation and silently reset
+    every other setting to defaults.
     """
 
-    def test_pinned_object_entry_passes_validation(self, tmp_path):
-        """Object-shaped pinned entries (the live format) must pass schema validation."""
+    def test_legacy_block_is_dropped_without_resetting_other_settings(self, tmp_path):
         settings = {
+            "theme": "dark",
+            "history_limit": 10,
             "quick_launch_bar": {
-                "pinned": [
-                    {
-                        "group": "System",
-                        "label": "My Tool",
-                        "command": "my-tool --flag",
-                        "confirm": False,
-                        "showOutput": True,
-                    }
-                ]
-            }
+                "visible": True,
+                "hotkey": "ctrl+shift+b",
+                "pinned": [{"group": "G", "label": "L", "command": "c"}],
+            },
         }
         mgr = _make_settings_mgr(tmp_path, settings)
         with patch("core.config_manager.logger") as mock_logger:
             result = mgr.get_settings()
         warning_msgs = [str(arg) for arg in mock_logger.warning.call_args_list]
-        assert not any("settings.json validation error" in msg for msg in warning_msgs), (
-            f"Unexpected validation warning: {warning_msgs}"
-        )
-        assert result["quick_launch_bar"]["pinned"][0]["label"] == "My Tool"
+        assert not any("validation error" in msg for msg in warning_msgs)
+        assert result["theme"] == "dark"
+        assert result["history_limit"] == 10
+        assert "quick_launch_bar" not in result
 
-    def test_pinned_string_entry_fails_validation(self, tmp_path):
-        """String-shaped pinned entries (stale/incorrect format) must fail validation."""
-        settings = {"quick_launch_bar": {"pinned": ["some-command"]}}
-        mgr = _make_settings_mgr(tmp_path, settings)
-        with patch("core.config_manager.logger") as mock_logger:
-            result = mgr.get_settings()
-        warning_msgs = [str(arg) for arg in mock_logger.warning.call_args_list]
-        assert any("settings.json validation error" in msg for msg in warning_msgs), (
-            "Expected validation warning for string-type pinned item, got none"
-        )
-        # Validation failure resets settings to defaults, so pinned must be the
-        # default empty list, not the rejected string array.
-        assert result["quick_launch_bar"]["pinned"] == []
+    def test_legacy_block_is_not_written_back_on_save(self, tmp_path):
+        mgr = _make_settings_mgr(tmp_path, {"quick_launch_bar": {"visible": True}})
+        mgr.save_settings(mgr.get_settings())
+        on_disk = json.loads(mgr.settings_file.read_text(encoding="utf-8"))
+        assert "quick_launch_bar" not in on_disk
 
-    def test_pinned_entry_requires_label_and_command(self, tmp_path):
-        """An object pinned entry missing label or command must fail validation."""
-        for bad_entry in (
-            {"command": "doit"},  # missing label
-            {"label": "MissingCmd"},  # missing command
-        ):
-            settings = {"quick_launch_bar": {"pinned": [bad_entry]}}
-            mgr = _make_settings_mgr(tmp_path, settings)
-            with patch("core.config_manager.logger") as mock_logger:
-                mgr.get_settings()
-            warning_msgs = [str(arg) for arg in mock_logger.warning.call_args_list]
-            assert any("settings.json validation error" in msg for msg in warning_msgs), (
-                f"Expected validation warning for {bad_entry}, got: {warning_msgs}"
-            )
-
-
-# ---------------------------------------------------------------------------
-# Config directory isolation (--config flag write isolation)
-# ---------------------------------------------------------------------------
+    def test_defaults_do_not_contain_quick_launch_bar(self):
+        assert "quick_launch_bar" not in ConfigManager._SETTINGS_DEFAULTS
 
 
 class TestConfigDirIsolation:
