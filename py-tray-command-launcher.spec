@@ -20,7 +20,7 @@ a = Analysis(
         'cryptography',
         'rapidfuzz',
         'rapidfuzz.fuzz',
-        'keyboard',
+        'pynput.keyboard',
     ],
     hookspath=[],
     hooksconfig={},

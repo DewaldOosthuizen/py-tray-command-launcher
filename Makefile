@@ -1,13 +1,15 @@
 SHELL := /usr/bin/env bash
 
-PYTHON ?= python3
+PYTHON ?= $(shell if command -v python3.12 >/dev/null 2>&1; then command -v python3.12; else command -v python3; fi)
 PIP ?= pip
 PYTEST ?= pytest
 RUFF ?= ruff
-PIP_AUDIT ?= pip-audit
 PIP_MIN_SAFE ?= 26.1.2
-WHEEL_MIN_SAFE ?= 0.46.2
 PYINSTALLER ?= pyinstaller
+CI_VENV ?= .venv
+CI_VENV_PIP = $(CI_VENV)/bin/pip
+CI_VENV_PIP_AUDIT = $(CI_VENV)/bin/pip-audit
+CI_VENV_PYINSTALLER = $(CI_VENV)/bin/pyinstaller
 VERSION ?= local
 LOG_DIR ?= .ci-logs
 
@@ -36,7 +38,14 @@ help:
 
 .PHONY: install-dev
 install-dev:
-	$(PIP) install --break-system-packages -e ".[dev]"
+	$(PYTHON) -m venv $(CI_VENV) && $(CI_VENV_PIP) install -e ".[dev]"
+
+.PHONY: audit build
+audit:
+	$(PYTHON) -m venv $(CI_VENV) && $(CI_VENV_PIP) install --upgrade "pip>=$(PIP_MIN_SAFE)" "setuptools>=83.0.0" && $(CI_VENV_PIP) install pip-audit && $(CI_VENV_PIP) install -e ".[dev]" && $(CI_VENV_PIP_AUDIT)
+
+build:
+	$(PYTHON) -m venv $(CI_VENV) && $(CI_VENV_PIP) install -r requirements.txt && $(CI_VENV_PIP) install -r requirements-build.txt && $(CI_VENV_PYINSTALLER) py-tray-command-launcher.spec && test -f dist/py-tray-command-launcher
 
 .PHONY: install-system-deps
 install-system-deps:
@@ -116,39 +125,7 @@ lint-ruff:
 
 .PHONY: lint-audit
 lint-audit:
-	@mkdir -p $(LOG_DIR)
-	@echo "[lint-audit] Upgrading pip to >= $(PIP_MIN_SAFE)..."
-	@$(PIP) install --break-system-packages --upgrade "pip>=$(PIP_MIN_SAFE)" || { \
-		echo "[FAIL] lint-audit: failed to upgrade pip to a safe version"; \
-		exit 1; \
-	}
-	@echo "[lint-audit] Using $$(pip --version)"
-	@echo "[lint-audit] Upgrading wheel to >= $(WHEEL_MIN_SAFE)..."
-	@$(PIP) install --break-system-packages --upgrade "wheel>=$(WHEEL_MIN_SAFE)" || { \
-		echo "[FAIL] lint-audit: failed to upgrade wheel to a safe version"; \
-		exit 1; \
-	}
-	@echo "[lint-audit] Using $$(python3 -m pip show wheel | awk '/^Version:/ {print "wheel " $$2}')"
-	@echo "[lint-audit] Installing pip-audit..."
-	@$(PIP) install --break-system-packages pip-audit || { \
-		echo "[FAIL] lint-audit: failed to install pip-audit"; \
-		exit 1; \
-	}
-	@echo "[lint-audit] Installing project dependencies..."
-	@$(PIP) install --break-system-packages -e ".[dev]" || { \
-		echo "[FAIL] lint-audit: failed to install project dependencies"; \
-		exit 1; \
-	}
-	@echo "[lint-audit] Running vulnerability scan..."
-	@set -o pipefail; $(PIP_AUDIT) 2>&1 | tee "$(LOG_DIR)/pip-audit.log"; status=$${PIPESTATUS[0]}; if [[ $$status -ne 0 ]]; then \
-		echo "[FAIL] lint-audit: pip-audit found vulnerabilities"; \
-		echo "[DETAIL] This failure is dependency vulnerabilities, not source file linting."; \
-		echo "[DETAIL] Vulnerable packages:"; \
-		awk 'BEGIN{in_table=0} /^Name[[:space:]]+Version[[:space:]]+ID[[:space:]]+Fix Versions/{in_table=1; next} in_table && /^-/{next} in_table && /^$$/{in_table=0} in_table && NF>=4 {printf "  - %s %s (%s) -> fix: %s\n", $$1, $$2, $$3, $$4}' "$(LOG_DIR)/pip-audit.log" || true; \
-		echo "[DETAIL] Full log: $(LOG_DIR)/pip-audit.log"; \
-		exit 1; \
-	fi
-	@echo "[OK] lint-audit passed"
+	$(MAKE) audit
 
 .PHONY: lint-workflow
 lint-workflow:
