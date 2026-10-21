@@ -112,6 +112,21 @@ Create new commands through a graphical dialog without editing JSON directly.
 
 ---
 
+## Command Manager
+
+Open **Manage Commands** from the tray menu to review and manage configured
+commands. Use the search field to filter by command name, group name or nested
+group path, and command text. Matching commands remain visible with their
+ancestor groups; clear the query to restore the complete hierarchy. If no
+commands match, the manager displays an empty-results message.
+
+Select a command to inspect its full configured details, including its exact
+group path and options, in the read-only preview. Searching and previewing are
+presentation-only and do not save configuration or rebuild the tray menu;
+configuration changes are saved only through explicit management actions.
+
+---
+
 ## Backup and Restore
 
 ### Create a backup
