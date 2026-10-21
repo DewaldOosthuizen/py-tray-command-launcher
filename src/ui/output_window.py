@@ -19,6 +19,7 @@ Toolbar actions:
 import logging
 import re
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from PyQt6.QtCore import Qt, QTimer
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # We only handle the most common subset: SGR (Select Graphic Rendition).
 # Unknown and OSC sequences are stripped silently.
-_ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\\-_]|\x1B\[[^@-~]*[@-~]")
+_ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\-_]|\x1B\[[^@-~]*[@-~]")
 
 _LIGHT_ANSI_COLORS = {
     30: "#4c4f69",
@@ -302,6 +303,7 @@ class _OutputTab(QTextEdit):
         self._batch_chunk_count = batch_chunk_count
         self._batch_delay_ms = batch_delay_ms
         self._scroll_to_bottom = scroll_to_bottom
+        self._scroll_preference: Callable[[], bool] | None = None
         self._pending: list[str] = []
         self._pending_chars = 0
         self._insert_history: deque = deque()
@@ -346,19 +348,36 @@ class _OutputTab(QTextEdit):
             self._insert_and_trim(text)
 
     def flush(self) -> None:
-        """Force-flush the pending buffer. Test hook; also used by the bulk path."""
+        """Flush queued output immediately.
+
+        Returns:
+            None.
+        """
         if self._pending:
             self._flush()
 
     def _flush(self) -> None:
-        """Insert every pending chunk, then trim the head to the cap."""
+        """Insert the pending stream once, then trim and scroll once.
+
+        Concatenating chunks before parsing preserves SGR state across chunk
+        boundaries while reducing document mutations to one per flush.
+
+        Returns:
+            None.
+        """
+        self._flush_timer.stop()
         if not self._pending:
             return
-        for chunk in self._pending:
-            self._insert_and_trim(chunk)
+        text = "".join(self._pending)
         self._pending.clear()
         self._pending_chars = 0
-        if self._scroll_to_bottom:
+        self._insert_and_trim(text)
+        scroll_to_bottom = (
+            self._scroll_preference()
+            if self._scroll_preference is not None
+            else self._scroll_to_bottom
+        )
+        if scroll_to_bottom:
             bar = self.verticalScrollBar()
             bar.setValue(bar.maximum())
         # Defensive safety net: the cap holds even if an insert raised internally.
@@ -378,7 +397,8 @@ class _OutputTab(QTextEdit):
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
         last_end = 0
-        for match in _ANSI_ESC_RE.finditer(text):
+        matches = list(_ANSI_ESC_RE.finditer(text))
+        for match in matches:
             # Flush plain text up to the escape sequence
             plain = text[last_end : match.start()]
             if plain:
@@ -398,8 +418,10 @@ class _OutputTab(QTextEdit):
             cursor.insertText(tail, self._fmt)
 
         self.setTextCursor(cursor)
-        self._insert_history.append((len(text), 0))
-        self._document_length += len(text)
+        inserted_length = len(text) - sum(match.end() - match.start() for match in matches)
+        if inserted_length:
+            self._insert_history.append((inserted_length, 0))
+        self._document_length += inserted_length
         excess = self._document_length - self._max_output_chars
         if excess > 0:
             self._trim_head(excess)
@@ -446,9 +468,32 @@ class _OutputTab(QTextEdit):
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.Start)
         cursor.beginEditBlock()
-        cursor.remove(0, n)
+        cursor.movePosition(
+            QTextCursor.MoveOperation.Right,
+            QTextCursor.MoveMode.KeepAnchor,
+            n,
+        )
+        cursor.removeSelectedText()
         cursor.endEditBlock()
         self._document_length -= n
+
+    def clear_output(self) -> None:
+        """Clear the document and reset queued output and retention bookkeeping.
+
+        Returns:
+            None.
+        """
+        self._flush_timer.stop()
+        self._pending.clear()
+        self._pending_chars = 0
+        self._insert_history.clear()
+        self._document_length = 0
+        document = self.document()
+        if document is not None:
+            document.clear()
+        self._fmt = QTextCharFormat()
+        self._fmt.setProperty(_REQUESTED_FOREGROUND_PROPERTY, self._output_theme.inherited_text)
+        _apply_effective_foreground(self._fmt, self._output_theme)
 
 
 # ---------------------------------------------------------------------------
@@ -557,6 +602,7 @@ class RichOutputWindow(QMainWindow):
             batch_delay_ms=self._batch_delay_ms,
             scroll_to_bottom=self._auto_scroll,
         )
+        tab._scroll_preference = lambda: self._auto_scroll
         tab.verticalScrollBar().rangeChanged.connect(
             lambda _min, _max, t=tab: self._maybe_scroll(t)
         )
@@ -634,7 +680,7 @@ class RichOutputWindow(QMainWindow):
     def _clear_tab(self) -> None:
         tab = self._current_tab()
         if tab:
-            tab.clear()
+            tab.clear_output()
 
     def _change_font(self) -> None:
         ok, font = QFontDialog.getFont(self._font, self)

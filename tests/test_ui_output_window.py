@@ -1,3 +1,4 @@
+import os
 import re
 from collections import deque
 from pathlib import Path
@@ -212,7 +213,7 @@ def _render(text, mode, color_format_types, theme=None):
     inserted = []
 
     class Cursor:
-        def movePosition(self, position):
+        def movePosition(self, *positions):
             pass
 
         def insertText(self, value, fmt):
@@ -225,7 +226,7 @@ def _render(text, mode, color_format_types, theme=None):
         def endEditBlock(self):
             pass
 
-        def remove(self, *args, **kwargs):
+        def removeSelectedText(self):
             pass
 
     cursor = Cursor()
@@ -379,7 +380,7 @@ def test_trimmed_content_contrast_and_format_preserved(color_format_types):
     tab._document_length = 0
 
     class Cursor:
-        def movePosition(self, position):
+        def movePosition(self, *positions):
             pass
 
         def insertText(self, value, fmt):
@@ -392,7 +393,7 @@ def test_trimmed_content_contrast_and_format_preserved(color_format_types):
         def endEditBlock(self):
             pass
 
-        def remove(self, *args, **kwargs):
+        def removeSelectedText(self):
             pass
 
     tab._inserted = []
@@ -518,7 +519,7 @@ def test_open_window_keeps_rendered_contrast_when_application_theme_changes(
     inserted = []
 
     class Cursor:
-        def movePosition(self, _position):
+        def movePosition(self, *_positions):
             pass
 
         def insertText(self, text, fmt):
@@ -530,7 +531,7 @@ def test_open_window_keeps_rendered_contrast_when_application_theme_changes(
         def endEditBlock(self):
             pass
 
-        def remove(self, *args, **kwargs):
+        def removeSelectedText(self):
             pass
 
     cursor = Cursor()
@@ -750,11 +751,9 @@ def test_flush_inserts_pending_chunks_as_one_document_batch(qtbot):
     assert tab._insert_history[0] == (12, 0)
 
 
-def test_real_pyqt_cursor_prunes_document_head_with_supported_selection_api(
-    qtbot, monkeypatch
-):
+def test_real_pyqt_cursor_prunes_document_head_with_supported_selection_api(qtbot, monkeypatch):
     """Head trimming uses QTextCursor selection APIs available in real PyQt6."""
-    if not isinstance(output_window.QTextCursor, type):
+    if not os.environ.get("PY_TRAY_NO_STUB") or not isinstance(output_window.QTextCursor, type):
         pytest.skip("requires the real PyQt6 classes")
 
     monkeypatch.undo()
@@ -770,16 +769,14 @@ def test_real_pyqt_cursor_prunes_document_head_with_supported_selection_api(
 
 def test_real_pyqt_retained_ansi_format_survives_head_trimming(qtbot, monkeypatch):
     """The retained ANSI tail keeps its contrast-safe foreground/background."""
-    if not isinstance(output_window.QTextCursor, type):
+    if not os.environ.get("PY_TRAY_NO_STUB") or not isinstance(output_window.QTextCursor, type):
         pytest.skip("requires the real PyQt6 classes")
 
     monkeypatch.undo()
     from PyQt6.QtGui import QFont as RealQFont
 
     theme = output_window.resolve_output_theme("dark", output_window.QApplication.palette())
-    tab = _OutputTab(
-        RealQFont(), output_theme=theme, max_output_chars=4, batch_enabled=False
-    )
+    tab = _OutputTab(RealQFont(), output_theme=theme, max_output_chars=4, batch_enabled=False)
     qtbot.addWidget(tab)
     tab.append_ansi("old")
     tab.append_ansi("\x1b[31;44mtail")
@@ -793,3 +790,43 @@ def test_real_pyqt_retained_ansi_format_survives_head_trimming(qtbot, monkeypatc
     assert tab.toPlainText() == "tail"
     assert background.name() == output_window._ANSI_PALETTES["dark"][44]
     assert output_window.contrast_ratio(foreground, background) >= 4.5
+
+
+def test_real_pyqt_clear_stops_timer_and_resets_all_output_state(qtbot, monkeypatch):
+    """Clearing pending real-Qt output cancels the timer and empties the document."""
+    if not os.environ.get("PY_TRAY_NO_STUB") or not isinstance(output_window.QTextCursor, type):
+        pytest.skip("requires the real PyQt6 classes")
+
+    monkeypatch.undo()
+    from PyQt6.QtGui import QFont as RealQFont
+
+    tab = _OutputTab(RealQFont(), max_output_chars=100, batch_enabled=True, batch_delay_ms=1000)
+    qtbot.addWidget(tab)
+    tab.append_ansi("queued output")
+    assert tab._flush_timer.isActive()
+
+    tab.clear_output()
+
+    assert tab.toPlainText() == ""
+    assert tab._pending == []
+    assert tab._pending_chars == 0
+    assert tab._insert_history == deque()
+    assert tab._document_length == 0
+    assert not tab._flush_timer.isActive()
+
+
+def test_real_pyqt_timer_flushes_batched_output(qtbot, monkeypatch):
+    """A single-shot timer flushes queued chunks without an explicit call."""
+    if not os.environ.get("PY_TRAY_NO_STUB") or not isinstance(output_window.QTextCursor, type):
+        pytest.skip("requires the real PyQt6 classes")
+
+    monkeypatch.undo()
+    from PyQt6.QtGui import QFont as RealQFont
+
+    tab = _OutputTab(RealQFont(), max_output_chars=100, batch_enabled=True, batch_delay_ms=10)
+    qtbot.addWidget(tab)
+    tab.append_ansi("timer-driven output")
+
+    qtbot.waitUntil(lambda: tab.toPlainText() == "timer-driven output", timeout=1000)
+    assert tab._pending == []
+    assert len(tab._insert_history) == 1
