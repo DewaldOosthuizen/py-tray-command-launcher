@@ -14,7 +14,9 @@ Covers:
 
 import logging
 
+from PyQt6.QtGui import QCursor, QGuiApplication
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -23,8 +25,10 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QLabel,
     QLineEdit,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
+    QWidget,
 )
 
 from ui.quick_launch_pin_manager import QuickLaunchPinManager
@@ -46,6 +50,20 @@ class SettingsDialog(QDialog):
         app_launcher_hotkey_callback=None,
         quick_launch_bar=None,
     ):
+        """Initialize the settings controls and anchor the dialog to the cursor display.
+
+        Args:
+            services: Application services used to load and save settings.
+            theme_manager: Manager used to preview and restore theme changes.
+            parent: Optional parent widget.
+            hotkey_callback: Optional callback to register the command-palette hotkey.
+            bar_hotkey_callback: Optional callback to register the bar hotkey.
+            app_launcher_hotkey_callback: Optional callback for the app-launcher hotkey.
+            quick_launch_bar: Optional bar refreshed after pin changes are committed.
+
+        Raises:
+            Exceptions raised while loading settings or constructing Qt controls.
+        """
         super().__init__(parent)
         self.services = services
         self._theme_manager = theme_manager
@@ -54,12 +72,34 @@ class SettingsDialog(QDialog):
         self._app_launcher_hotkey_callback = app_launcher_hotkey_callback
         self._quick_launch_bar = quick_launch_bar
         self.setWindowTitle("Settings")
-        self.setMinimumWidth(420)
+
+        screen = self._screen_for_cursor()
+        geometry = screen.availableGeometry() if screen is not None else None
+        screen_width = geometry.width() if geometry is not None else None
+        screen_height = geometry.height() if geometry is not None else None
+        max_width = max_height = 0
+        if (
+            isinstance(screen_width, int)
+            and isinstance(screen_height, int)
+            and screen_width > 0
+            and screen_height > 0
+        ):
+            max_width = min(int(screen_width * 0.8), 860)
+            max_height = min(int(screen_height * 0.8), 720)
+            self.setMaximumSize(max_width, max_height)
+            self.setMinimumWidth(min(420, max_width))
+            self.resize(max_width, max_height)
+        else:
+            self.setMinimumWidth(420)
 
         settings = self.services.config_manager.get_settings()
         self._settings = settings
 
-        layout = QVBoxLayout(self)
+        dialog_layout = QVBoxLayout()
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        settings_content = QWidget()
+        settings_layout = QVBoxLayout(settings_content)
 
         # --- Appearance -------------------------------------------------
         appearance_box = QGroupBox("Appearance")
@@ -76,7 +116,7 @@ class SettingsDialog(QDialog):
         # Live preview on selection change
         self._theme_combo.currentTextChanged.connect(self._preview_theme)
 
-        layout.addWidget(appearance_box)
+        settings_layout.addWidget(appearance_box)
 
         # --- Behaviour --------------------------------------------------
         behaviour_box = QGroupBox("Behaviour")
@@ -97,7 +137,7 @@ class SettingsDialog(QDialog):
         self._history_spin.setValue(int(settings.get("history_limit", 50)))
         behaviour_form.addRow("History limit:", self._history_spin)
 
-        layout.addWidget(behaviour_box)
+        settings_layout.addWidget(behaviour_box)
 
         # --- Output Window ----------------------------------------------
         output_box = QGroupBox("Output Window")
@@ -115,7 +155,7 @@ class SettingsDialog(QDialog):
         self._font_size_spin.setValue(int(font_cfg.get("size", 10)))
         output_form.addRow("Font size:", self._font_size_spin)
 
-        layout.addWidget(output_box)
+        settings_layout.addWidget(output_box)
 
         # --- Quick-Launch Bar -------------------------------------------
         qlb_box = QGroupBox("Quick-Launch Bar")
@@ -133,7 +173,7 @@ class SettingsDialog(QDialog):
         self._qlb_hotkey_edit.setPlaceholderText("e.g. ctrl+shift+b")
         qlb_form.addRow("Bar hotkey:", self._qlb_hotkey_edit)
 
-        layout.addWidget(qlb_box)
+        settings_layout.addWidget(qlb_box)
 
         # --- Pinned Commands --------------------------------------------
         self._qlb_pin_manager = QuickLaunchPinManager(
@@ -146,7 +186,7 @@ class SettingsDialog(QDialog):
         pinned_box = QGroupBox("Pinned Commands")
         pinned_layout = QVBoxLayout(pinned_box)
         pinned_layout.addWidget(self._qlb_pin_manager)
-        layout.addWidget(pinned_box)
+        settings_layout.addWidget(pinned_box)
 
         # --- Logging ----------------------------------------------------
         logging_box = QGroupBox("Logging")
@@ -164,14 +204,17 @@ class SettingsDialog(QDialog):
             self._log_level_combo.setCurrentIndex(idx)
         logging_form.addRow("Log level:", self._log_level_combo)
 
-        layout.addWidget(logging_box)
+        settings_layout.addWidget(logging_box)
 
         # --- Scheduling help --------------------------------------------
         help_label = QLabel(
             'See <a href="docs/configuration.md#safe-scheduling">'
             "docs/configuration.md#safe-scheduling</a> for safe scheduling constraints."
         )
-        layout.addWidget(help_label)
+        settings_layout.addWidget(help_label)
+
+        scroll_area.setWidget(settings_content)
+        dialog_layout.addWidget(scroll_area)
 
         # --- Buttons ----------------------------------------------------
         buttons = QDialogButtonBox(
@@ -179,9 +222,22 @@ class SettingsDialog(QDialog):
         )
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self._cancel)
-        layout.addWidget(buttons)
+        dialog_layout.addWidget(buttons)
+        self.setLayout(dialog_layout)
+
+        if geometry is not None and max_width > 0 and max_height > 0:
+            x = geometry.center().x() - self.width() // 2
+            y = geometry.center().y() - self.height() // 2
+            x = max(geometry.left(), min(x, geometry.right() - self.width() + 1))
+            y = max(geometry.top(), min(y, geometry.bottom() - self.height() + 1))
+            self.move(x, y)
 
         self._original_theme = current_theme
+
+    def _screen_for_cursor(self):
+        """Return the cursor's screen, falling back to the primary screen or None."""
+        screen = QGuiApplication.screenAt(QCursor.pos())
+        return screen if screen is not None else QApplication.primaryScreen()
 
     # ------------------------------------------------------------------
     # Slots
