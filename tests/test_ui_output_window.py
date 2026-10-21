@@ -208,6 +208,7 @@ def _render(text, mode, color_format_types, theme=None):
     tab._scroll_to_bottom = False
     tab._pending = []
     tab._pending_chars = 0
+    tab._ansi_pending = ""
     tab._insert_history = deque()
     tab._document_length = 0
     inserted = []
@@ -376,6 +377,7 @@ def test_trimmed_content_contrast_and_format_preserved(color_format_types):
     tab._scroll_to_bottom = False
     tab._pending = []
     tab._pending_chars = 0
+    tab._ansi_pending = ""
     tab._insert_history = deque()
     tab._document_length = 0
 
@@ -711,6 +713,9 @@ def test_show_output_bypasses_batch_queue(qtbot):
 def test_clear_output_resets_retention_and_pending_batch_state(qtbot):
     """Clearing a tab discards both visible output and queued retention state."""
     tab = _new_tab(qtbot, batch_enabled=True, batch_chunk_count=1000)
+    tab.append_ansi("\x1b[3")
+    tab.flush()
+    assert tab._ansi_pending == "\x1b[3"
     tab.append_ansi("buffered output")
     assert tab._pending == ["buffered output"]
 
@@ -719,6 +724,7 @@ def test_clear_output_resets_retention_and_pending_batch_state(qtbot):
 
     assert tab._pending == []
     assert tab._pending_chars == 0
+    assert tab._ansi_pending == ""
     assert tab._insert_history == deque()
     assert tab._document_length == 0
 
@@ -852,7 +858,7 @@ def test_batch_timer_starts_only_once_while_buffer_is_pending(qtbot):
             self.active = False
 
     timer = TimerSpy()
-    setattr(tab, "_flush_timer", timer)
+    tab._flush_timer = timer
     tab.append_ansi("first")
     tab.append_ansi("second")
 

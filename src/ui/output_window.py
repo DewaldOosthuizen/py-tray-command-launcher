@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # We only handle the most common subset: SGR (Select Graphic Rendition).
 # Unknown and OSC sequences are stripped silently.
-_ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\-_]|\x1B\[[^@-~]*[@-~]")
+_ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\\\-_]|\x1B\[[^@-~]*[@-~]")
 
 _LIGHT_ANSI_COLORS = {
     30: "#4c4f69",
@@ -192,6 +192,22 @@ def _apply_effective_foreground(fmt: QTextCharFormat, theme: _OutputTheme) -> No
     fmt.setForeground(effective)
 
 
+def _split_incomplete_sgr_suffix(text: str) -> tuple[str, str]:
+    """Separate a trailing partial SGR introducer from text safe to parse.
+
+    Args:
+        text: Concatenated output from the current flush and any previous carry.
+
+    Returns:
+        A pair of complete stream text and a trailing ESC/SGR prefix to prepend
+        to the next batch.
+    """
+    match = re.search(r"\x1B(?:\[[0-9;]*)?$", text)
+    if match is None:
+        return text, ""
+    return text[: match.start()], match.group(0)
+
+
 def _parse_sgr(
     codes: list[int], fmt: QTextCharFormat, theme: _OutputTheme | None = None
 ) -> QTextCharFormat:
@@ -306,6 +322,7 @@ class _OutputTab(QTextEdit):
         self._scroll_preference: Callable[[], bool] | None = None
         self._pending: list[str] = []
         self._pending_chars = 0
+        self._ansi_pending = ""
         self._insert_history: deque = deque()
         self._document_length = 0
         self._flush_timer = QTimer(self)
@@ -320,6 +337,7 @@ class _OutputTab(QTextEdit):
         batches through :meth:`_flush` instead of touching the document
         immediately. Bulk payloads (e.g. the legacy ``show_output`` path) bypass
         the queue and are inserted directly so the cap, not the queue, bounds them.
+        A bypass first drains any earlier queued output to preserve stream order.
 
         Args:
             text: Output text that may contain ANSI escape sequences.
@@ -327,6 +345,9 @@ class _OutputTab(QTextEdit):
 
         Returns:
             None.
+
+        Raises:
+            RuntimeError: If the Qt text widget is destroyed during insertion.
         """
         if not text:
             return
@@ -334,17 +355,20 @@ class _OutputTab(QTextEdit):
             if self._pending_chars + len(text) > self._max_output_chars:
                 self._flush()
             if len(text) > self._max_output_chars:
+                text = self._ansi_pending + text
+                self._ansi_pending = ""
                 self._insert_and_trim(text)  # direct, bounded insertion
                 return
             self._pending.append(text)
             self._pending_chars += len(text)
             if len(self._pending) >= self._batch_chunk_count:
                 self._flush()
-            elif self._flush_timer.isActive():
-                self._flush_timer.start(self._batch_delay_ms)
-            else:
+            elif not self._flush_timer.isActive():
                 self._flush_timer.start(self._batch_delay_ms)
         else:
+            self._flush()
+            text = self._ansi_pending + text
+            self._ansi_pending = ""
             self._insert_and_trim(text)
 
     def flush(self) -> None:
@@ -352,6 +376,9 @@ class _OutputTab(QTextEdit):
 
         Returns:
             None.
+
+        Raises:
+            RuntimeError: If the Qt text widget is destroyed during insertion.
         """
         if self._pending:
             self._flush()
@@ -360,17 +387,28 @@ class _OutputTab(QTextEdit):
         """Insert the pending stream once, then trim and scroll once.
 
         Concatenating chunks before parsing preserves SGR state across chunk
-        boundaries while reducing document mutations to one per flush.
+        boundaries while reducing document mutations to one per flush. A
+        trailing partial SGR introducer is carried into the next batch, since a
+        timer flush may occur between the bytes of one escape sequence.
 
         Returns:
             None.
+
+        Raises:
+            RuntimeError: If the Qt text widget is destroyed during insertion.
         """
         self._flush_timer.stop()
         if not self._pending:
             return
-        text = "".join(self._pending)
+        text = self._ansi_pending + "".join(self._pending)
+        self._ansi_pending = ""
         self._pending.clear()
         self._pending_chars = 0
+        text, incomplete_sgr = _split_incomplete_sgr_suffix(text)
+        if len(incomplete_sgr) <= self._max_output_chars:
+            self._ansi_pending = incomplete_sgr
+        if not text:
+            return
         self._insert_and_trim(text)
         scroll_to_bottom = (
             self._scroll_preference()
@@ -486,6 +524,7 @@ class _OutputTab(QTextEdit):
         self._flush_timer.stop()
         self._pending.clear()
         self._pending_chars = 0
+        self._ansi_pending = ""
         self._insert_history.clear()
         self._document_length = 0
         document = self.document()
