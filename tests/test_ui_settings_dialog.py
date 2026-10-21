@@ -100,8 +100,7 @@ def test_settings_sections_and_actions_have_separate_scroll_layouts(qtbot):
     assert buttons is not None
     assert buttons.parentWidget() is dialog
     outer_widgets = [
-        dialog.layout().itemAt(index).widget()
-        for index in range(dialog.layout().count())
+        dialog.layout().itemAt(index).widget() for index in range(dialog.layout().count())
     ]
     assert scroll_area in outer_widgets
     assert buttons in outer_widgets

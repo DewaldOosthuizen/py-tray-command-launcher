@@ -161,6 +161,19 @@ with `shlex.quote`.
 
 ---
 
+## Settings Dialog
+
+The settings sections are hosted in one resizable scroll area, so lower settings
+remain reachable on short or high-DPI displays. Save and Cancel stay outside the
+scroll area. The dialog is sized and initially positioned using the available
+geometry of the display containing the cursor when Settings is opened, with the
+primary display as a fallback. Its size is limited to 80% of that geometry and
+at most 860 by 720 Qt logical pixels; the minimum width is clamped on narrow
+displays, with the existing 420 px fallback retained when no usable screen is
+available.
+
+---
+
 ## Single-Instance Enforcement
 
 Only one instance of the application can run at a time.
