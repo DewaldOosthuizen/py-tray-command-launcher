@@ -154,11 +154,8 @@ config/backups
 .ci-logs
 
 # BEGIN workspace-orchestrator
-.hermes_tmp_prompt.txt
-graphify-out/cache/
-.understand-anything/intermediate/
-.understand-anything/diff-overlay.json
-.codegraph/*.db
-.codegraph/cache/
-openspec
+graphify-out/
+.understand-anything/
+.codegraph/
+openspec/
 # END workspace-orchestrator
