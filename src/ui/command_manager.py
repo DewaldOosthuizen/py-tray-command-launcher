@@ -10,6 +10,7 @@ Features:
   • Save button disabled while any QProcess is running
 """
 
+import json
 import logging
 
 from PyQt6.QtCore import Qt, QTimer
@@ -20,7 +21,9 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QGroupBox,
+    QLabel,
     QLineEdit,
+    QPlainTextEdit,
     QPushButton,
     QToolBar,
     QTreeWidget,
@@ -38,6 +41,49 @@ from utils.dialogs import confirm_action, show_info, show_warning
 logger = logging.getLogger(__name__)
 
 
+def _resolve_group_path(commands: dict, group_path: tuple[str, ...]) -> dict | None:
+    """Resolve exact group components without interpreting display separators.
+
+    Args:
+        commands: Root command configuration mapping.
+        group_path: Ordered group keys from the root to the target mapping.
+
+    Returns:
+        The target group mapping, or None when a component is missing or not a mapping.
+    """
+    parent = commands
+    for component in group_path:
+        if not isinstance(parent, dict):
+            return None
+        parent = parent.get(component)
+        if not isinstance(parent, dict):
+            return None
+    return parent
+
+
+def _command_groups(commands: dict) -> list[tuple[str, ...]]:
+    """Collect group paths as exact key-component tuples.
+
+    Args:
+        commands: Root command configuration mapping.
+
+    Returns:
+        Paths for top-level and nested groups in configuration order.
+    """
+    groups = []
+
+    def visit(data: dict, path: tuple[str, ...]):
+        groups.append(path)
+        for key, value in data.items():
+            if key != "icon" and isinstance(value, dict) and "command" not in value:
+                visit(value, (*path, key))
+
+    for name, data in commands.items():
+        if isinstance(data, dict):
+            visit(data, (name,))
+    return groups
+
+
 # ---------------------------------------------------------------------------
 # Command form dialog (shared by Add and Edit)
 # ---------------------------------------------------------------------------
@@ -46,7 +92,9 @@ logger = logging.getLogger(__name__)
 class _CommandFormDialog(QDialog):
     """Simple form to create or edit a single command."""
 
-    def __init__(self, groups: list[str], initial: dict | None = None, parent=None):
+    def __init__(
+        self, groups: list[str | tuple[str, ...]], initial: dict | None = None, parent=None
+    ):
         super().__init__(parent)
         initial = initial or {}
         self.setWindowTitle("Add Command" if not initial else "Edit Command")
@@ -60,9 +108,22 @@ class _CommandFormDialog(QDialog):
 
         # Group
         self._group_combo = QComboBox()
-        self._group_combo.addItems(groups)
         self._group_combo.setEditable(True)
-        current_group = initial.get("group", groups[0] if groups else "")
+        for group in groups:
+            group_path = group if isinstance(group, tuple) else (group,)
+            group_label = json.dumps(group_path, ensure_ascii=False)
+            self._group_combo.addItem(group_label, group_path)
+        current_path = initial.get("group_path")
+        default_group = (
+            json.dumps(groups[0], ensure_ascii=False)
+            if groups and isinstance(groups[0], tuple)
+            else (groups[0] if groups else "")
+        )
+        current_group = (
+            json.dumps(current_path, ensure_ascii=False)
+            if current_path
+            else initial.get("group", default_group)
+        )
         idx = self._group_combo.findText(current_group)
         if idx >= 0:
             self._group_combo.setCurrentIndex(idx)
@@ -141,8 +202,18 @@ class _CommandFormDialog(QDialog):
         self.accept()
 
     def result_data(self) -> dict:
+        """Return normalized command fields and the selected exact group path."""
+        current_group = self._group_combo.currentText().strip()
+        current_index = self._group_combo.currentIndex()
+        selected_path = self._group_combo.itemData(current_index) if current_index >= 0 else None
+        group_path = (
+            selected_path
+            if selected_path and current_group == self._group_combo.itemText(current_index)
+            else (current_group,)
+        )
         data = {
-            "group": self._group_combo.currentText().strip(),
+            "group": current_group,
+            "group_path": tuple(group_path),
             "label": self._name_edit.text().strip(),
             "command": self._cmd_edit.text().strip(),
             "showOutput": self._show_output_check.isChecked(),
@@ -206,7 +277,33 @@ class CommandManagerDialog(QDialog):
         self._tree.header().setStretchLastSection(False)
         self._tree.setAlternatingRowColors(True)
         layout.addWidget(self._tree)
-        tab_widgets = (add_btn, edit_btn, del_btn, up_btn, down_btn, self._tree)
+        self._search_edit = QLineEdit()
+        self._search_edit.setAccessibleName("Search commands")
+        self._search_edit.setPlaceholderText("Search names, groups, and command text")
+        self._search_edit.textChanged.connect(self._filter_tree)
+        layout.insertWidget(0, self._search_edit)
+
+        self._empty_label = QLabel("No commands match your search.")
+        self._empty_label.setAccessibleName("No command search results")
+        self._empty_label.setVisible(False)
+        layout.addWidget(self._empty_label)
+
+        self._details_view = QPlainTextEdit()
+        self._details_view.setAccessibleName("Selected command details")
+        self._details_view.setReadOnly(True)
+        layout.addWidget(self._details_view)
+        self._tree.currentItemChanged.connect(self._update_details)
+
+        tab_widgets = (
+            add_btn,
+            edit_btn,
+            del_btn,
+            up_btn,
+            down_btn,
+            self._search_edit,
+            self._tree,
+            self._details_view,
+        )
         for current, following in zip(tab_widgets[:-1], tab_widgets[1:], strict=True):
             self.setTabOrder(current, following)
 
@@ -225,7 +322,7 @@ class CommandManagerDialog(QDialog):
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-        self.setTabOrder(self._tree, self._save_btn)
+        self.setTabOrder(self._details_view, self._save_btn)
         self.setTabOrder(self._save_btn, cancel_btn)
 
         # Disable Save while processes are running; poll every second so the
@@ -250,12 +347,27 @@ class CommandManagerDialog(QDialog):
             if not isinstance(group_data, dict):
                 continue
             group_item = QTreeWidgetItem([group_name, "", ""])
-            group_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "group", "name": group_name})
+            group_path = (group_name,)
+            group_item.setData(
+                0, Qt.ItemDataRole.UserRole, {"type": "group", "group_path": group_path}
+            )
             self._tree.addTopLevelItem(group_item)
-            self._populate_group(group_item, group_name, group_data)
+            self._populate_group(group_item, group_path, group_data)
             group_item.setExpanded(True)
 
-    def _populate_group(self, parent_item: QTreeWidgetItem, group_name: str, data: dict):
+    def _populate_group(
+        self, parent_item: QTreeWidgetItem, group_path: tuple[str, ...], data: dict
+    ):
+        """Append command and subgroup rows while retaining exact group ancestry.
+
+        Args:
+            parent_item: Tree row that owns this group's direct entries.
+            group_path: Exact key components locating ``data`` in the configuration.
+            data: Group mapping whose direct entries should be rendered.
+
+        Returns:
+            None. Rows are appended to ``parent_item``.
+        """
         for label, item in data.items():
             if label == "icon":
                 continue
@@ -279,7 +391,7 @@ class CommandManagerDialog(QDialog):
                     Qt.ItemDataRole.UserRole,
                     {
                         "type": "command",
-                        "group": group_name,
+                        "group_path": group_path,
                         "label": label,
                         "data": item,
                     },
@@ -292,11 +404,74 @@ class CommandManagerDialog(QDialog):
                     Qt.ItemDataRole.UserRole,
                     {
                         "type": "group",
-                        "name": f"{group_name}.{label}",
+                        "group_path": (*group_path, label),
                     },
                 )
                 parent_item.addChild(sub_item)
-                self._populate_group(sub_item, f"{group_name}.{label}", item)
+                self._populate_group(sub_item, (*group_path, label), item)
+
+    def _filter_tree(self, query: str):
+        """Filter visible rows by command name, text, or group path.
+
+        Args:
+            query: Search text; matching is case-insensitive substring matching.
+
+        Returns:
+            None. Only tree visibility, selection preview, and empty-state presentation change.
+        """
+        needle = query.strip().casefold()
+        command_matches = 0
+
+        def filter_group(group_item: QTreeWidgetItem, inherited_match: bool = False) -> bool:
+            nonlocal command_matches
+            meta = group_item.data(0, Qt.ItemDataRole.UserRole) or {}
+            path = meta.get("group_path", ())
+            group_match = inherited_match or needle in " / ".join(path).casefold()
+            has_visible_command = False
+            for index in range(group_item.childCount()):
+                child = group_item.child(index)
+                child_meta = child.data(0, Qt.ItemDataRole.UserRole) or {}
+                if child_meta.get("type") == "command":
+                    matches = (
+                        group_match
+                        or needle in child.text(0).casefold()
+                        or needle in child.text(1).casefold()
+                    )
+                    child.setHidden(not matches)
+                    if matches:
+                        has_visible_command = True
+                        command_matches += 1
+                else:
+                    visible = filter_group(child, group_match)
+                    child.setHidden(not visible)
+                    has_visible_command = has_visible_command or visible
+            visible = not needle or has_visible_command
+            group_item.setHidden(not visible)
+            if visible and needle:
+                group_item.setExpanded(True)
+            return visible
+
+        for index in range(self._tree.topLevelItemCount()):
+            filter_group(self._tree.topLevelItem(index))
+        self._empty_label.setVisible(bool(needle) and command_matches == 0)
+        current = self._tree.currentItem()
+        if current is not None and current.isHidden():
+            self._tree.setCurrentItem(None)
+        if command_matches == 0:
+            self._details_view.clear()
+
+    def _update_details(self, current, previous=None):
+        """Render the selected command's complete configured data read-only."""
+        meta = current.data(0, Qt.ItemDataRole.UserRole) if current is not None else None
+        if not isinstance(meta, dict) or meta.get("type") != "command":
+            self._details_view.clear()
+            return
+        group_path = meta.get("group_path", ())
+        details = {"name": meta.get("label"), **meta.get("data", {})}
+        self._details_view.setPlainText(
+            f"Group path: {json.dumps(group_path, ensure_ascii=False)}\n"
+            f"{json.dumps(details, ensure_ascii=False, indent=2)}"
+        )
 
     # ------------------------------------------------------------------
     # CRUD actions
@@ -304,19 +479,31 @@ class CommandManagerDialog(QDialog):
 
     def _add_command(self):
         commands = self._services.config_manager.get_commands()
-        groups = list(commands.keys())
+        groups = _command_groups(commands)
         dlg = _CommandFormDialog(groups, parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             d = dlg.result_data()
-            group = d["group"]
-            cmd_data = {k: v for k, v in d.items() if k not in ("group", "label")}
-            if group not in commands:
-                commands[group] = {}
-            commands[group][d["label"]] = cmd_data
+            group_path = d["group_path"]
+            cmd_data = {k: v for k, v in d.items() if k not in ("group", "group_path", "label")}
+            group = commands
+            for component in group_path:
+                existing = group.get(component)
+                if existing is None:
+                    existing = {}
+                    group[component] = existing
+                if not isinstance(existing, dict):
+                    return
+                group = existing
+            group[d["label"]] = cmd_data
             self._services.config_manager.save_commands(commands)
             self._load_tree()
 
     def _edit_command(self):
+        """Edit a selected command at its exact source and destination paths.
+
+        Returns:
+            None. Configuration changes are saved only after an accepted edit.
+        """
         item = self._tree.currentItem()
         if not item:
             show_info(self, "Edit", "Select a command to edit.")
@@ -327,26 +514,33 @@ class CommandManagerDialog(QDialog):
             return
 
         commands = self._services.config_manager.get_commands()
-        group_name = meta["group"]
+        group_path = meta["group_path"]
         label = meta["label"]
         item_data = meta.get("data", {})
 
-        initial = {"group": group_name, "label": label, **item_data}
-        dlg = _CommandFormDialog(list(commands.keys()), initial=initial, parent=self)
+        initial = {"group_path": group_path, "label": label, **item_data}
+        dlg = _CommandFormDialog(_command_groups(commands), initial=initial, parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             d = dlg.result_data()
-            new_group = d["group"]
+            new_group_path = d["group_path"]
             new_label = d["label"]
-            cmd_data = {k: v for k, v in d.items() if k not in ("group", "label")}
+            cmd_data = {k: v for k, v in d.items() if k not in ("group", "group_path", "label")}
+            source = _resolve_group_path(commands, group_path)
+            if source is None or label not in source:
+                return
 
-            # Remove from old location
-            if group_name in commands and label in commands[group_name]:
-                del commands[group_name][label]
+            destination = commands
+            for component in new_group_path:
+                existing = destination.get(component)
+                if existing is None:
+                    existing = {}
+                    destination[component] = existing
+                if not isinstance(existing, dict):
+                    return
+                destination = existing
 
-            # Insert at new location
-            if new_group not in commands:
-                commands[new_group] = {}
-            commands[new_group][new_label] = cmd_data
+            del source[label]
+            destination[new_label] = cmd_data
 
             self._services.config_manager.save_commands(commands)
             self._load_tree()
@@ -363,27 +557,15 @@ class CommandManagerDialog(QDialog):
 
         commands = self._services.config_manager.get_commands()
         if meta.get("type") == "command":
-            group_name = meta["group"]
+            parent = _resolve_group_path(commands, meta.get("group_path", ()))
             label = meta["label"]
-            if group_name in commands and label in commands[group_name]:
-                del commands[group_name][label]
+            if parent is not None and label in parent:
+                del parent[label]
         elif meta.get("type") == "group":
-            group_path = meta["name"]
-            parts = group_path.split(".")
-            if len(parts) == 1:
-                # Top-level group
-                if parts[0] in commands:
-                    del commands[parts[0]]
-            else:
-                # Nested subgroup: delete only the selected sub-key in its parent
-                parent = commands
-                for part in parts[:-1]:
-                    parent = parent.get(part)
-                    if not isinstance(parent, dict):
-                        parent = None
-                        break
-                if isinstance(parent, dict) and parts[-1] in parent:
-                    del parent[parts[-1]]
+            group_path = meta.get("group_path", ())
+            parent = _resolve_group_path(commands, group_path[:-1])
+            if parent is not None and group_path and group_path[-1] in parent:
+                del parent[group_path[-1]]
 
         self._services.config_manager.save_commands(commands)
         self._load_tree()
@@ -397,6 +579,14 @@ class CommandManagerDialog(QDialog):
         self._move_item(1)
 
     def _move_item(self, direction: int):
+        """Reorder the selected command among its exact parent's direct entries.
+
+        Args:
+            direction: -1 to move up or +1 to move down.
+
+        Returns:
+            None. No persistence occurs when the selection or destination is invalid.
+        """
         item = self._tree.currentItem()
         if not item:
             return
@@ -405,13 +595,11 @@ class CommandManagerDialog(QDialog):
             return
 
         commands = self._services.config_manager.get_commands()
-        group_name = meta["group"]
+        group_path = meta["group_path"]
         label = meta["label"]
-
-        if group_name not in commands:
+        group = _resolve_group_path(commands, group_path)
+        if group is None:
             return
-
-        group = commands[group_name]
         keys = [k for k in group if k != "icon"]
         if label not in keys:
             return
@@ -424,12 +612,13 @@ class CommandManagerDialog(QDialog):
         # Rebuild group preserving icon
         icon_val = group.get("icon")
         reordered = {}
-        if icon_val is not None:
+        if "icon" in group:
             reordered["icon"] = icon_val
         keys.insert(new_idx, keys.pop(idx))
         for k in keys:
             reordered[k] = group[k]
-        commands[group_name] = reordered
+        group.clear()
+        group.update(reordered)
 
         self._services.config_manager.save_commands(commands)
         self._load_tree()
