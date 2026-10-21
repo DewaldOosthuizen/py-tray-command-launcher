@@ -110,6 +110,30 @@ class TestCommandHistory(unittest.TestCase):
         # At least 2 addAction calls for the history entries (plus "Clear History")
         self.assertGreaterEqual(mock_menu.addAction.call_count, 2)
 
+    def test_history_action_text_includes_cues_and_execution_keeps_original_metadata(self):
+        mock_menu = MagicMock()
+        self.mock_config_manager.get_history.return_value = [
+            {
+                "command": "run",
+                "title": "Original title",
+                "confirm": True,
+                "showOutput": True,
+                "prompt": "Input",
+            }
+        ]
+        action = MagicMock()
+        self.history = CommandHistory(self.mock_services)
+        with patch("modules.command_history.QAction", return_value=action) as action_factory:
+            self.history.populate_menu(mock_menu)
+
+        self.assertIn("Original title", action_factory.call_args.args[0])
+        self.assertIn("Confirmation required", action_factory.call_args.args[0])
+        callback = action.triggered.connect.call_args.args[0]
+        callback(False)
+        self.mock_services.execute.assert_called_once_with(
+            "Original title", "run", True, True, "Input"
+        )
+
     def test_history_empty_state(self):
         """populate_menu with empty history should still call get_history."""
         mock_menu = MagicMock()

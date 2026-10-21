@@ -352,6 +352,42 @@ def test_command_and_pin_actions_use_injected_callbacks():
     )
 
 
+def test_direct_command_action_shows_cues_and_executes_original_payload():
+    dependencies = _make_dependencies()
+    builder = MenuBuilder(dependencies)
+    menu = MagicMock()
+    action = MagicMock()
+
+    with (
+        patch("core.menu_builder.QIcon", return_value=MagicMock()),
+        patch("core.menu_builder.QAction", return_value=action) as action_factory,
+        patch("core.menu_builder.QMenu", return_value=MagicMock()),
+    ):
+        builder._add_command_to_menu(
+            menu,
+            "Original command",
+            {
+                "command": "run --unchanged",
+                "confirm": True,
+                "prompt": "Enter value",
+                "showOutput": True,
+            },
+            dependencies.icon_file,
+            "System",
+        )
+
+    rendered_name = action_factory.call_args.args[1]
+    assert "Original command" in rendered_name
+    assert "Confirmation required" in rendered_name
+    assert "Input required" in rendered_name
+    assert "Output shown" in rendered_name
+    callback = action.triggered.connect.call_args.args[0]
+    callback(False)
+    dependencies.execute.assert_called_once_with(
+        "Original command", "run --unchanged", True, True, "Enter value"
+    )
+
+
 def test_add_command_to_menu_missing_command_raises():
     """An item with no 'command' and no 'ref' causes show_error_and_raise to be
     called with a message containing the label."""

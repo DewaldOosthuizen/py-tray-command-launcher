@@ -512,6 +512,48 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         self.assertIn(replacement[1], added_payloads)
         self.assertIn(replacement[2], renamed_payloads)
 
+    def test_palette_results_expose_accessible_execution_cues_without_renaming(self):
+        import ui.command_palette as cp
+
+        p, svc = self._make_palette()
+        command = {
+            "group": "System",
+            "label": "Configured command name",
+            "command": "execute --exactly",
+            "confirm": True,
+            "prompt": "Input value",
+            "showOutput": True,
+        }
+        svc.get_all_commands.return_value = [command]
+        win = _PaletteWindow(p)
+
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.values = {}
+
+            def setData(self, role, value):
+                self.values[role] = value
+
+            def setToolTip(self, value):
+                self.tooltip = value
+
+        with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
+            win._populate_commands("")
+
+        item = win._cmd_list.addItem.call_args.args[0]
+        self.assertIn("Configured command name", item.text)
+        self.assertIn("Confirmation required", item.text)
+        self.assertEqual(item.values[cp.Qt.ItemDataRole.UserRole], command)
+        self.assertEqual(
+            item.values[cp.Qt.ItemDataRole.AccessibleTextRole],
+            "Configured command name, System",
+        )
+        self.assertEqual(
+            item.values[cp.Qt.ItemDataRole.AccessibleDescriptionRole],
+            "Confirmation required; Input required; Output shown",
+        )
+
     def test_enter_key_triggers_execute(self):
         """eventFilter triggers _execute on Enter."""
         p, svc = self._make_palette()
