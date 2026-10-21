@@ -51,7 +51,7 @@ class SettingsDialog(QDialog):
         app_launcher_hotkey_callback=None,
         quick_launch_bar=None,
     ):
-        """Initialize settings controls and constrain the dialog to the cursor display.
+        """Initialize settings controls and anchor the dialog to the cursor display.
 
         Args:
             services: Application services used to load and save settings.
