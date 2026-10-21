@@ -24,9 +24,7 @@ help: ## List all Make targets and their descriptions
 start: ## Start the application
 	source venv/bin/activate && python src/main.py
 
-.PHONY: start
-start:
-	source venv/bin/activate && python src/main.py
+
 
 .PHONY: install-dev
 install-dev: ## Install the project and development dependencies

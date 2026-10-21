@@ -302,17 +302,69 @@ class CommandManagerDialog(QDialog):
     # CRUD actions
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _resolve_group(commands: dict, group_path: str):
+        """Resolve a dot-separated group path into the dict that holds the group
+        and the group's key within that dict.
+
+        For a top-level group the container is the commands dict itself. If the
+        path does not exist, or any segment is missing / not a dict, returns
+        (None, None).
+        """
+        if not group_path:
+            return None, None
+        parts = group_path.split(".")
+        parent = commands
+        for part in parts[:-1]:
+            if not isinstance(parent, dict) or part not in parent:
+                return None, None
+            parent = parent[part]
+            if not isinstance(parent, dict):
+                return None, None
+        return parent, parts[-1]
+
+    def _collect_group_paths(self, commands: dict, prefix: str = "") -> list[str]:
+        """Return every group path present in the configuration, including nested
+        subgroups, as dot-separated strings (e.g. 'Nested.Sub.Deep').
+
+        A key is treated as a group when its value is a dict that does not have
+        a top-level 'command' key (which would make it a command entry).
+        """
+        paths = []
+        for key, value in commands.items():
+            if key == "icon":
+                continue
+            full = f"{prefix}.{key}" if prefix else key
+            if isinstance(value, dict) and "command" not in value:
+                paths.append(full)
+                paths.extend(self._collect_group_paths(value, full))
+        return paths
+
     def _add_command(self):
         commands = self._services.config_manager.get_commands()
-        groups = list(commands.keys())
+        groups = self._collect_group_paths(commands)
         dlg = _CommandFormDialog(groups, parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             d = dlg.result_data()
             group = d["group"]
             cmd_data = {k: v for k, v in d.items() if k not in ("group", "label")}
-            if group not in commands:
-                commands[group] = {}
-            commands[group][d["label"]] = cmd_data
+
+            new_parent, new_key = self._resolve_group(commands, group)
+            if new_parent is not None and new_key in new_parent:
+                # Path exists (top-level or nested): add the command to the
+                # existing subgroup, preserving its unrelated sibling entries.
+                new_parent[new_key][d["label"]] = cmd_data
+            else:
+                # New group path: create any missing intermediate groups, then
+                # the leaf group, and insert the command inside it.
+                parts = group.split(".")
+                parent = commands
+                for part in parts[:-1]:
+                    if part not in parent or not isinstance(parent.get(part), dict):
+                        parent[part] = {}
+                    parent = parent[part]
+                new_parent = parent.setdefault(parts[-1], {})
+                new_parent[d["label"]] = cmd_data
             self._services.config_manager.save_commands(commands)
             self._load_tree()
 
@@ -327,26 +379,57 @@ class CommandManagerDialog(QDialog):
             return
 
         commands = self._services.config_manager.get_commands()
-        group_name = meta["group"]
+        group_path = meta["group"]
         label = meta["label"]
         item_data = meta.get("data", {})
-
-        initial = {"group": group_name, "label": label, **item_data}
-        dlg = _CommandFormDialog(list(commands.keys()), initial=initial, parent=self)
+        initial = {"group": group_path, "label": label, **item_data}
+        dlg = _CommandFormDialog(self._collect_group_paths(commands), initial=initial, parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             d = dlg.result_data()
             new_group = d["group"]
             new_label = d["label"]
             cmd_data = {k: v for k, v in d.items() if k not in ("group", "label")}
 
-            # Remove from old location
-            if group_name in commands and label in commands[group_name]:
-                del commands[group_name][label]
+            # Resolve the command's current location using its full dot-separated
+            # group path so that nested groups (e.g. 'Nested.Sub') resolve to the
+            # subgroup that directly holds the command.
+            old_parent, old_key = self._resolve_group(commands, group_path)
+            if (
+                old_parent is None
+                or old_key is None
+                or not isinstance(old_parent, dict)
+                or old_key not in old_parent
+                or not isinstance(old_parent[old_key], dict)
+                or label not in old_parent[old_key]
+            ):
+                show_warning(
+                    self,
+                    "Edit",
+                    f"Could not locate command '{label}' under group '{group_path}'.",
+                )
+                return
 
-            # Insert at new location
-            if new_group not in commands:
-                commands[new_group] = {}
-            commands[new_group][new_label] = cmd_data
+            # Remove only the labelled command. The surrounding subgroup (and its
+            # metadata such as icon) and all unrelated siblings are preserved.
+            del old_parent[old_key][label]
+
+            # Resolve (or create) the parent container for the new group path.
+            new_parent, new_key = self._resolve_group(commands, new_group)
+            if new_parent is not None and new_key in new_parent:
+                # Existing group: add the command to the existing subgroup,
+                # preserving the subgroup's unrelated sibling entries.
+                new_parent[new_key][new_label] = cmd_data
+            else:
+                # New group path: create any missing intermediate groups, then
+                # the leaf group, and insert the command inside it.
+                parts = new_group.split(".")
+                parent = commands
+                for part in parts[:-1]:
+                    if part not in parent or not isinstance(parent.get(part), dict):
+                        parent[part] = {}
+                    parent = parent[part]
+                new_parent = parent.setdefault(parts[-1], {})
+                new_parent[new_label] = cmd_data
 
             self._services.config_manager.save_commands(commands)
             self._load_tree()
@@ -363,10 +446,22 @@ class CommandManagerDialog(QDialog):
 
         commands = self._services.config_manager.get_commands()
         if meta.get("type") == "command":
-            group_name = meta["group"]
+            group_path = meta["group"]
             label = meta["label"]
-            if group_name in commands and label in commands[group_name]:
-                del commands[group_name][label]
+
+            # The command is stored one level deeper than the group path: the
+            # group path resolves to a (parent, key) pair whose value is the
+            # subgroup that directly holds the command.
+            parent, key = self._resolve_group(commands, group_path)
+            if (
+                parent is not None
+                and isinstance(parent, dict)
+                and key is not None
+                and key in parent
+                and isinstance(parent[key], dict)
+                and label in parent[key]
+            ):
+                del parent[key][label]
         elif meta.get("type") == "group":
             group_path = meta["name"]
             parts = group_path.split(".")
@@ -376,13 +471,8 @@ class CommandManagerDialog(QDialog):
                     del commands[parts[0]]
             else:
                 # Nested subgroup: delete only the selected sub-key in its parent
-                parent = commands
-                for part in parts[:-1]:
-                    parent = parent.get(part)
-                    if not isinstance(parent, dict):
-                        parent = None
-                        break
-                if isinstance(parent, dict) and parts[-1] in parent:
+                parent, _ = self._resolve_group(commands, group_path)
+                if parent is not None and isinstance(parent, dict) and parts[-1] in parent:
                     del parent[parts[-1]]
 
         self._services.config_manager.save_commands(commands)
@@ -397,6 +487,8 @@ class CommandManagerDialog(QDialog):
         self._move_item(1)
 
     def _move_item(self, direction: int):
+        """Move the selected command one position up/down within its parent
+        subgroup. Works for both top-level and nested subgroup paths."""
         item = self._tree.currentItem()
         if not item:
             return
@@ -405,13 +497,16 @@ class CommandManagerDialog(QDialog):
             return
 
         commands = self._services.config_manager.get_commands()
-        group_name = meta["group"]
+        group_path = meta["group"]
         label = meta["label"]
 
-        if group_name not in commands:
+        # Resolve the command's parent subgroup so that nested commands (e.g.
+        # group 'Nested.Sub', label 'GrandChild') are moved inside 'Sub'.
+        parent, key = self._resolve_group(commands, group_path)
+        if parent is None or key is None or not isinstance(parent, dict):
             return
 
-        group = commands[group_name]
+        group = parent[key]
         keys = [k for k in group if k != "icon"]
         if label not in keys:
             return
@@ -421,7 +516,7 @@ class CommandManagerDialog(QDialog):
         if new_idx < 0 or new_idx >= len(keys):
             return
 
-        # Rebuild group preserving icon
+        # Rebuild the subgroup preserving icon and unrelated sibling entries.
         icon_val = group.get("icon")
         reordered = {}
         if icon_val is not None:
@@ -429,8 +524,8 @@ class CommandManagerDialog(QDialog):
         keys.insert(new_idx, keys.pop(idx))
         for k in keys:
             reordered[k] = group[k]
-        commands[group_name] = reordered
 
+        parent[key] = reordered
         self._services.config_manager.save_commands(commands)
         self._load_tree()
 
