@@ -49,8 +49,8 @@ Use `{promptInput}` anywhere in a command string to request user input at runtim
 
 The tray menu starts with **Command Palette**, **Favorites**, and **Recent
 Commands**, followed by configured command categories. Management actions and
-Tools are grouped separately; **Quick Launch Bar**, **Settings**, the active
-process indicator, and **Exit** follow those groups.
+Tools are grouped separately; **Settings**, the active process indicator, and
+**Exit** follow those groups.
 
 Open **Command Palette** for the single searchable Commands and Apps surface.
 Type to filter, use Tab to move between the Commands and Apps views, use the
@@ -304,29 +304,4 @@ screen at all) is shown without an anchor rather than blocking the hotkey.
 
 ## Branding
 
-Branded assets live under `resources/icons/branding/` (base `icon.png`, optional `icon-running.png`/`icon-error.png` variants). They are consumed by: tray icon, window icon, quick-launch bar, badge manager, desktop entry, and the packaged executable. Swap them by replacing the PNG files in that directory; `resources/icons/icon.png` remains as a legacy fallback.
-
-## Quick-Launch Bar Pins
-
-The Quick-Launch Bar shows the commands listed in `quick_launch_bar.pinned`
-in `settings.json`. The Settings dialog's **Pinned Commands** group box
-(below the Quick-Launch Bar visibility and hotkey options) provides the GUI
-controls for curating that list without hand-editing the file:
-
-- **Add >>** — move the currently selected command from the available list
-  into the pinned list.
-- **Remove** — remove the currently selected pinned command.
-- **Move Up** / **Move Down** — change the order in which pinned commands
-  appear on the bar.
-
-Pins are stored as an ordered list of full `{group, label, command,
-confirm, showOutput}` dictionaries. When the dialog is saved, `commit()`
-resolves each pin against the known command set through the shared
-`_resolve_pin_command()` helper; any pin whose command no longer resolves is
-dropped (a warning is logged) and the visible bar is refreshed, so the saved
-list and the on-screen bar always stay in sync. Reordering pins preserves
-the order end to end, and the bar is refreshed automatically on save.
-
-The tray menu's **Quick Launch Bar** action controls visibility. Pinned buttons
-retain the configured command name and expose confirmation, input, and output
-cues when those execution options are enabled.
+Branded assets live under `resources/icons/branding/` (base `icon.png`, optional `icon-running.png`/`icon-error.png` variants). They are consumed by: tray icon, window icon, badge manager, desktop entry, and the packaged executable. Swap them by replacing the PNG files in that directory; `resources/icons/icon.png` remains as a legacy fallback.

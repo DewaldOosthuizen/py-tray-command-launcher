@@ -88,34 +88,22 @@ def test_ui_factories_register_configured_hotkeys_only_on_first_use():
     settings = {
         "hotkey": "ctrl+x",
         "app_launcher_hotkey": "ctrl+y",
-        "quick_launch_bar": {"hotkey": "ctrl+z"},
     }
     get_settings = MagicMock(return_value=settings)
     controller = _module_controller(services, "icon.png", get_settings)
 
-    with (
-        patch("core.module_controller.CommandPalette") as palette_factory,
-        patch("core.module_controller.QuickLaunchBar") as bar_factory,
-    ):
+    with patch("core.module_controller.CommandPalette") as palette_factory:
         assert controller.loaded_palette is None
-        assert controller.loaded_quick_launch_bar is None
         assert controller.get_palette() is controller.get_palette()
-        assert controller.get_quick_launch_bar() is controller.get_quick_launch_bar()
 
     palette_factory.assert_called_once_with(services)
     palette_factory.return_value.register_hotkeys.assert_called_once_with("ctrl+x", "ctrl+y")
-    bar_factory.assert_called_once_with(services, "icon.png")
-    bar_factory.return_value.register_hotkey.assert_called_once_with("ctrl+z")
-    assert get_settings.call_count == 2
+    assert get_settings.call_count == 1
 
 
 def test_cleanup_hotkeys_does_not_construct_unused_ui_modules():
     controller = _module_controller(MagicMock(), "icon.png", MagicMock(return_value={}))
-    with (
-        patch("core.module_controller.CommandPalette") as palette_factory,
-        patch("core.module_controller.QuickLaunchBar") as bar_factory,
-    ):
+    with patch("core.module_controller.CommandPalette") as palette_factory:
         controller.cleanup()
 
     palette_factory.assert_not_called()
-    bar_factory.assert_not_called()

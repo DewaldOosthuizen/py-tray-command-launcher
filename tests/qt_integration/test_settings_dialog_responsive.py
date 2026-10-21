@@ -26,7 +26,6 @@ def _build_dialog(qtbot):
         "app_launcher_hotkey": "ctrl+alt+a",
         "history_limit": 50,
         "output_font": {"family": "monospace", "size": 10},
-        "quick_launch_bar": {"visible": False, "hotkey": "ctrl+shift+b", "pinned": []},
         "logging": {"level": "WARNING"},
     }
     services = MagicMock()
@@ -59,8 +58,6 @@ def test_settings_sections_scroll_while_actions_remain_fixed(qtbot):
         "Appearance",
         "Behaviour",
         "Output Window",
-        "Quick-Launch Bar",
-        "Pinned Commands",
         "Logging",
     ]
 

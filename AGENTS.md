@@ -2,7 +2,7 @@
 
 A Python/PyQt6 system tray application for launching custom commands and scripts from a
 hierarchical menu. Supports file encryption, command scheduling, backup/restore, favorites,
-fuzzy command search, a command palette, a quick-launch bar, and packaging for Linux and Windows.
+fuzzy command search, a command palette, and packaging for Linux and Windows.
 
 This file instructs AI agents (Hermes, GitHub Copilot, Codex, etc.) on how
 to orient themselves in this repository efficiently.

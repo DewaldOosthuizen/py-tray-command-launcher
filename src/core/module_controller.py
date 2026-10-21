@@ -18,7 +18,6 @@ from modules.import_export import ImportExport
 from modules.schedule_creator import ScheduleCreator
 from modules.schedule_viewer import ScheduleViewer
 from ui.command_palette import CommandPalette
-from ui.quick_launch_bar import QuickLaunchBar
 
 if TYPE_CHECKING:
     from core.services import AppServices
@@ -50,7 +49,6 @@ class ModuleController:
         self._schedule_creator: ScheduleCreator | None = None
         self._schedule_viewer: ScheduleViewer | None = None
         self._palette: CommandPalette | None = None
-        self._quick_launch_bar: QuickLaunchBar | None = None
 
     def get_history(self) -> CommandHistory:
         """Return the cached history feature, constructing it on first access."""
@@ -126,38 +124,15 @@ class ModuleController:
             )
         return self._palette
 
-    def get_quick_launch_bar(self) -> QuickLaunchBar:
-        """Construct and cache the quick-launch bar with its configured hotkey."""
-        if self._quick_launch_bar is None:
-            settings = self._get_settings()
-            self._quick_launch_bar = QuickLaunchBar(self.services, self.icon_file)
-            bar_settings = settings.get("quick_launch_bar", {})
-            self._quick_launch_bar.register_hotkey(bar_settings.get("hotkey", "ctrl+shift+b"))
-        return self._quick_launch_bar
-
     @property
     def loaded_palette(self) -> CommandPalette | None:
         """Return the palette if already constructed, without creating it."""
         return self._palette
 
-    @property
-    def loaded_quick_launch_bar(self) -> QuickLaunchBar | None:
-        """Return the bar if already constructed, without creating it."""
-        return self._quick_launch_bar
-
     def cleanup(self) -> None:
-        """Release loaded UI hotkeys and close the bar without constructing modules."""
+        """Release loaded UI hotkeys without constructing modules."""
         if self._palette is not None:
             try:
                 self._palette.unregister_hotkey()
             except Exception as exc:
                 logger.debug("Palette hotkey cleanup error: %s", exc)
-        if self._quick_launch_bar is not None:
-            try:
-                self._quick_launch_bar.unregister_hotkey()
-            except Exception as exc:
-                logger.debug("Bar hotkey cleanup error: %s", exc)
-            try:
-                self._quick_launch_bar.close()
-            except Exception as exc:
-                logger.debug("Bar close error: %s", exc)

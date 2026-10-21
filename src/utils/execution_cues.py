@@ -32,7 +32,7 @@ def format_execution_cues(command: Mapping[str, Any] | None, *, concise: bool = 
 
     Args:
         command: Command metadata containing optional execution flags.
-        concise: Use short labels suitable for compact Quick-Launch buttons.
+        concise: Use short labels suitable for compact tray-menu entries.
 
     Returns:
         Cue labels joined with a middle dot, or an empty string when no cue applies.

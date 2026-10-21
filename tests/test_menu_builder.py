@@ -33,7 +33,6 @@ def _make_dependencies(command_menu=None):
         "get_command_menu": MagicMock(return_value=command_menu or {}),
         "resolve_icon_path": MagicMock(return_value=None),
         "execute": MagicMock(),
-        "pin_to_quick_launch": MagicMock(),
         "get_favorites": MagicMock(return_value=feature()),
         "set_favorites_menu": MagicMock(),
         "reload_favorites_commands": MagicMock(),
@@ -49,7 +48,6 @@ def _make_dependencies(command_menu=None):
         "get_schedule_creator": MagicMock(return_value=feature()),
         "get_schedule_viewer": MagicMock(return_value=feature()),
         "open_settings": MagicMock(),
-        "get_quick_launch_bar": MagicMock(return_value=feature()),
         "set_running_action": MagicMock(),
         "restart_app": MagicMock(),
         "confirm_exit": MagicMock(),
@@ -117,7 +115,6 @@ def test_build_orders_primary_discovery_management_and_exit_actions():
         "separator",
         "Management",
         "Tools",
-        "Quick Launch Bar",
         "Settings",
         "Running: 0",
         "Exit",
@@ -344,8 +341,8 @@ def test_add_command_to_menu_reference_resolves_command():
     dependencies.execute.assert_not_called()
 
 
-def test_command_and_pin_actions_use_injected_callbacks():
-    """Rendered command actions and context-menu actions call injected handlers."""
+def test_command_action_uses_injected_execute_and_has_no_context_menu():
+    """Command actions call the injected executor and are plain actions (no submenu)."""
     dependencies = _make_dependencies()
     builder = MenuBuilder(dependencies)
     menu = MagicMock()
@@ -360,9 +357,10 @@ def test_command_and_pin_actions_use_injected_callbacks():
     class _Action:
         def __init__(self, *_args):
             self.triggered = _Signal()
+            self.menu_attached = False
 
-        def setMenu(self, context_menu):
-            self.context_menu = context_menu
+        def setMenu(self, _menu):
+            self.menu_attached = True
 
         def setToolTip(self, text):
             self.tool_tip = text
@@ -371,11 +369,7 @@ def test_command_and_pin_actions_use_injected_callbacks():
             self.whats_this = text
 
     command_action = _Action()
-    pin_action = _Action()
-    with (
-        patch("core.menu_builder.QAction", side_effect=[command_action, pin_action]),
-        patch("core.menu_builder.QMenu", return_value=MagicMock()),
-    ):
+    with patch("core.menu_builder.QAction", side_effect=[command_action]):
         builder._add_command_to_menu(
             menu,
             "Terminal",
@@ -385,19 +379,10 @@ def test_command_and_pin_actions_use_injected_callbacks():
         )
 
     command_action.triggered.emit()
-    pin_action.triggered.emit()
 
     dependencies.execute.assert_called_once_with("Terminal", "xterm", True, True, None)
-    dependencies.pin_to_quick_launch.assert_called_once_with(
-        {
-            "group": "System",
-            "label": "Terminal",
-            "command": "xterm",
-            "confirm": True,
-            "showOutput": True,
-            "prompt": None,
-        }
-    )
+    assert command_action.menu_attached is False
+    menu.addAction.assert_called_once_with(command_action)
 
 
 def test_direct_command_action_shows_cues_and_executes_original_payload():
@@ -504,22 +489,6 @@ def test_build_raises_when_group_value_is_not_dict():
     mock_error.assert_called_once()
     assert "BadGroup" in mock_error.call_args[0][0]
     assert "dictionary" in mock_error.call_args[0][0].lower()
-
-
-def test_build_uses_lazy_quick_launch_bar_accessor():
-    """Regression: the tray menu must obtain the Quick Launch Bar through the
-    lazy accessor. Dereferencing the unset ``quick_launch_bar`` slot raised
-    AttributeError inside the aboutToShow slot, which aborts the process."""
-    dependencies = _make_dependencies({"GroupA": {"Cmd1": {"command": "echo one"}}})
-    parent_menu = MagicMock()
-    qmenu_make, _ = _qmenu_factory()
-
-    with patch("core.menu_builder.QMenu", side_effect=qmenu_make):
-        MenuBuilder(dependencies).build(parent_menu, dependencies.get_command_menu.return_value)
-
-    dependencies.get_quick_launch_bar.assert_called_once_with()
-    labels = [c.args[0] for c in parent_menu.addAction.call_args_list if c.args]
-    assert "Quick Launch Bar" in labels
 
 
 def test_build_invalidates_cached_command_search_results():
