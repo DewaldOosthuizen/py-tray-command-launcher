@@ -22,12 +22,12 @@ from PyQt6.QtWidgets import QMenu
 
 from modules.command_search import clear_command_search_cache
 from utils.dialogs import show_error_and_raise
+from utils.execution_cues import describe_execution_cues, format_execution_cues
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from modules.backup_restore import BackupRestore
-    from modules.command_search import CommandSearch
     from modules.favorites import Favorites
     from modules.file_encryptor import FileEncryptor
     from modules.import_export import ImportExport
@@ -35,6 +35,20 @@ if TYPE_CHECKING:
     from modules.schedule_viewer import ScheduleViewer
     from ui.command_palette import CommandPalette
     from ui.quick_launch_bar import QuickLaunchBar
+
+
+def _command_action_label(label: str, command: dict[str, Any]) -> str:
+    """Render a configured command name with any conditional execution cues."""
+    cues = format_execution_cues(command, concise=True)
+    return f"{label} · {cues}" if cues else label
+
+
+def _set_command_action_help(action: QAction, command: dict[str, Any]) -> None:
+    """Expose detailed execution cues as supplemental native-action help."""
+    description = describe_execution_cues(command)
+    if description:
+        action.setToolTip(description)
+        action.setWhatsThis(description)
 
 
 @dataclass(frozen=True)
@@ -52,7 +66,6 @@ class MenuBuilderDependencies:
     set_history_menu: Callable[[QMenu], None]
     reload_history_commands: Callable[[], None]
     get_palette: Callable[[], CommandPalette]
-    get_search: Callable[[], CommandSearch]
     open_command_manager: Callable[[], None]
     open_commands_json: Callable[[], None]
     reload_commands: Callable[..., None]
@@ -104,25 +117,7 @@ class MenuBuilder:
                 "Invalid commands configuration. Root element must be a dictionary."
             )
 
-        # Iterate over the commands and create menu items
-        for group, items in command_menu.items():
-            # Check if each group is a dictionary
-            if not isinstance(items, dict):
-                show_error_and_raise(
-                    f"Invalid command group format: {group}. Each group must be a dictionary."
-                )
-
-            # Resolve the icon path correctly
-            icon_path = self._get_item_icon_path(items.get("icon"), self.dependencies.icon_file)
-
-            # Create a submenu for each group
-            submenu = QMenu(group, menu)
-            submenu.setIcon(QIcon(icon_path))
-
-            # Recursively add items to the submenu
-            self._add_menu_items(submenu, items, icon_path, group)
-
-            menu.addMenu(submenu)
+        menu.addAction("Command Palette", self.dependencies.get_palette().show_palette)
 
         # Add favorites menu
         favorites_menu = QMenu("Favorites", menu)
@@ -141,26 +136,35 @@ class MenuBuilder:
 
         menu.addSeparator()
 
-        # Commands group
-        commands_menu = QMenu("Commands", menu)
-        commands_menu.setIcon(QIcon(self.dependencies.icon_file))
-        commands_menu.addAction(
-            "Quick Launch (Palette)", self.dependencies.get_palette().show_palette
-        )
-        commands_menu.addAction("App Launcher", self.dependencies.get_palette().show_app_launcher)
-        commands_menu.addAction("Search Commands", self.dependencies.get_search().show_dialog)
-        commands_menu.addAction("Manage Commands", self.dependencies.open_command_manager)
-        commands_menu.addAction("Edit commands file", self.dependencies.open_commands_json)
-        commands_menu.addAction(
+        # User-defined category submenus retain their configured hierarchy.
+        for group, items in command_menu.items():
+            if not isinstance(items, dict):
+                show_error_and_raise(
+                    f"Invalid command group format: {group}. Each group must be a dictionary."
+                )
+            icon_path = self._get_item_icon_path(items.get("icon"), self.dependencies.icon_file)
+            submenu = QMenu(group, menu)
+            submenu.setIcon(QIcon(icon_path))
+            self._add_menu_items(submenu, items, icon_path, group)
+            menu.addMenu(submenu)
+
+        menu.addSeparator()
+
+        management_menu = QMenu("Management", menu)
+        management_menu.setIcon(QIcon(self.dependencies.icon_file))
+        management_menu.addAction("Manage Commands", self.dependencies.open_command_manager)
+        management_menu.addAction("Edit commands file", self.dependencies.open_commands_json)
+        management_menu.addAction(
             "Reload Commands", lambda: self.dependencies.reload_commands(rebuild_menu=True)
         )
-        commands_menu.addAction(
+        management_menu.addAction(
             "Reload History Commands", self.dependencies.reload_history_commands
         )
-        commands_menu.addAction(
+        management_menu.addAction(
             "Add to Favorites", self.dependencies.get_favorites().add_to_favorites
         )
-        menu.addMenu(commands_menu)
+        management_menu.addAction("Restart App", self.dependencies.restart_app)
+        menu.addMenu(management_menu)
 
         # Tools group
         tools_menu = QMenu("Tools", menu)
@@ -208,18 +212,16 @@ class MenuBuilder:
         tools_menu.addAction("View Schedules", self.dependencies.get_schedule_viewer().show_dialog)
 
         menu.addMenu(tools_menu)
-        menu.addAction("Settings", self.dependencies.open_settings)
         menu.addAction("Quick Launch Bar", self.dependencies.get_quick_launch_bar().toggle)
+        menu.addAction("Settings", self.dependencies.open_settings)
 
         # Dynamic "Running: N" indicator (non-interactive, hidden when idle)
-        menu.addSeparator()
         running_action = QAction("Running: 0", menu)
         running_action.setEnabled(False)
         running_action.setVisible(False)
         self.dependencies.set_running_action(running_action)
         menu.addAction(running_action)
 
-        menu.addAction("Restart App", self.dependencies.restart_app)
         menu.addAction("Exit", self.dependencies.confirm_exit)
 
     def _add_menu_items(self, menu, items, parent_icon_path, group_name=""):
@@ -345,7 +347,9 @@ class MenuBuilder:
                 prompt = resolved_item.get("prompt", None)
 
                 # Create action with reference indicator
-                action = QAction(QIcon(icon_path), f"{label}", menu)
+                rendered_label = _command_action_label(label, resolved_item)
+                action = QAction(QIcon(icon_path), rendered_label, menu)
+                _set_command_action_help(action, resolved_item)
 
                 # Connect the action to execute command
                 action.triggered.connect(
@@ -383,7 +387,9 @@ class MenuBuilder:
         show_output = item.get("showOutput", False)
         confirm = item.get("confirm", False)
         prompt = item.get("prompt", None)
-        action = QAction(QIcon(icon_path), label, menu)
+        rendered_label = _command_action_label(label, item)
+        action = QAction(QIcon(icon_path), rendered_label, menu)
+        _set_command_action_help(action, item)
 
         # Connect the action to execute command
         action.triggered.connect(

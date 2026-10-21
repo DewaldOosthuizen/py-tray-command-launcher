@@ -5,6 +5,8 @@ import logging
 
 from PyQt6.QtGui import QAction
 
+from utils.execution_cues import describe_execution_cues, format_execution_cues
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,7 +51,12 @@ class CommandHistory:
             show_output = entry.get("showOutput", False)
             prompt = entry.get("prompt")
 
-            action = QAction(title, menu)
+            cues = format_execution_cues(entry, concise=True)
+            action = QAction(f"{title} · {cues}" if cues else title, menu)
+            description = describe_execution_cues(entry)
+            if description:
+                action.setToolTip(description)
+                action.setWhatsThis(description)
             action.triggered.connect(
                 lambda checked, t=title, c=command, cf=confirm, so=show_output, p=prompt: (
                     self.services.execute(t, c, cf, so, p)

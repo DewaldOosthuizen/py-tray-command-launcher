@@ -76,6 +76,27 @@ def _install_real_pyqt6_stub():
         def setMinimumWidth(self, v):
             pass
 
+        def setMinimumSize(self, *size):
+            pass
+
+        def setMinimumHeight(self, height):
+            pass
+
+        def resize(self, *size):
+            pass
+
+        def setFocus(self):
+            pass
+
+        def accept(self):
+            pass
+
+        def reject(self):
+            pass
+
+        def setTabOrder(self, first, second):
+            pass
+
         def setMaximumHeight(self, v):
             pass
 
@@ -106,7 +127,7 @@ def _install_real_pyqt6_stub():
 
     # Real base classes used in class definitions
     QtWidgets.QWidget = _QWidget
-    QtWidgets.QDialog = _Base
+    QtWidgets.QDialog = _QWidget
     QtWidgets.QApplication = _mm()
 
     # Everything else is a Mock
@@ -229,6 +250,7 @@ from modules.command_search import (
     search_commands,
     search_commands_uncached,
 )
+from ui import command_palette as cp
 from ui.command_palette import CommandPalette, _PaletteWindow
 from utils.hotkey_helpers import to_pynput_str
 
@@ -351,10 +373,14 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         class _CommandListItem:
             def __init__(self, text):
                 self.text = text
-                self.command = None
+                self.values = {}
 
-            def setData(self, _role, command):
-                self.command = command
+            def setData(self, role, value):
+                self.values[role] = value
+
+            @property
+            def command(self):
+                return self.values.get(cp.Qt.ItemDataRole.UserRole)
 
         with (
             patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem),
@@ -384,10 +410,14 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         class _CommandListItem:
             def __init__(self, text):
                 self.text = text
-                self.command = None
+                self.values = {}
 
-            def setData(self, _role, command):
-                self.command = command
+            def setData(self, role, value):
+                self.values[role] = value
+
+            @property
+            def command(self):
+                return self.values.get(cp.Qt.ItemDataRole.UserRole)
 
         with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
             win._populate_commands("terminal")
@@ -411,10 +441,14 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         class _CommandListItem:
             def __init__(self, text):
                 self.text = text
-                self.command = None
+                self.values = {}
 
-            def setData(self, _role, command):
-                self.command = command
+            def setData(self, role, value):
+                self.values[role] = value
+
+            @property
+            def command(self):
+                return self.values.get(cp.Qt.ItemDataRole.UserRole)
 
         with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
             win._populate_commands("")
@@ -457,10 +491,14 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         class _CommandListItem:
             def __init__(self, text):
                 self.text = text
-                self.command = None
+                self.values = {}
 
-            def setData(self, _role, command):
-                self.command = command
+            def setData(self, role, value):
+                self.values[role] = value
+
+            @property
+            def command(self):
+                return self.values.get(cp.Qt.ItemDataRole.UserRole)
 
         tray_menu = MagicMock()
         command_menu = {
@@ -511,6 +549,48 @@ class TestCommandPaletteLifecycle(unittest.TestCase):
         )
         self.assertIn(replacement[1], added_payloads)
         self.assertIn(replacement[2], renamed_payloads)
+
+    def test_palette_results_expose_accessible_execution_cues_without_renaming(self):
+        import ui.command_palette as cp
+
+        p, svc = self._make_palette()
+        command = {
+            "group": "System",
+            "label": "Configured command name",
+            "command": "execute --exactly",
+            "confirm": True,
+            "prompt": "Input value",
+            "showOutput": True,
+        }
+        svc.get_all_commands.return_value = [command]
+        win = _PaletteWindow(p)
+
+        class _CommandListItem:
+            def __init__(self, text):
+                self.text = text
+                self.values = {}
+
+            def setData(self, role, value):
+                self.values[role] = value
+
+            def setToolTip(self, value):
+                self.tooltip = value
+
+        with patch("ui.command_palette.QListWidgetItem", side_effect=_CommandListItem):
+            win._populate_commands("")
+
+        item = win._cmd_list.addItem.call_args.args[0]
+        self.assertIn("Configured command name", item.text)
+        self.assertIn("Confirm", item.text)
+        self.assertEqual(item.values[cp.Qt.ItemDataRole.UserRole], command)
+        self.assertEqual(
+            item.values[cp.Qt.ItemDataRole.AccessibleTextRole],
+            "Configured command name, System",
+        )
+        self.assertEqual(
+            item.values[cp.Qt.ItemDataRole.AccessibleDescriptionRole],
+            "Confirmation required; Input required; Output shown",
+        )
 
     def test_enter_key_triggers_execute(self):
         """eventFilter triggers _execute on Enter."""

@@ -71,9 +71,12 @@ class ModuleController:
         return self._executor
 
     def get_search(self) -> CommandSearch:
-        """Return the cached command-search feature."""
+        """Return the cached compatibility facade for the command palette."""
         if self._search is None:
-            self._search = CommandSearch(self.services)
+            self._search = CommandSearch(
+                self.services,
+                show_palette=lambda: self.get_palette().show_palette(),
+            )
         return self._search
 
     def get_backup(self) -> BackupRestore:

@@ -40,7 +40,6 @@ def _make_dependencies(command_menu=None):
         "set_history_menu": MagicMock(),
         "reload_history_commands": MagicMock(),
         "get_palette": MagicMock(return_value=feature()),
-        "get_search": MagicMock(return_value=feature()),
         "open_command_manager": MagicMock(),
         "open_commands_json": MagicMock(),
         "reload_commands": MagicMock(),
@@ -84,6 +83,49 @@ def test_builder_uses_only_its_typed_dependency_contract():
 
     assert builder.dependencies is dependencies
     assert not hasattr(builder, "tray_app")
+
+
+def test_build_orders_primary_discovery_management_and_exit_actions():
+    """Keep frequent actions first and management separate from tool actions."""
+    command_menu = {"Custom": {"Terminal": {"command": "xterm"}}}
+    dependencies = _make_dependencies(command_menu)
+    builder = MenuBuilder(dependencies)
+    parent_menu = MagicMock()
+    qmenu_make, qmenus = _qmenu_factory()
+
+    with patch("core.menu_builder.QMenu", side_effect=qmenu_make):
+        builder.build(parent_menu, command_menu)
+
+    menu_labels = {id(menu): label for label, menu in qmenus}
+    operations = []
+    for call in parent_menu.method_calls:
+        method = call[0]
+        if method == "addAction":
+            action_name = call.args[0]
+            operations.append(action_name if isinstance(action_name, str) else "Running: 0")
+        elif method == "addMenu":
+            operations.append(menu_labels[id(call.args[0])])
+        elif method == "addSeparator":
+            operations.append("separator")
+
+    assert operations == [
+        "Command Palette",
+        "Favorites",
+        "Recent Commands",
+        "separator",
+        "Custom",
+        "separator",
+        "Management",
+        "Tools",
+        "Quick Launch Bar",
+        "Settings",
+        "Running: 0",
+        "Exit",
+    ]
+    management = next(menu for label, menu in qmenus if label == "Management")
+    tools = next(menu for label, menu in qmenus if label == "Tools")
+    assert "Restart App" in [call.args[0] for call in management.addAction.call_args_list]
+    assert "Create Schedule" in [call.args[0] for call in tools.addAction.call_args_list]
 
 
 # ---------------------------------------------------------------------------
@@ -322,6 +364,12 @@ def test_command_and_pin_actions_use_injected_callbacks():
         def setMenu(self, context_menu):
             self.context_menu = context_menu
 
+        def setToolTip(self, text):
+            self.tool_tip = text
+
+        def setWhatsThis(self, text):
+            self.whats_this = text
+
     command_action = _Action()
     pin_action = _Action()
     with (
@@ -349,6 +397,42 @@ def test_command_and_pin_actions_use_injected_callbacks():
             "showOutput": True,
             "prompt": None,
         }
+    )
+
+
+def test_direct_command_action_shows_cues_and_executes_original_payload():
+    dependencies = _make_dependencies()
+    builder = MenuBuilder(dependencies)
+    menu = MagicMock()
+    action = MagicMock()
+
+    with (
+        patch("core.menu_builder.QIcon", return_value=MagicMock()),
+        patch("core.menu_builder.QAction", return_value=action) as action_factory,
+        patch("core.menu_builder.QMenu", return_value=MagicMock()),
+    ):
+        builder._add_command_to_menu(
+            menu,
+            "Original command",
+            {
+                "command": "run --unchanged",
+                "confirm": True,
+                "prompt": "Enter value",
+                "showOutput": True,
+            },
+            dependencies.icon_file,
+            "System",
+        )
+
+    rendered_name = action_factory.call_args_list[0].args[1]
+    assert "Original command" in rendered_name
+    assert "Confirm" in rendered_name
+    assert "Input" in rendered_name
+    assert "Output" in rendered_name
+    callback = action.triggered.connect.call_args_list[0].args[0]
+    callback(False)
+    dependencies.execute.assert_called_once_with(
+        "Original command", "run --unchanged", True, True, "Enter value"
     )
 
 

@@ -371,3 +371,35 @@ QSpinBox, QDoubleSpinBox, QTimeEdit {
 QSpinBox:focus, QDoubleSpinBox:focus, QTimeEdit:focus {
     border-color: #8839ef;
 }
+
+QFrame#PaletteFrame {
+    background-color: #eff1f5;
+    border: 1px solid #9ca0b0;
+    border-radius: 8px;
+}
+
+QPushButton#PaletteTab {
+    background-color: #ccd0da;
+    border-color: #9ca0b0;
+    color: #6c6f85;
+}
+
+QPushButton#PaletteTabActive {
+    background-color: #bcc0cc;
+    border-color: #8839ef;
+    color: #8839ef;
+}
+
+QPushButton#PaletteTab:focus, QPushButton#PaletteTabActive:focus,
+QPushButton:focus, QToolButton:focus, QLineEdit:focus {
+    border: 2px solid #8839ef;
+}
+
+QListWidget::item:focus, QTreeWidget::item:focus, QTableWidget::item:focus {
+    border: 1px solid #8839ef;
+}
+
+QLabel#PaletteFooter {
+    color: #6c6f85;
+    font-size: 11px;
+}

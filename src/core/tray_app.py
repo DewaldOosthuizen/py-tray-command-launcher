@@ -194,7 +194,6 @@ class TrayApp:
             set_history_menu=lambda menu: self.menu_controller.set_history_menu(menu),
             reload_history_commands=self.reload_history_commands,
             get_palette=self.get_palette,
-            get_search=self.get_search,
             open_command_manager=self._open_command_manager,
             open_commands_json=self.open_commands_json,
             reload_commands=self.reload_commands,
