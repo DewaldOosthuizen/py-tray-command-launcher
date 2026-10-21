@@ -352,6 +352,63 @@ def test_sgr_foreground_background_and_full_reset_restore_theme_colors(color_for
     assert _color_name(rendered[3][1].background()) is None
 
 
+def test_trimmed_content_contrast_and_format_preserved(color_format_types):
+    """ANSI formatting survives cap trimming: retained tail stays legible."""
+    max_chars = 120
+    _color, format_type = color_format_types
+
+    tab = _OutputTab.__new__(_OutputTab)
+    tab._fmt = format_type()
+    tab._output_theme = output_window._OutputTheme(
+        surface=_color(output_window._THEME_SURFACES["dark"]),
+        inherited_text=_color(output_window._THEME_TEXT["dark"]),
+        mode="dark",
+    )
+    tab._fmt.setProperty(
+        output_window._REQUESTED_FOREGROUND_PROPERTY, tab._output_theme.inherited_text
+    )
+    output_window._apply_effective_foreground(tab._fmt, tab._output_theme)
+    tab._max_output_chars = max_chars
+    tab._batch_enabled = False
+    tab._batch_chunk_count = 200
+    tab._batch_delay_ms = 50
+    tab._scroll_to_bottom = False
+    tab._pending = []
+    tab._pending_chars = 0
+    tab._insert_history = deque()
+    tab._document_length = 0
+
+    class Cursor:
+        def movePosition(self, position):
+            pass
+
+        def insertText(self, value, fmt):
+            if value:
+                tab._inserted.append((value, format_type(fmt)))
+
+        def beginEditBlock(self):
+            pass
+
+        def endEditBlock(self):
+            pass
+
+        def remove(self, *args, **kwargs):
+            pass
+
+    tab._inserted = []
+    cursor = Cursor()
+    tab.textCursor = lambda: cursor
+    tab.setTextCursor = lambda value: None
+    tab.append_ansi("\x1b[31;44m" + "x" * (max_chars + 60) + "\x1b[91;104mtail\x1b[0m", batch=False)
+
+    assert tab._inserted, "expected inserted content"
+    _, tail_fmt = tab._inserted[-1]
+    background = tail_fmt.background().color().name() if tail_fmt.background().style() else None
+    foreground = tail_fmt.foreground().color().name() if tail_fmt.foreground().style() else None
+    assert background == output_window._ANSI_PALETTES["dark"][104]
+    assert _ratio(foreground, background) >= 4.5
+
+
 @pytest.mark.parametrize(
     ("base", "text", "mode"),
     [("#f0f0f0", "#333333", "light"), ("#181825", "#cdd6f4", "dark")],

@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # We only handle the most common subset: SGR (Select Graphic Rendition).
 # Unknown and OSC sequences are stripped silently.
-_ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\\\-_]|\x1B\[[^@-~]*[@-~]")
+_ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\\-_]|\x1B\[[^@-~]*[@-~]")
 
 _LIGHT_ANSI_COLORS = {
     30: "#4c4f69",
