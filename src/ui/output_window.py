@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # We only handle the most common subset: SGR (Select Graphic Rendition).
 # Unknown and OSC sequences are stripped silently.
-_ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\\\-_]|\x1B\[[^@-~]*[@-~]")
+_ANSI_ESC_RE = re.compile(r"\x1B\[([0-9;]*)m|\x1B[^m]*m?|\x1B[@-Z\\-_]|\x1B\[[^@-~]*[@-~]")
 
 _LIGHT_ANSI_COLORS = {
     30: "#4c4f69",
@@ -355,9 +355,8 @@ class _OutputTab(QTextEdit):
             if self._pending_chars + len(text) > self._max_output_chars:
                 self._flush()
             if len(text) > self._max_output_chars:
-                text = self._ansi_pending + text
-                self._ansi_pending = ""
-                self._insert_and_trim(text)  # direct, bounded insertion
+                self._insert_direct_stream_text(text)
+                self._scroll_to_bottom_if_enabled()
                 return
             self._pending.append(text)
             self._pending_chars += len(text)
@@ -367,9 +366,31 @@ class _OutputTab(QTextEdit):
                 self._flush_timer.start(self._batch_delay_ms)
         else:
             self._flush()
-            text = self._ansi_pending + text
-            self._ansi_pending = ""
-            self._insert_and_trim(text)
+            self._insert_direct_stream_text(text)
+
+    def _insert_direct_stream_text(self, text: str) -> None:
+        """Insert direct output while preserving incomplete SGR sequences.
+
+        Args:
+            text: Current process chunk to append.
+
+        Returns:
+            None.
+        """
+        text, incomplete_sgr = _split_incomplete_sgr_suffix(self._ansi_pending + text)
+        self._ansi_pending = incomplete_sgr if len(incomplete_sgr) <= self._max_output_chars else ""
+        self._insert_and_trim(text)
+
+    def _scroll_to_bottom_if_enabled(self) -> None:
+        """Scroll to the bottom when the current window preference allows it."""
+        scroll_to_bottom = (
+            self._scroll_preference()
+            if self._scroll_preference is not None
+            else self._scroll_to_bottom
+        )
+        if scroll_to_bottom:
+            bar = self.verticalScrollBar()
+            bar.setValue(bar.maximum())
 
     def flush(self) -> None:
         """Flush queued output immediately.
@@ -410,14 +431,7 @@ class _OutputTab(QTextEdit):
         if not text:
             return
         self._insert_and_trim(text)
-        scroll_to_bottom = (
-            self._scroll_preference()
-            if self._scroll_preference is not None
-            else self._scroll_to_bottom
-        )
-        if scroll_to_bottom:
-            bar = self.verticalScrollBar()
-            bar.setValue(bar.maximum())
+        self._scroll_to_bottom_if_enabled()
         # Defensive safety net: the cap holds even if an insert raised internally.
         self._trim_head(self._document_length - self._max_output_chars)
 
