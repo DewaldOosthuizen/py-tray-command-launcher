@@ -830,3 +830,42 @@ def test_real_pyqt_timer_flushes_batched_output(qtbot, monkeypatch):
     qtbot.waitUntil(lambda: tab.toPlainText() == "timer-driven output", timeout=1000)
     assert tab._pending == []
     assert len(tab._insert_history) == 1
+
+
+def test_batch_timer_starts_only_once_while_buffer_is_pending(qtbot):
+    """Later chunks cannot restart the first pending batch's timer deadline."""
+    tab = _new_tab(qtbot, batch_enabled=True, batch_chunk_count=1000, batch_delay_ms=50)
+
+    class TimerSpy:
+        def __init__(self):
+            self.active = False
+            self.starts = []
+
+        def isActive(self):
+            return self.active
+
+        def start(self, delay):
+            self.active = True
+            self.starts.append(delay)
+
+        def stop(self):
+            self.active = False
+
+    timer = TimerSpy()
+    setattr(tab, "_flush_timer", timer)
+    tab.append_ansi("first")
+    tab.append_ansi("second")
+
+    assert timer.starts == [50]
+
+
+def test_partial_sgr_sequence_survives_batch_flush_boundary(qtbot):
+    """An SGR sequence split across flushes applies to its following text."""
+    tab = _new_tab(qtbot, batch_enabled=True, batch_chunk_count=1000)
+    tab.append_ansi("\x1b[3")
+    tab.flush()
+    tab.append_ansi("1mred")
+    tab.flush()
+
+    requested = tab._fmt.property(output_window._REQUESTED_FOREGROUND_PROPERTY)
+    assert requested.name() == output_window._ANSI_PALETTES[tab._output_theme.mode][31]
