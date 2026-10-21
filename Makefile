@@ -139,8 +139,8 @@ lint-audit:
 		echo "[FAIL] lint-audit: failed to install project dependencies"; \
 		exit 1; \
 	}
-	@echo "[lint-audit] Running vulnerability scan..."
-	@set -o pipefail; $(PIP_AUDIT) 2>&1 | tee "$(LOG_DIR)/pip-audit.log"; status=$${PIPESTATUS[0]}; if [[ $$status -ne 0 ]]; then \
+	@echo "[lint-audit] Auditing declared project dependencies..."
+	@set -o pipefail; $(PIP_AUDIT) -r requirements.txt 2>&1 | tee "$(LOG_DIR)/pip-audit.log"; status=$${PIPESTATUS[0]}; if [[ $$status -ne 0 ]]; then \
 		echo "[FAIL] lint-audit: pip-audit found vulnerabilities"; \
 		echo "[DETAIL] This failure is dependency vulnerabilities, not source file linting."; \
 		echo "[DETAIL] Vulnerable packages:"; \
