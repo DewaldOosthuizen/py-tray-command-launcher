@@ -9,7 +9,6 @@ Covers:
   • Logging level
   • History size cap
   • Output font family and size
-  • Quick-launch bar visibility toggle
 """
 
 import logging
@@ -17,7 +16,6 @@ import logging
 from PyQt6.QtGui import QCursor, QGuiApplication
 from PyQt6.QtWidgets import (
     QApplication,
-    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -32,7 +30,6 @@ from PyQt6.QtWidgets import (
 )
 
 from ui.dialog_conventions import configure_dialog_layout
-from ui.quick_launch_pin_manager import QuickLaunchPinManager
 from utils.dialogs import show_error
 
 logger = logging.getLogger(__name__)
@@ -47,9 +44,7 @@ class SettingsDialog(QDialog):
         theme_manager,
         parent=None,
         hotkey_callback=None,
-        bar_hotkey_callback=None,
         app_launcher_hotkey_callback=None,
-        quick_launch_bar=None,
     ):
         """Initialize settings controls and anchor the dialog to the cursor display.
 
@@ -58,9 +53,7 @@ class SettingsDialog(QDialog):
             theme_manager: Manager used to preview and restore theme changes.
             parent: Optional parent widget.
             hotkey_callback: Optional callback to register the command-palette hotkey.
-            bar_hotkey_callback: Optional callback to register the bar hotkey.
             app_launcher_hotkey_callback: Optional callback for the app-launcher hotkey.
-            quick_launch_bar: Optional bar refreshed after pin changes are committed.
 
         Raises:
             Exceptions raised while loading settings or constructing Qt controls.
@@ -69,9 +62,7 @@ class SettingsDialog(QDialog):
         self.services = services
         self._theme_manager = theme_manager
         self._hotkey_callback = hotkey_callback
-        self._bar_hotkey_callback = bar_hotkey_callback
         self._app_launcher_hotkey_callback = app_launcher_hotkey_callback
-        self._quick_launch_bar = quick_launch_bar
         self.setWindowTitle("Settings")
 
         screen = self._screen_for_cursor()
@@ -163,38 +154,6 @@ class SettingsDialog(QDialog):
 
         settings_layout.addWidget(output_box)
 
-        # --- Quick-Launch Bar -------------------------------------------
-        qlb_box = QGroupBox("Quick-Launch Bar")
-        qlb_form = QFormLayout(qlb_box)
-        configure_dialog_layout(qlb_form)
-
-        qlb_cfg = settings.get("quick_launch_bar", {})
-        if not isinstance(qlb_cfg, dict):
-            qlb_cfg = {}
-
-        self._qlb_visible_check = QCheckBox("Show Quick-Launch Bar")
-        self._qlb_visible_check.setChecked(bool(qlb_cfg.get("visible", False)))
-        qlb_form.addRow(self._qlb_visible_check)
-
-        self._qlb_hotkey_edit = QLineEdit(qlb_cfg.get("hotkey", "ctrl+shift+b"))
-        self._qlb_hotkey_edit.setPlaceholderText("e.g. ctrl+shift+b")
-        qlb_form.addRow("Bar hotkey:", self._qlb_hotkey_edit)
-
-        settings_layout.addWidget(qlb_box)
-
-        # --- Pinned Commands --------------------------------------------
-        self._qlb_pin_manager = QuickLaunchPinManager(
-            self.services,
-            self._settings,
-        )
-        if self._quick_launch_bar is not None:
-            self._qlb_pin_manager.pins_committed.connect(lambda: self._quick_launch_bar.refresh())
-
-        pinned_box = QGroupBox("Pinned Commands")
-        pinned_layout = QVBoxLayout(pinned_box)
-        pinned_layout.addWidget(self._qlb_pin_manager)
-        settings_layout.addWidget(pinned_box)
-
         # --- Logging ----------------------------------------------------
         logging_box = QGroupBox("Logging")
         logging_form = QFormLayout(logging_box)
@@ -245,9 +204,6 @@ class SettingsDialog(QDialog):
             self._history_spin,
             self._font_family_edit,
             self._font_size_spin,
-            self._qlb_visible_check,
-            self._qlb_hotkey_edit,
-            self._qlb_pin_manager,
             self._log_level_combo,
             save_button,
             cancel_button,
@@ -310,20 +266,11 @@ class SettingsDialog(QDialog):
                 "size": self._font_size_spin.value(),
             }
 
-            qlb_cfg = settings.get("quick_launch_bar", {})
-            if not isinstance(qlb_cfg, dict):
-                qlb_cfg = {}
-            qlb_cfg["visible"] = self._qlb_visible_check.isChecked()
-            qlb_cfg["hotkey"] = self._qlb_hotkey_edit.text().strip()
-            settings["quick_launch_bar"] = qlb_cfg
-
             log_cfg = settings.get("logging", {})
             if not isinstance(log_cfg, dict):
                 log_cfg = {}
             log_cfg["level"] = self._log_level_combo.currentText()
             settings["logging"] = log_cfg
-
-            self._qlb_pin_manager.commit()
 
             self.services.config_manager.save_settings(settings)
             logger.info("Settings saved")
@@ -332,8 +279,6 @@ class SettingsDialog(QDialog):
             # Re-register hotkeys immediately so changes take effect without restart
             if self._hotkey_callback:
                 self._hotkey_callback(settings["hotkey"])
-            if self._bar_hotkey_callback:
-                self._bar_hotkey_callback(qlb_cfg["hotkey"])
             if self._app_launcher_hotkey_callback:
                 self._app_launcher_hotkey_callback(settings["app_launcher_hotkey"])
             self.accept()

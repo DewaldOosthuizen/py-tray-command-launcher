@@ -169,14 +169,13 @@ class ConfigManager:
         "app_launcher_hotkey": "ctrl+alt+a",
         "history_limit": 50,
         "output_font": {"family": "monospace", "size": 10},
-        "quick_launch_bar": {
-            "visible": False,
-            "position": [100, 100],
-            "pinned": [],
-            "hotkey": "ctrl+shift+b",
-        },
         "icon_cache_ttl_days": 7,
     }
+
+    # Keys written by earlier versions for features that no longer exist. They are
+    # dropped on load (and therefore on the next save) so that existing settings.json
+    # files stay valid against the strict schema instead of being reset to defaults.
+    _LEGACY_SETTINGS_KEYS: frozenset[str] = frozenset({"quick_launch_bar"})
 
     @staticmethod
     def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -270,9 +269,18 @@ class ConfigManager:
                 else:
                     settings = {}
 
+                if self._LEGACY_SETTINGS_KEYS.intersection(settings):
+                    logger.info(
+                        "Ignoring removed settings keys: %s",
+                        ", ".join(sorted(self._LEGACY_SETTINGS_KEYS.intersection(settings))),
+                    )
+                    settings = {
+                        k: v for k, v in settings.items() if k not in self._LEGACY_SETTINGS_KEYS
+                    }
+
                 if not self._validate_settings_schema(settings):
                     settings = {}
-                # Deep-merge so partial nested dicts (e.g. quick_launch_bar, output_font,
+                # Deep-merge so partial nested dicts (e.g. output_font,
                 # logging) retain their default sub-keys when the user only overrides some.
                 self._settings_cache = self._deep_merge(self._SETTINGS_DEFAULTS, settings)
             except json.JSONDecodeError as e:

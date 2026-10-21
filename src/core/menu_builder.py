@@ -14,7 +14,6 @@ import logging
 import os
 from collections.abc import Callable
 from dataclasses import dataclass
-from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from PyQt6.QtGui import QAction, QIcon
@@ -34,7 +33,6 @@ if TYPE_CHECKING:
     from modules.schedule_creator import ScheduleCreator
     from modules.schedule_viewer import ScheduleViewer
     from ui.command_palette import CommandPalette
-    from ui.quick_launch_bar import QuickLaunchBar
 
 
 def _command_action_label(label: str, command: dict[str, Any]) -> str:
@@ -59,7 +57,6 @@ class MenuBuilderDependencies:
     get_command_menu: Callable[[], dict[str, Any]]
     resolve_icon_path: Callable[[Any], str | None]
     execute: Callable[[str, str, bool, bool, str | None], None]
-    pin_to_quick_launch: Callable[[dict[str, Any]], None]
     get_favorites: Callable[[], Favorites]
     set_favorites_menu: Callable[[QMenu], None]
     reload_favorites_commands: Callable[[], None]
@@ -75,7 +72,6 @@ class MenuBuilderDependencies:
     get_schedule_creator: Callable[[], ScheduleCreator]
     get_schedule_viewer: Callable[[], ScheduleViewer]
     open_settings: Callable[[], None]
-    get_quick_launch_bar: Callable[[], QuickLaunchBar]
     set_running_action: Callable[[QAction], None]
     restart_app: Callable[[], None]
     confirm_exit: Callable[[], None]
@@ -212,7 +208,6 @@ class MenuBuilder:
         tools_menu.addAction("View Schedules", self.dependencies.get_schedule_viewer().show_dialog)
 
         menu.addMenu(tools_menu)
-        menu.addAction("Quick Launch Bar", self.dependencies.get_quick_launch_bar().toggle)
         menu.addAction("Settings", self.dependencies.open_settings)
 
         # Dynamic "Running: N" indicator (non-interactive, hidden when idle)
@@ -359,17 +354,6 @@ class MenuBuilder:
                 )
 
                 menu.addAction(action)
-                self._attach_pin_context_menu(
-                    action,
-                    {
-                        "group": group_name,
-                        "label": label,
-                        "command": command,
-                        "confirm": confirm,
-                        "showOutput": show_output,
-                        "prompt": prompt,
-                    },
-                )
                 return action
 
         # Regular command processing
@@ -399,26 +383,7 @@ class MenuBuilder:
         )
 
         menu.addAction(action)
-        self._attach_pin_context_menu(
-            action,
-            {
-                "group": group_name,
-                "label": label,
-                "command": command,
-                "confirm": confirm,
-                "showOutput": show_output,
-                "prompt": prompt,
-            },
-        )
         return action
-
-    def _attach_pin_context_menu(self, action: QAction, cmd_info: dict) -> None:
-        """Attach a right-click context menu with 'Pin to Quick-Launch Bar' to *action*."""
-        context_menu = QMenu()
-        pin_action = QAction("Pin to Quick-Launch Bar", context_menu)
-        pin_action.triggered.connect(partial(self.dependencies.pin_to_quick_launch, cmd_info))
-        context_menu.addAction(pin_action)
-        action.setMenu(context_menu)
 
     def _get_item_icon_path(self, icon_spec, fallback_path):
         """Resolve icon path with fallback to parent or default.

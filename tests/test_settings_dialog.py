@@ -101,8 +101,8 @@ def _install_real_pyqt6_stub():
         def setSpacing(self, *a):
             pass
 
-        # count() must return 0 — quick_launch_bar._build_buttons does
-        # `while self._layout.count():` and would loop forever otherwise.
+        # count() must return 0 so layout-clearing loops (`while layout.count():`)
+        # terminate instead of spinning forever on this stub.
         def count(self):
             return 0
 
@@ -286,7 +286,6 @@ _DEFAULT_SETTINGS = {
     "app_launcher_hotkey": "ctrl+alt+a",
     "history_limit": 100,
     "output_font": {"family": "monospace", "size": 12},
-    "quick_launch_bar": {"visible": True, "hotkey": "ctrl+shift+b"},
     "logging": {"level": "WARNING"},
 }
 
@@ -364,7 +363,6 @@ class TestSettingsDialogSave(unittest.TestCase):
         dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
         mock_services.config_manager.get_settings.return_value = {
             "theme": "dark",
-            "quick_launch_bar": {},
             "logging": {},
         }
 
@@ -378,7 +376,6 @@ class TestSettingsDialogSave(unittest.TestCase):
         dlg._theme_combo.setCurrentIndex(dlg._theme_combo.findText("light"))
         mock_services.config_manager.get_settings.return_value = {
             "theme": "dark",
-            "quick_launch_bar": {},
             "logging": {},
         }
 
@@ -393,7 +390,6 @@ class TestSettingsDialogSave(unittest.TestCase):
         dlg._hotkey_edit._text = "ctrl+shift+x"
         mock_services.config_manager.get_settings.return_value = {
             "theme": "dark",
-            "quick_launch_bar": {},
             "logging": {},
         }
 
@@ -407,7 +403,6 @@ class TestSettingsDialogSave(unittest.TestCase):
         dlg, cm, mock_services, _ = _build_dialog_direct()
         mock_services.config_manager.get_settings.return_value = {
             "theme": "dark",
-            "quick_launch_bar": {},
             "logging": {},
         }
         mock_services.config_manager.save_settings.side_effect = RuntimeError("disk is full")

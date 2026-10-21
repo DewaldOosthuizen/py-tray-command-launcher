@@ -11,7 +11,7 @@ previously untested in a dedicated file:
   process count.
 * ``show_command_output()`` lifecycle — process registration plus the nested
   ``_on_finished`` callback that removes the process and refreshes the badge.
-* ``_reregister_hotkey`` / ``_reregister_bar_hotkey`` — exception swallowing.
+* ``_reregister_hotkey`` — exception swallowing.
 
 The shlex-quote and shell-injection grains of ``execute()`` are intentionally
 NOT re-tested here; they are already covered by
@@ -35,7 +35,6 @@ def _make_app():
     app.module_controller = MagicMock()
     app.module_controller.get_executor.return_value = app.executor
     app.module_controller.loaded_palette = None
-    app.module_controller.loaded_quick_launch_bar = None
     app.reload_history_commands = MagicMock()
     app.reload_favorites_commands = MagicMock()
     return app
@@ -426,17 +425,6 @@ def test_reregister_hotkey_swallows_exception():
     app.palette.register_hotkey.assert_called_once_with("ctrl+x")
 
 
-def test_reregister_bar_hotkey_swallows_exception():
-    """_reregister_bar_hotkey logs and swallows a failure instead of propagating it."""
-    app = object.__new__(TrayApp)
-    app.quick_launch_bar = MagicMock()
-    app.module_controller = MagicMock()
-    app.module_controller.loaded_quick_launch_bar = app.quick_launch_bar
-    app.quick_launch_bar.unregister_hotkey.side_effect = RuntimeError("boom")
-    # Must not raise.
-    app._reregister_bar_hotkey("ctrl+y")
-
-
 # ---------------------------------------------------------------------------
 # Branding wiring (Issue #135)
 # ---------------------------------------------------------------------------
@@ -496,37 +484,3 @@ def test_open_command_manager_displays_the_command_manager_dialog():
         parent=None,
     )
     dialog_factory.return_value.exec.assert_called_once_with()
-
-
-def test_pin_to_quick_launch_persists_group_reference_without_opening_manager():
-    """Pinning stores the command's group and does not open command management."""
-    app = _make_app()
-    app.module_controller.loaded_quick_launch_bar = None
-    settings = {"quick_launch_bar": {"pinned": []}}
-
-    with (
-        patch("core.tray_app.config_manager") as config,
-        patch("core.tray_app.CommandManagerDialog") as dialog_factory,
-    ):
-        config.get_settings.return_value = settings
-        app._pin_to_quick_launch(
-            {
-                "group": "System",
-                "label": "Terminal",
-                "command": "xterm",
-                "confirm": False,
-                "showOutput": True,
-            }
-        )
-
-    assert settings["quick_launch_bar"]["pinned"] == [
-        {
-            "group": "System",
-            "label": "Terminal",
-            "command": "xterm",
-            "confirm": False,
-            "showOutput": True,
-        }
-    ]
-    config.save_settings.assert_called_once_with(settings)
-    dialog_factory.assert_not_called()

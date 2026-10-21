@@ -76,7 +76,6 @@ src/
 ├── ui/                      # PyQt6 dialogs and widgets
 │   ├── command_palette.py   # Floating fuzzy search palette (global hotkey trigger)
 │   ├── output_window.py     # Rich output display for command stdout/stderr
-│   ├── quick_launch_bar.py  # Floating toolbar of pinned favourite commands
 │   ├── command_manager.py   # Full command tree browser/editor dialog
 │   └── settings_dialog.py   # App preferences dialog
 └── utils/
