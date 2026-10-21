@@ -121,8 +121,11 @@ def test_delete_command_uses_shared_confirmation_and_deletes_on_accept():
 
 def _tree_item(dialog, *path):
     """Return the tree item at an exact sequence of displayed path components."""
-    item = dialog._tree.topLevelItem(0)
-    assert item.text(0) == path[0]
+    item = next(
+        dialog._tree.topLevelItem(index)
+        for index in range(dialog._tree.topLevelItemCount())
+        if dialog._tree.topLevelItem(index).text(0) == path[0]
+    )
     for component in path[1:]:
         item = next(
             item.child(i) for i in range(item.childCount()) if item.child(i).text(0) == component
@@ -545,3 +548,85 @@ def test_typed_group_name_with_dot_remains_one_top_level_component(monkeypatch):
     with patch("ui.command_manager._CommandFormDialog", return_value=form):
         dialog._add_command()
     assert commands["New.Group"]["Example"]["command"] == "example"
+
+
+def test_add_command_to_existing_nested_group_preserves_siblings(monkeypatch):
+    commands = _nested_commands()
+    dialog, services = _real_manager(commands, monkeypatch)
+    form = _accepted_form(
+        {
+            "group_path": ("System", "Tools"),
+            "group": '["System", "Tools"]',
+            "label": "New Command",
+            "command": "new-command",
+            "confirm": True,
+        }
+    )
+
+    with patch("ui.command_manager._CommandFormDialog", return_value=form):
+        dialog._add_command()
+
+    assert commands["System"]["Tools"]["New Command"] == {
+        "command": "new-command",
+        "confirm": True,
+    }
+    assert commands["System"]["Tools"]["Editor"] == {"command": "code", "confirm": True}
+    assert commands["System"]["Tools"]["icon"] == "tools.png"
+    assert "System.Tools" in commands
+    services.config_manager.save_commands.assert_called_once_with(commands)
+
+
+def test_edit_command_into_new_nested_group_preserves_empty_source_group(monkeypatch):
+    commands = {
+        "Nested": {"Sub": {"Old": {"command": "old"}}, "icon": "nested.png"},
+        "System": {"Terminal": {"command": "terminal"}},
+    }
+    dialog, services = _real_manager(commands, monkeypatch)
+    item = _tree_item(dialog, "Nested", "Sub", "Old")
+    dialog._tree.setCurrentItem(item)
+    form = _accepted_form(
+        {
+            "group_path": ("Nested", "NewGroup"),
+            "group": '["Nested", "NewGroup"]',
+            "label": "Old",
+            "command": "old",
+        }
+    )
+
+    with patch("ui.command_manager._CommandFormDialog", return_value=form):
+        dialog._edit_command()
+
+    assert commands == {
+        "Nested": {
+            "Sub": {},
+            "NewGroup": {"Old": {"command": "old"}},
+            "icon": "nested.png",
+        },
+        "System": {"Terminal": {"command": "terminal"}},
+    }
+    services.config_manager.save_commands.assert_called_once_with(commands)
+
+
+def test_delete_nested_subgroup_removes_only_that_subgroup(monkeypatch):
+    commands = {
+        "System": {"Terminal": {"command": "terminal"}},
+        "Nested": {
+            "Sub": {"Child": {"command": "child"}},
+            "Keep": {"command": "keep"},
+            "icon": "nested.png",
+        },
+    }
+    dialog, services = _real_manager(commands, monkeypatch)
+    dialog._tree.setCurrentItem(_tree_item(dialog, "Nested", "Sub"))
+
+    with patch("ui.command_manager.confirm_action", return_value=True):
+        dialog._delete_command()
+
+    assert commands == {
+        "System": {"Terminal": {"command": "terminal"}},
+        "Nested": {
+            "Keep": {"command": "keep"},
+            "icon": "nested.png",
+        },
+    }
+    services.config_manager.save_commands.assert_called_once_with(commands)

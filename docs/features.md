@@ -9,7 +9,7 @@ A detailed guide to all user-facing features of py-tray-command-launcher.
 Commands are organised into categories and displayed as submenus in the system tray. Each category can have a custom icon and contain any number of named command entries.
 
 - Categories appear as submenus when you right-click (or left-click, depending on desktop environment) the tray icon.
-- Commands can be nested one level deep (category → command).
+- Categories can contain nested subgroups, which the command manager manages through full dot-separated paths; commands can be placed at any depth and are edited, deleted, and reordered through the command manager.
 - Category and command icons are loaded from the paths specified in `commands.json`.
 
 ---
@@ -27,6 +27,21 @@ Set `"showOutput": true` on a command to capture its stdout/stderr and display r
 ANSI SGR output uses separate light and dark color palettes. In explicit light and dark themes, the output window uses the same surface and inherited text colors as the theme's `QTextEdit` styles. In `system` mode, the surface and inherited text come from the active Qt application palette's `Base` and `Text` roles; the Base color's relative luminance selects the light or dark ANSI palette. Standalone output windows without a theme manager use this same system-palette behavior.
 
 For each output run, foreground contrast is checked against the active ANSI background or the inherited output surface. If the requested foreground would fall below WCAG's 4.5:1 contrast ratio, it is rendered in whichever of black or white provides higher contrast. This safeguard also applies to inherited text and background-only ANSI sequences; it does not change the requested ANSI background color, including bright white and neutral background colors. Existing output windows keep the rendering context captured when they were created, so close and reopen them after changing the application theme to refresh their colors.
+
+### Output history and high-volume batching
+
+Each process output tab retains the most recent output up to a configurable character cap (`output_history.max_output_chars`, default 1,000,000). When the cap is exceeded, the oldest content is pruned first (head-first trimming), including whole inserts and, at the very cap boundary, a partial slice of the oldest insert. ANSI formatting of the retained content is never mutated by trimming.
+
+Chunk batching is applied by default: live chunks are coalesced into a pending buffer and flushed in batches (when the buffer reaches `batch_chunk_count` chunks, when a 50 ms single-shot timer fires, or when adding a chunk would exceed the cap). The ANSI state machine parses the concatenated stream as one unit, so per-chunk style state is preserved exactly. Auto-scroll is applied once per batch flush (or per chunk when batching is disabled), preserving the user's preference with far fewer document updates.
+
+The legacy `show_output` bulk path bypasses the batch queue so the window is populated immediately; the character cap still bounds the document. The relevant `output_history` settings and their defaults are:
+
+- `max_output_chars`: maximum retained character count per tab (default: 1,000,000; oldest-first pruning).
+- `batch_enabled`: whether live chunks are coalesced into batched flushes (default: true).
+- `batch_chunk_count`: number of chunks that trigger an immediate flush (default: 200).
+- `batch_delay_ms`: single-shot flush timer delay in milliseconds (default: 50).
+
+A partial ANSI escape sequence split by the cap boundary is dropped; complete sequences after the boundary are untouched. See `src/ui/output_window.py` for the implementation details.
 
 ### Confirmation dialogs
 
