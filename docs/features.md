@@ -9,7 +9,7 @@ A detailed guide to all user-facing features of py-tray-command-launcher.
 Commands are organised into categories and displayed as submenus in the system tray. Each category can have a custom icon and contain any number of named command entries.
 
 - Categories appear as submenus when you right-click (or left-click, depending on desktop environment) the tray icon.
-- Commands can be nested one level deep (category → command).
+- Categories can contain nested subgroups, which the command manager manages through full dot-separated paths; commands can be placed at any depth and are edited, deleted, and reordered through the command manager.
 - Category and command icons are loaded from the paths specified in `commands.json`.
 
 ---
