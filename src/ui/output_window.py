@@ -18,9 +18,11 @@ Toolbar actions:
 
 import logging
 import re
+from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QAction, QColor, QFont, QPalette, QTextCharFormat, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
@@ -190,6 +192,22 @@ def _apply_effective_foreground(fmt: QTextCharFormat, theme: _OutputTheme) -> No
     fmt.setForeground(effective)
 
 
+def _split_incomplete_sgr_suffix(text: str) -> tuple[str, str]:
+    """Separate a trailing partial SGR introducer from text safe to parse.
+
+    Args:
+        text: Concatenated output from the current flush and any previous carry.
+
+    Returns:
+        A pair of complete stream text and a trailing ESC/SGR prefix to prepend
+        to the next batch.
+    """
+    match = re.search(r"\x1B(?:\[[0-9;]*)?$", text)
+    if match is None:
+        return text, ""
+    return text[: match.start()], match.group(0)
+
+
 def _parse_sgr(
     codes: list[int], fmt: QTextCharFormat, theme: _OutputTheme | None = None
 ) -> QTextCharFormat:
@@ -257,6 +275,12 @@ class _OutputTab(QTextEdit):
         font: QFont,
         parent: QWidget | None = None,
         output_theme: _OutputTheme | None = None,
+        *,
+        max_output_chars: int = 1_000_000,
+        batch_enabled: bool = True,
+        batch_chunk_count: int = 200,
+        batch_delay_ms: int = 50,
+        scroll_to_bottom: bool = False,
     ):
         """Create a read-only tab using the window's construction-time theme.
 
@@ -264,6 +288,16 @@ class _OutputTab(QTextEdit):
             font: Font used for command output.
             parent: Optional owning widget.
             output_theme: Resolved colors shared by tabs in the parent window.
+            max_output_chars: Maximum retained character count for this tab. Oldest
+                content is pruned first when the cap is exceeded.
+            batch_enabled: When true, chunks are coalesced into a pending buffer and
+                flushed in batches rather than touching the document on every chunk.
+            batch_chunk_count: Number of chunks that trigger an immediate flush.
+            batch_delay_ms: Single-shot timer delay (ms) that also triggers a flush.
+            scroll_to_bottom: When true, scroll the tab to the bottom once per flush.
+
+        Returns:
+            None.
         """
         super().__init__(parent)
         self.setReadOnly(True)
@@ -279,20 +313,144 @@ class _OutputTab(QTextEdit):
         self._fmt.setProperty(_REQUESTED_FOREGROUND_PROPERTY, self._output_theme.inherited_text)
         _apply_effective_foreground(self._fmt, self._output_theme)
 
-    def append_ansi(self, text: str) -> None:
-        """Append text with SGR styles and contrast-safe per-run foregrounds.
+        # Issue #170: bounded retained output and chunk batching ---------------------
+        self._max_output_chars = max_output_chars
+        self._batch_enabled = batch_enabled
+        self._batch_chunk_count = batch_chunk_count
+        self._batch_delay_ms = batch_delay_ms
+        self._scroll_to_bottom = scroll_to_bottom
+        self._scroll_preference: Callable[[], bool] | None = None
+        self._pending: list[str] = []
+        self._pending_chars = 0
+        self._ansi_pending = ""
+        self._insert_history: deque = deque()
+        self._document_length = 0
+        self._flush_timer = QTimer(self)
+        self._flush_timer.setSingleShot(True)
+        self._flush_timer.timeout.connect(self._flush)
+        # --------------------------------------------------------------------------
+
+    def append_ansi(self, text: str, *, batch: bool = True) -> None:
+        """Parse *text* with the ANSI state machine and add it to the document.
+
+        When the tab is batched (the default), *text* is queued and flushed in
+        batches through :meth:`_flush` instead of touching the document
+        immediately. Bulk payloads (e.g. the legacy ``show_output`` path) bypass
+        the queue and are inserted directly so the cap, not the queue, bounds them.
+        A bypass first drains any earlier queued output to preserve stream order.
 
         Args:
             text: Output text that may contain ANSI escape sequences.
+            batch: When true (the default), accumulate the text in the pending buffer.
+
+        Returns:
+            None.
+
+        Raises:
+            RuntimeError: If the Qt text widget is destroyed during insertion.
+        """
+        if not text:
+            return
+        if batch and self._batch_enabled:
+            if self._pending_chars + len(text) > self._max_output_chars:
+                self._flush()
+            if len(text) > self._max_output_chars:
+                self._insert_direct_stream_text(text)
+                self._scroll_to_bottom_if_enabled()
+                return
+            self._pending.append(text)
+            self._pending_chars += len(text)
+            if len(self._pending) >= self._batch_chunk_count:
+                self._flush()
+            elif not self._flush_timer.isActive():
+                self._flush_timer.start(self._batch_delay_ms)
+        else:
+            self._flush()
+            self._insert_direct_stream_text(text)
+
+    def _insert_direct_stream_text(self, text: str) -> None:
+        """Insert direct output while preserving incomplete SGR sequences.
+
+        Args:
+            text: Current process chunk to append.
 
         Returns:
             None.
         """
+        text, incomplete_sgr = _split_incomplete_sgr_suffix(self._ansi_pending + text)
+        self._ansi_pending = incomplete_sgr if len(incomplete_sgr) <= self._max_output_chars else ""
+        self._insert_and_trim(text)
+
+    def _scroll_to_bottom_if_enabled(self) -> None:
+        """Scroll to the bottom when the current window preference allows it."""
+        scroll_to_bottom = (
+            self._scroll_preference()
+            if self._scroll_preference is not None
+            else self._scroll_to_bottom
+        )
+        if scroll_to_bottom:
+            bar = self.verticalScrollBar()
+            bar.setValue(bar.maximum())
+
+    def flush(self) -> None:
+        """Flush queued output immediately.
+
+        Returns:
+            None.
+
+        Raises:
+            RuntimeError: If the Qt text widget is destroyed during insertion.
+        """
+        if self._pending:
+            self._flush()
+
+    def _flush(self) -> None:
+        """Insert the pending stream once, then trim and scroll once.
+
+        Concatenating chunks before parsing preserves SGR state across chunk
+        boundaries while reducing document mutations to one per flush. A
+        trailing partial SGR introducer is carried into the next batch, since a
+        timer flush may occur between the bytes of one escape sequence.
+
+        Returns:
+            None.
+
+        Raises:
+            RuntimeError: If the Qt text widget is destroyed during insertion.
+        """
+        self._flush_timer.stop()
+        if not self._pending:
+            return
+        text = self._ansi_pending + "".join(self._pending)
+        self._ansi_pending = ""
+        self._pending.clear()
+        self._pending_chars = 0
+        text, incomplete_sgr = _split_incomplete_sgr_suffix(text)
+        if len(incomplete_sgr) <= self._max_output_chars:
+            self._ansi_pending = incomplete_sgr
+        if not text:
+            return
+        self._insert_and_trim(text)
+        self._scroll_to_bottom_if_enabled()
+        # Defensive safety net: the cap holds even if an insert raised internally.
+        self._trim_head(self._document_length - self._max_output_chars)
+
+    def _insert_and_trim(self, text: str) -> None:
+        """Insert *text* at the end of the document, then prune the head if needed.
+
+        Args:
+            text: Text (possibly containing ANSI SGR sequences) to insert.
+
+        Returns:
+            None.
+        """
+        if not text:
+            return
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
-
         last_end = 0
-        for match in _ANSI_ESC_RE.finditer(text):
+        matches = list(_ANSI_ESC_RE.finditer(text))
+        for match in matches:
             # Flush plain text up to the escape sequence
             plain = text[last_end : match.start()]
             if plain:
@@ -312,6 +470,83 @@ class _OutputTab(QTextEdit):
             cursor.insertText(tail, self._fmt)
 
         self.setTextCursor(cursor)
+        inserted_length = len(text) - sum(match.end() - match.start() for match in matches)
+        if inserted_length:
+            self._insert_history.append((inserted_length, 0))
+        self._document_length += inserted_length
+        excess = self._document_length - self._max_output_chars
+        if excess > 0:
+            self._trim_head(excess)
+
+    def _trim_head(self, excess: int) -> None:
+        """Drop *excess* characters from the oldest content of the document.
+
+        Insertion happens at the tail, so the head of the document is exactly the
+        oldest inserted content. Whole inserts are dropped first, then a partial
+        slice of the oldest insert, so the retained document never exceeds the cap.
+        ANSI formatting of the retained content is untouched.
+
+        Args:
+            excess: Number of characters to drop from the head.
+
+        Returns:
+            None.
+        """
+        if excess <= 0:
+            return
+        while excess > 0 and self._insert_history:
+            length, consumed = self._insert_history[0]
+            remaining = length - consumed
+            if remaining <= excess:
+                excess -= remaining
+                self._drop_head(remaining)
+                self._insert_history.popleft()
+            else:
+                self._drop_head(excess)
+                self._insert_history[0] = (length, consumed + excess)
+                excess = 0
+        if excess > 0:
+            self._drop_head(excess)  # defensive: document modified outside the stream
+
+    def _drop_head(self, n: int) -> None:
+        """Remove *n* characters from the head of the document.
+
+        Args:
+            n: Number of characters to remove.
+
+        Returns:
+            None.
+        """
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.Start)
+        cursor.beginEditBlock()
+        cursor.movePosition(
+            QTextCursor.MoveOperation.Right,
+            QTextCursor.MoveMode.KeepAnchor,
+            n,
+        )
+        cursor.removeSelectedText()
+        cursor.endEditBlock()
+        self._document_length -= n
+
+    def clear_output(self) -> None:
+        """Clear the document and reset queued output and retention bookkeeping.
+
+        Returns:
+            None.
+        """
+        self._flush_timer.stop()
+        self._pending.clear()
+        self._pending_chars = 0
+        self._ansi_pending = ""
+        self._insert_history.clear()
+        self._document_length = 0
+        document = self.document()
+        if document is not None:
+            document.clear()
+        self._fmt = QTextCharFormat()
+        self._fmt.setProperty(_REQUESTED_FOREGROUND_PROPERTY, self._output_theme.inherited_text)
+        _apply_effective_foreground(self._fmt, self._output_theme)
 
 
 # ---------------------------------------------------------------------------
@@ -352,6 +587,14 @@ class RichOutputWindow(QMainWindow):
         self._font = QFont(family, size)
 
         self._auto_scroll = True
+
+        # Output history / batching settings -------------------------------------
+        output_cfg = settings.get("output_history", {})
+        self._max_output_chars = int(output_cfg.get("max_output_chars", 1_000_000))
+        self._batch_enabled = bool(output_cfg.get("batch_enabled", True))
+        self._batch_chunk_count = int(output_cfg.get("batch_chunk_count", 200))
+        self._batch_delay_ms = int(output_cfg.get("batch_delay_ms", 50))
+        # --------------------------------------------------------------------------
 
         # Toolbar
         toolbar = QToolBar("Output Tools", self)
@@ -402,7 +645,17 @@ class RichOutputWindow(QMainWindow):
         Raises:
             RuntimeError: If Qt cannot create or attach the tab widget.
         """
-        tab = _OutputTab(self._font, self, self._output_theme)
+        tab = _OutputTab(
+            self._font,
+            self,
+            self._output_theme,
+            max_output_chars=self._max_output_chars,
+            batch_enabled=self._batch_enabled,
+            batch_chunk_count=self._batch_chunk_count,
+            batch_delay_ms=self._batch_delay_ms,
+            scroll_to_bottom=self._auto_scroll,
+        )
+        tab._scroll_preference = lambda: self._auto_scroll
         tab.verticalScrollBar().rangeChanged.connect(
             lambda _min, _max, t=tab: self._maybe_scroll(t)
         )
@@ -415,6 +668,10 @@ class RichOutputWindow(QMainWindow):
     def append_output(self, tab: "_OutputTab", text: str) -> None:
         """Append command output and scroll when auto-scroll is enabled.
 
+        When the tab batches its output, the document is updated once per flush
+        instead of once per chunk, so the user's auto-scroll preference is
+        preserved with far fewer document updates.
+
         Args:
             tab: Output tab receiving the text.
             text: Command output, optionally containing ANSI SGR sequences.
@@ -423,7 +680,7 @@ class RichOutputWindow(QMainWindow):
             None.
         """
         tab.append_ansi(text)
-        if self._auto_scroll:
+        if self._auto_scroll and not self._batch_enabled:
             tab.verticalScrollBar().setValue(tab.verticalScrollBar().maximum())
 
     # ------------------------------------------------------------------
@@ -455,7 +712,9 @@ class RichOutputWindow(QMainWindow):
         """
         win = cls(parent, services, theme_manager)
         tab = win.open_process_tab(title)
-        win.append_output(tab, output)
+        # Bulk rendering path: bypass the batch queue so the window is populated
+        # immediately. The cap still bounds the document.
+        tab.append_ansi(output, batch=False)
         return win
 
     # ------------------------------------------------------------------
@@ -474,7 +733,7 @@ class RichOutputWindow(QMainWindow):
     def _clear_tab(self) -> None:
         tab = self._current_tab()
         if tab:
-            tab.clear()
+            tab.clear_output()
 
     def _change_font(self) -> None:
         ok, font = QFontDialog.getFont(self._font, self)

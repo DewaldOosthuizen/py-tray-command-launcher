@@ -169,6 +169,12 @@ class ConfigManager:
         "app_launcher_hotkey": "ctrl+alt+a",
         "history_limit": 50,
         "output_font": {"family": "monospace", "size": 10},
+        "output_history": {
+            "max_output_chars": 1_000_000,
+            "batch_enabled": True,
+            "batch_chunk_count": 200,
+            "batch_delay_ms": 50,
+        },
         "icon_cache_ttl_days": 7,
     }
 
@@ -968,7 +974,7 @@ class ConfigManager:
             # Fallback to minimal inline defaults
             default_commands = {
                 "System": {
-                    "icon": "icons/system.jpeg" if not self._is_windows else "",
+                    "icon": "icons/categories/system.png" if not self._is_windows else "",
                     "Open Terminal": {
                         "command": "terminator" if not self._is_windows else "cmd.exe",
                         "showOutput": False,
@@ -981,7 +987,7 @@ class ConfigManager:
                     },
                 },
                 "Utilities": {
-                    "icon": "icons/utilities.jpeg" if not self._is_windows else "",
+                    "icon": "icons/categories/utilities.png" if not self._is_windows else "",
                     "Text Editor": {
                         "command": "geany" if not self._is_windows else "notepad.exe",
                         "showOutput": False,

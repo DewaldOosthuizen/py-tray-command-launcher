@@ -7,13 +7,18 @@ and QIcon with the chainable surface MenuBuilder accesses (construct, setIcon,
 addAction, addMenu, triggered.connect, setMenu).
 """
 
+import json
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # The PyQt6 stub is already injected by conftest.py. Import MenuBuilder
 # after the stub is in place — the src/ path is on sys.path via conftest.py.
+from core.icon_resolver import IconResolver
 from core.menu_builder import (  # noqa: E402  # after conftest installs Qt stub
     MenuBuilder,
     MenuBuilderDependencies,
+    _set_tray_menu_icon_size,
 )
 
 
@@ -22,7 +27,7 @@ def _stub_icon_file():
     return "/nonexistent/tray_icon.png"
 
 
-def _make_dependencies(command_menu=None):
+def _make_dependencies(command_menu=None, resolve_icon_path=None):
     """Build only the rendering inputs and callbacks declared by MenuBuilder."""
 
     def feature():
@@ -31,7 +36,7 @@ def _make_dependencies(command_menu=None):
     callbacks = {
         "icon_file": _stub_icon_file(),
         "get_command_menu": MagicMock(return_value=command_menu or {}),
-        "resolve_icon_path": MagicMock(return_value=None),
+        "resolve_icon_path": resolve_icon_path or MagicMock(return_value=None),
         "execute": MagicMock(),
         "get_favorites": MagicMock(return_value=feature()),
         "set_favorites_menu": MagicMock(),
@@ -83,6 +88,37 @@ def test_builder_uses_only_its_typed_dependency_contract():
     assert not hasattr(builder, "tray_app")
 
 
+def test_tray_menu_icon_size_uses_18px_proxy_metric(monkeypatch):
+    """The tray menu adjusts only the small-icon metric and retains its style."""
+
+    class FakeStyle:
+        class PixelMetric:
+            PM_SmallIconSize = object()
+
+    class FakeProxyStyle:
+        def pixelMetric(self, metric, option=None, widget=None):
+            return 16
+
+    class FakeMenu:
+        __module__ = "PyQt6.QtWidgets"
+        style: FakeProxyStyle
+        _tray_menu_icon_style: FakeProxyStyle
+
+        def setStyle(self, style: FakeProxyStyle):
+            self.style = style
+
+    widgets = sys.modules["PyQt6.QtWidgets"]
+    monkeypatch.setattr(widgets, "QProxyStyle", FakeProxyStyle, raising=False)
+    monkeypatch.setattr(widgets, "QStyle", FakeStyle, raising=False)
+    menu = FakeMenu()
+
+    _set_tray_menu_icon_size(menu)
+
+    assert menu.style.pixelMetric(FakeStyle.PixelMetric.PM_SmallIconSize, widget=menu) == 18
+    assert menu.style.pixelMetric("other", widget=menu) == 16
+    assert menu._tray_menu_icon_style is menu.style
+
+
 def test_build_orders_primary_discovery_management_and_exit_actions():
     """Keep frequent actions first and management separate from tool actions."""
     command_menu = {"Custom": {"Terminal": {"command": "xterm"}}}
@@ -123,6 +159,54 @@ def test_build_orders_primary_discovery_management_and_exit_actions():
     tools = next(menu for label, menu in qmenus if label == "Tools")
     assert "Restart App" in [call.args[0] for call in management.addAction.call_args_list]
     assert "Create Schedule" in [call.args[0] for call in tools.addAction.call_args_list]
+
+
+def test_build_uses_dedicated_icons_for_fixed_tray_menus():
+    """Fixed tray-menu groups use their own packaged menu icons."""
+    repo_root = Path(__file__).resolve().parents[1]
+
+    resolver = IconResolver(str(repo_root))
+    fallback = str(repo_root / "resources" / "icons" / "branding" / "icon.png")
+    dependencies = _make_dependencies(
+        resolve_icon_path=lambda icon_spec: resolver.resolve_icon_path(icon_spec, fallback)
+    )
+    parent_menu = MagicMock()
+    qmenu_make, qmenus = _qmenu_factory()
+
+    with (
+        patch("core.menu_builder.QMenu", side_effect=qmenu_make),
+        patch("core.menu_builder.QIcon", side_effect=lambda path: path),
+    ):
+        MenuBuilder(dependencies).build(parent_menu, {})
+
+    menus_by_label = {label: menu for label, menu in qmenus}
+    expected_icons = {
+        "Favorites": "menu/favorites.png",
+        "Recent Commands": "menu/recent.png",
+        "Management": "menu/management.png",
+        "Tools": "menu/tools.png",
+    }
+    for menu_label, icon_spec in expected_icons.items():
+        icon_path = repo_root / "resources" / "icons" / icon_spec
+        assert icon_path.is_file()
+        menus_by_label[menu_label].setIcon.assert_called_once_with(str(icon_path))
+
+
+def test_default_category_icons_exist():
+    """The shipped command categories point at their matching PNG assets."""
+    repo_root = Path(__file__).resolve().parents[1]
+    command_config = json.loads((repo_root / "config" / "commands.json").read_text())
+    expected_icons = {
+        "System": "icons/categories/system.png",
+        "Media": "icons/categories/media.png",
+        "Studies": "icons/categories/studies.png",
+        "Utilities": "icons/categories/utilities.png",
+        "Development": "icons/categories/development.png",
+        "Networking": "icons/categories/networking.png",
+    }
+    for group, icon_spec in expected_icons.items():
+        assert command_config[group]["icon"] == icon_spec
+        assert (repo_root / "resources" / icon_spec).is_file()
 
 
 # ---------------------------------------------------------------------------

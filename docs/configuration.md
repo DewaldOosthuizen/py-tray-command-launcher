@@ -77,7 +77,7 @@ Use `{promptInput}` anywhere in the `command` string to insert user-supplied tex
 ```json
 {
   "System": {
-    "icon": "icons/system.jpeg",
+    "icon": "icons/categories/system.png",
     "Open Terminal": {
       "command": "terminator",
       "showOutput": false,

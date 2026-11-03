@@ -32,6 +32,31 @@
         "size": { "type": "integer", "minimum": 1 }
       }
     },
+    "output_history": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_output_chars": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum characters retained per output tab"
+        },
+        "batch_enabled": {
+          "type": "boolean",
+          "description": "Coalesce live output chunks into batched flushes"
+        },
+        "batch_chunk_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Chunks that trigger an immediate flush"
+        },
+        "batch_delay_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Single-shot flush timer delay in milliseconds"
+        }
+      }
+    },
     "icon_cache_ttl_days": {
       "type": "integer",
       "minimum": 0,

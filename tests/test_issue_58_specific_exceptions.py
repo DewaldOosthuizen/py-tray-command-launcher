@@ -5,6 +5,7 @@ Verifies that broad `except Exception` handlers have been replaced with
 specific exception types, so unexpected exception types propagate properly.
 """
 
+import json
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -376,6 +377,21 @@ class TestCreateDefaultCommandsSpecificExceptions:
         with patch.object(mgr, "_write_json_atomic", side_effect=RuntimeError("unexpected")):
             with pytest.raises(RuntimeError):
                 mgr._create_default_commands(tmp_path / "cmds.json")
+
+    def test_inline_defaults_use_packaged_category_icons(self, tmp_path):
+        mgr = _bare_mgr(tmp_path)
+        target = tmp_path / "commands.json"
+
+        mgr._create_default_commands(target)
+
+        commands = json.loads(target.read_text(encoding="utf-8"))
+        expected_icons = {
+            "System": "icons/categories/system.png",
+            "Utilities": "icons/categories/utilities.png",
+        }
+        for group, icon_path in expected_icons.items():
+            assert commands[group]["icon"] == icon_path
+            assert (PROJECT_ROOT / "resources" / icon_path).is_file()
 
 
 class TestLoadCommandsFromFileSpecificExceptions:

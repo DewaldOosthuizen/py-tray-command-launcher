@@ -35,6 +35,25 @@ if TYPE_CHECKING:
     from ui.command_palette import CommandPalette
 
 
+def _set_tray_menu_icon_size(menu: Any) -> None:
+    """Use a slightly larger icon metric for the tray menu and its submenus."""
+    if not type(menu).__module__.startswith("PyQt6."):
+        return
+
+    from PyQt6.QtWidgets import QProxyStyle, QStyle
+
+    class TrayMenuIconStyle(QProxyStyle):
+        def pixelMetric(self, metric, option=None, widget=None):
+            if metric == QStyle.PixelMetric.PM_SmallIconSize:
+                return 18
+            return super().pixelMetric(metric, option, widget)
+
+    style = TrayMenuIconStyle()
+    menu.setStyle(style)
+    # Keep the Python wrapper alive for as long as Qt uses this style.
+    menu._tray_menu_icon_style = style
+
+
 def _command_action_label(label: str, command: dict[str, Any]) -> str:
     """Render a configured command name with any conditional execution cues."""
     cues = format_execution_cues(command, concise=True)
@@ -113,18 +132,23 @@ class MenuBuilder:
                 "Invalid commands configuration. Root element must be a dictionary."
             )
 
+        _set_tray_menu_icon_size(menu)
         menu.addAction("Command Palette", self.dependencies.get_palette().show_palette)
 
         # Add favorites menu
         favorites_menu = QMenu("Favorites", menu)
-        favorites_menu.setIcon(QIcon(self.dependencies.icon_file))
+        favorites_menu.setIcon(
+            QIcon(self._get_item_icon_path("menu/favorites.png", self.dependencies.icon_file))
+        )
         self.dependencies.get_favorites().populate_favorites_menu(favorites_menu)
         self.dependencies.set_favorites_menu(favorites_menu)
         menu.addMenu(favorites_menu)
 
         # Add history menu
         history_menu = QMenu("Recent Commands", menu)
-        history_menu.setIcon(QIcon(self.dependencies.icon_file))
+        history_menu.setIcon(
+            QIcon(self._get_item_icon_path("menu/recent.png", self.dependencies.icon_file))
+        )
         menu.addMenu(history_menu)
         self.dependencies.set_history_menu(history_menu)
         self.dependencies.reload_history_commands()
@@ -147,7 +171,9 @@ class MenuBuilder:
         menu.addSeparator()
 
         management_menu = QMenu("Management", menu)
-        management_menu.setIcon(QIcon(self.dependencies.icon_file))
+        management_menu.setIcon(
+            QIcon(self._get_item_icon_path("menu/management.png", self.dependencies.icon_file))
+        )
         management_menu.addAction("Manage Commands", self.dependencies.open_command_manager)
         management_menu.addAction("Edit commands file", self.dependencies.open_commands_json)
         management_menu.addAction(
@@ -164,7 +190,9 @@ class MenuBuilder:
 
         # Tools group
         tools_menu = QMenu("Tools", menu)
-        tools_menu.setIcon(QIcon(self.dependencies.icon_file))
+        tools_menu.setIcon(
+            QIcon(self._get_item_icon_path("menu/tools.png", self.dependencies.icon_file))
+        )
 
         # Import/Export submenu
         import_export_menu = QMenu("Import/Export", tools_menu)
