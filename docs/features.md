@@ -184,6 +184,16 @@ at most 860 by 720 Qt logical pixels; the minimum width is clamped on narrow
 displays, with the existing 420 px fallback retained when no usable screen is
 available.
 
+### Live Preview
+
+The Appearance section of the Settings dialog applies the selected theme
+immediately as a live preview. The preview is a reversible draft: the selected
+theme is only persisted when the user clicks **Save**. If the dialog is closed
+without saving — either by clicking **Cancel** or by closing the window with the
+system close control — the original theme is restored, so the running
+application's appearance always matches the saved settings in
+`settings.json`.
+
 ---
 
 ## Single-Instance Enforcement

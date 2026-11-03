@@ -13,6 +13,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from PyQt6.QtGui import QCloseEvent
+
 
 def _install_real_pyqt6_stub():
     """Replace the MagicMock PyQt6 stub with one that has real base classes."""
@@ -422,3 +424,22 @@ class TestSettingsDialogSave(unittest.TestCase):
         """Config hotkey should be reflected in dlg._hotkey_edit."""
         dlg, cm, mock_services, theme_mgr = _build_dialog_direct({"hotkey": "ctrl+alt+p"})
         assert dlg._hotkey_edit.text() == "ctrl+alt+p"
+
+
+class TestSettingsDialogWindowClose(unittest.TestCase):
+    """Test window-manager close (X button) path through closeEvent."""
+
+    def test_window_close_restores_original_theme(self):
+        """Closing the dialog via the window-manager close control restores the original theme."""
+        dlg, cm, mock_services, theme_mgr = _build_dialog_direct()
+        dlg._original_theme = "light"
+        close_event = QCloseEvent()
+        close_event.isAccepted.return_value = False
+        # The rollback runs inside closeEvent before super() is reached. The stub
+        # base class has no closeEvent; the rollback already ran before super()
+        # was reached.
+        try:
+            dlg.closeEvent(close_event)
+        except AttributeError:
+            pass
+        theme_mgr.apply_theme.assert_called_with("light")

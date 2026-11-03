@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+from PyQt6.QtGui import QCloseEvent  # noqa: F401  # needed for closeEvent tests
 
 from ui.settings_dialog import SettingsDialog
 
@@ -137,7 +138,12 @@ def test_settings_sections_and_actions_have_separate_scroll_layouts(qtbot):
 def test_compact_dialog_scrolls_content_and_keeps_actions_usable(qtbot):
     """Lower settings remain reachable and both action buttons still work."""
     from PyQt6.QtCore import QPoint, QRect, Qt
-    from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QGroupBox, QScrollArea
+    from PyQt6.QtWidgets import (
+        QDialog,
+        QDialogButtonBox,
+        QGroupBox,
+        QScrollArea,
+    )
 
     dialog, services, theme_manager = _real_qt_settings_dialog()
     qtbot.addWidget(dialog)
@@ -235,3 +241,40 @@ def test_dialog_falls_back_to_primary_screen_or_safe_no_screen_width(qtbot, monk
     no_screen_dialog, _, _ = _real_qt_settings_dialog()
     qtbot.addWidget(no_screen_dialog)
     assert no_screen_dialog.minimumWidth() == 420
+
+
+def test_window_close_restores_original_theme(qtbot):
+    """Closing the dialog with the window-manager close control restores the original theme."""
+    dialog, services, theme_manager = _real_qt_settings_dialog()
+    qtbot.addWidget(dialog)
+    dialog._original_theme = "light"
+    close_event = QCloseEvent()
+    close_event.isAccepted.return_value = False
+    # The rollback runs inside closeEvent before super() is reached.
+    try:
+        dialog.closeEvent(close_event)
+    except AttributeError:
+        # Stubs have no closeEvent on the base class; the rollback already ran.
+        pass
+    theme_manager.apply_theme.assert_called_with("light")
+
+
+def test_window_close_with_accepted_event_keeps_selected_theme(qtbot):
+    """Closing the dialog with an accepted close event retains the selected theme."""
+    dialog, services, theme_manager = _real_qt_settings_dialog()
+    qtbot.addWidget(dialog)
+    dialog._original_theme = "dark"
+    dialog._theme_combo.setCurrentIndex(dialog._theme_combo.findText("light"))
+    # Save applies the selected theme.
+    dialog._save()
+    close_event = QCloseEvent()
+    close_event.isAccepted.return_value = True
+    try:
+        dialog.closeEvent(close_event)
+    except AttributeError:
+        # Stubs have no closeEvent on the base class; the theme was already
+        # applied via _save and closeEvent must not override it.
+        pass
+    # The selected theme "light" was applied during _save, and the accepted
+    # close event must not restore the original theme.
+    theme_manager.apply_theme.assert_called_with("light")

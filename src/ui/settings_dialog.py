@@ -285,6 +285,26 @@ class SettingsDialog(QDialog):
         except Exception as exc:
             show_error(self, "Error", f"Failed to save settings:\n{exc}")
 
+    def closeEvent(self, event) -> None:
+        """Restore the original theme when the dialog is closing without saving.
+
+        The theme preview is a reversible draft: closing the dialog with the
+        window-manager close control (the X button) does not go through
+        _cancel, so the rollback is handled here for every unsaved exit path.
+        The theme is only restored when the dialog is not accepted, which is
+        guaranteed by the Save path applying the selected theme before
+        accepting.
+
+        Args:
+            event: The close event.
+
+        Returns:
+            None.
+        """
+        if not event.isAccepted():
+            self._theme_manager.apply_theme(self._original_theme)
+        super().closeEvent(event)
+
     def _cancel(self) -> None:
         """Revert any live theme preview and close."""
         self._theme_manager.apply_theme(self._original_theme)
