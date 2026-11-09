@@ -47,6 +47,7 @@ def _make_pyqt6_stub():
     # Must be set as a MagicMock callable directly on the class object.
     _qapp_mock = _MagicMock()
     _qapp_mock.instance = _MagicMock(return_value=None)
+    _qapp_mock.primaryScreen = _MagicMock(return_value=None)
     pyqt6.QtWidgets.QApplication = _qapp_mock
 
     # pytest-qt uses isinstance(widget, QWidget) — must be a real type.
