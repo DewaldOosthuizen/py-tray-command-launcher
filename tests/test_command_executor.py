@@ -9,10 +9,16 @@ silent execution modes, using the actual public API:
   - execute_command_process_silently(app, command)
 """
 
+import os
+import subprocess
 import sys
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
+from PyQt6.QtCore import QTimer
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -113,6 +119,20 @@ class TestCommandExecutor(unittest.TestCase):
             with patch("modules.command_executor.logger"):
                 self.executor.execute_command("secret-cmd")
         self.mock_services.notify_user.assert_called_once()
+
+    def test_execute_command_launch_failure_notifies_and_logs_context(self):
+        error = OSError("resource temporarily unavailable")
+        with (
+            patch("modules.command_executor.subprocess.Popen", side_effect=error),
+            patch("modules.command_executor.logger") as mock_logger,
+        ):
+            self.executor.execute_command("blocked-command")
+
+        mock_logger.error.assert_called_once()
+        self.assertIn("blocked-command", str(mock_logger.error.call_args))
+        self.assertIn(str(error), str(mock_logger.error.call_args))
+        self.mock_services.notify_user.assert_called_once()
+        self.assertIn("blocked-command", self.mock_services.notify_user.call_args.kwargs["message"])
 
     def test_execute_command_poll_immediate_failure(self):
         mock_proc = MagicMock()
@@ -434,3 +454,41 @@ class TestPromptInputSanitisation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_shell_failure_is_reported_once_on_gui_thread_without_blocking(qtbot, tmp_path):
+    """A shell blocked on a deterministic FIFO gate is observed asynchronously."""
+    fifo = tmp_path / "release"
+    os.mkfifo(fifo)
+    missing_executable = tmp_path / "not-installed-command"
+    command = f"read -r _ < {fifo}; {missing_executable}"
+    services = MagicMock()
+    notification_threads = []
+    services.notify_user.side_effect = lambda **_kwargs: notification_threads.append(
+        threading.get_ident()
+    )
+    executor = CommandExecutor(services)
+    created_processes = []
+    real_popen = subprocess.Popen
+
+    def capture_process(*args, **kwargs):
+        process = real_popen(*args, **kwargs)
+        created_processes.append(process)
+        return process
+
+    timer_ticks = []
+    QTimer.singleShot(0, lambda: timer_ticks.append(True))
+    with patch("modules.command_executor.subprocess.Popen", side_effect=capture_process):
+        executor.execute_command(command)
+
+    assert len(created_processes) == 1
+    process = created_processes[0]
+    assert process.poll() is None
+    with fifo.open("w", encoding="utf-8") as gate:
+        gate.write("release\n")
+
+    qtbot.waitUntil(lambda: services.notify_user.call_count == 1, timeout=5000)
+    assert process.returncode not in (None, 0)
+    assert services.notify_user.call_count == 1
+    assert notification_threads == [threading.get_ident()]
+    assert timer_ticks

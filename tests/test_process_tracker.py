@@ -3,6 +3,7 @@
 
 from unittest.mock import MagicMock
 
+from core.process_output_relay import ProcessOutputRelay
 from core.process_tracker import ProcessTracker
 
 
@@ -59,3 +60,50 @@ def test_count_reflects_multiple_adds():
     tracker.add("a", MagicMock())
     tracker.add("b", MagicMock())
     assert tracker.count() == 2
+
+
+def test_replacing_process_id_keeps_count_aligned_with_process_map():
+    tracker = ProcessTracker()
+    original = MagicMock()
+    replacement = MagicMock()
+    received = []
+    tracker.process_count_changed.connect(received.append)
+
+    tracker.add("shared", original)
+    tracker.add("shared", replacement)
+
+    assert tracker.processes == {"shared": replacement}
+    assert tracker.count() == len(tracker.processes) == 1
+    assert received == [1, 1]
+
+
+def test_unknown_and_repeated_removals_keep_count_aligned():
+    tracker = ProcessTracker()
+    tracker.add("known", MagicMock())
+
+    tracker.remove("unknown")
+    tracker.remove("known")
+    tracker.remove("known")
+
+    assert tracker.count() == len(tracker.processes) == 0
+
+
+def test_stale_process_completion_cannot_remove_replacement():
+    tracker = ProcessTracker()
+    old_process = MagicMock()
+    replacement = MagicMock()
+    old_output_window = MagicMock()
+    new_output_window = MagicMock()
+    tracker.add("shared", old_process)
+    old_relay = ProcessOutputRelay(old_process, old_output_window, MagicMock(), "old")
+    old_relay.wire(lambda *_args: tracker.remove("shared", expected_process=old_process))
+
+    tracker.add("shared", replacement)
+    old_process.finished.connect.call_args.args[0](0, 0)
+    assert tracker.processes["shared"] is replacement
+    assert tracker.count() == len(tracker.processes) == 1
+
+    new_relay = ProcessOutputRelay(replacement, new_output_window, MagicMock(), "new")
+    new_relay.wire(lambda *_args: tracker.remove("shared", expected_process=replacement))
+    replacement.finished.connect.call_args.args[0](0, 0)
+    assert tracker.count() == len(tracker.processes) == 0
