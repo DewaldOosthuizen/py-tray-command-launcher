@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+
 from ui.settings_dialog import SettingsDialog
 
 
