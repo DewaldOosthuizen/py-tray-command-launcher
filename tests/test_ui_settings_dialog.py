@@ -249,6 +249,7 @@ def test_window_close_restores_original_theme(qtbot):
     qtbot.addWidget(dialog)
     dialog._original_theme = "light"
     close_event = QCloseEvent()
+    close_event.ignore()
     close_event.isAccepted.return_value = False
     # The rollback runs inside closeEvent before super() is reached.
     try:
@@ -268,6 +269,7 @@ def test_window_close_with_accepted_event_keeps_selected_theme(qtbot):
     # Save applies the selected theme.
     dialog._save()
     close_event = QCloseEvent()
+    close_event.accept()
     close_event.isAccepted.return_value = True
     try:
         dialog.closeEvent(close_event)
