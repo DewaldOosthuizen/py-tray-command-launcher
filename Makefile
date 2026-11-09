@@ -2,7 +2,7 @@ SHELL := /usr/bin/env bash
 
 PYTHON ?= $(shell if command -v python3.12 >/dev/null 2>&1; then command -v python3.12; else command -v python3; fi)
 PIP ?= pip
-PYTEST ?= pytest
+PYTEST ?= $(CI_VENV)/bin/pytest
 RUFF ?= ruff
 PIP_MIN_SAFE ?= 26.1.2
 WHEEL_MIN_SAFE ?= 0.46.2
