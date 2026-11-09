@@ -145,6 +145,34 @@ def _make_pyqt6_stub():
         def setWindowTitle(self, title):
             pass
 
+    class _QComboBox(_QWidget):
+        """Minimal selection behavior for tests that save combo-box values."""
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._items = []
+            self._current_index = -1
+
+        def addItems(self, items):
+            self._items.extend(items)
+            if self._current_index < 0 and self._items:
+                self._current_index = 0
+
+        def findText(self, text):
+            try:
+                return self._items.index(text)
+            except ValueError:
+                return -1
+
+        def setCurrentIndex(self, index):
+            if 0 <= index < len(self._items):
+                self._current_index = index
+
+        def currentText(self):
+            if 0 <= self._current_index < len(self._items):
+                return self._items[self._current_index]
+            return ""
+
     class _BoundSignal:
         """Per-instance Qt-signal stand-in: connect()/emit() actually dispatch."""
 
@@ -238,7 +266,7 @@ def _make_pyqt6_stub():
     pyqt6.QtWidgets.QTreeWidgetItem = _TreeWidgetItem
     pyqt6.QtWidgets.QSplitter = _QWidget
     pyqt6.QtWidgets.QScrollArea = _QWidget
-    pyqt6.QtWidgets.QComboBox = _QWidget
+    pyqt6.QtWidgets.QComboBox = _QComboBox
     pyqt6.QtWidgets.QCheckBox = _QWidget
     pyqt6.QtWidgets.QSpinBox = _QWidget
     pyqt6.QtWidgets.QGroupBox = _QWidget
@@ -281,6 +309,14 @@ if _INSTALL_STUB:
         sys.modules["PyQt6.QtCore"] = _stub.QtCore
         sys.modules["PyQt6.QtWidgets"] = _stub.QtWidgets
         sys.modules["PyQt6.QtGui"] = _stub.QtGui
+
+    # pytest-qt is loaded before conftest and retains the real Qt QWidget type.
+    # Keep its widget validation aligned with the stubbed widget hierarchy used
+    # by these headless tests.
+    from pytestqt.qt_compat import qt_api
+
+    qt_api.set_qt_api("pyqt6")
+    qt_api.QtWidgets.QWidget = _stub.QtWidgets.QWidget
 
 # Make src/ importable without installing the package
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
