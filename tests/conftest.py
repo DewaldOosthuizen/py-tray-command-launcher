@@ -334,6 +334,7 @@ if str(SRC_DIR) not in sys.path:
 import core.badge_manager  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
 import core.process_tracker  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
 import modules.schedule_creator  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
+import ui.command_manager  # noqa: E402, F401  # preload before tests replace the shared Qt stub
 import ui.schedule_dialog  # noqa: E402, F401  # preload after Qt stub; import intentionally unused
 
 # ---------------------------------------------------------------------------
