@@ -28,7 +28,10 @@ def test_wire_connects_all_signals():
 
     process.readyReadStandardOutput.connect.assert_called_once_with(relay._on_stdout)
     process.readyReadStandardError.connect.assert_called_once_with(relay._on_stderr)
-    process.finished.connect.assert_called_once_with(on_finished)
+    finished_callback = process.finished.connect.call_args.args[0]
+    assert callable(finished_callback)
+    finished_callback(0, 0)
+    on_finished.assert_called_once()
     process.errorOccurred.connect.assert_called_once()
 
 
