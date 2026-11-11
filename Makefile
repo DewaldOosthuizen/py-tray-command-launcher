@@ -185,8 +185,23 @@ release-workflow: ## Build and package the release AppImage (VERSION defaults to
 	@echo "AppImage size: $$(du -h py-tray-command-launcher-$(VERSION)-x86_64.AppImage | cut -f1)"
 
 .PHONY: ci
-ci: ## Run install, lint, tests, audit, and executable build sequentially
-	$(MAKE) install-dev && $(MAKE) lint && $(MAKE) test && $(MAKE) audit && $(MAKE) build
+ci: ## Run install, lint, tests, audit, executable build, and CI workflow parity checks sequentially
+	$(MAKE) install-dev && $(MAKE) lint && $(MAKE) test && $(MAKE) audit && $(MAKE) build && $(MAKE) ci-pip-audit-parity
+
+.PHONY: ci-pip-audit-parity
+ci-pip-audit-parity: ## Verify CI workflows audit the same dependency scope as the Makefile audit target
+	@echo "[ci-pip-audit-parity] Verifying workflow pip-audit steps match 'make audit' scope..."
+	@for workflow in .github/workflows/pr_gate.yml .github/workflows/release.yml; do \
+		if ! grep -qE '^[[:space:]]*- run: pip-audit -r requirements\.txt[[:space:]]*$$' "$$workflow"; then \
+			echo "[FAIL] ci-pip-audit-parity: $$workflow must run 'pip-audit -r requirements.txt'"; \
+			exit 1; \
+		fi; \
+		if grep -qE '^[[:space:]]*- run: pip-audit[[:space:]]*$$' "$$workflow"; then \
+			echo "[FAIL] ci-pip-audit-parity: $$workflow runs bare 'pip-audit', which audits pip-audit's own tooling dependencies"; \
+			exit 1; \
+		fi; \
+	done; \
+	echo "[OK] ci-pip-audit-parity: workflows audit the same scope as 'make audit'"
 
 .PHONY: ci-workflow-parity ci-full
 ci-workflow-parity: ## Verify both CI workflows use the same Qt test dependencies

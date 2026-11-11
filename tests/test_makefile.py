@@ -9,7 +9,7 @@ import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CI_TARGETS = ["install-dev", "lint", "test", "audit", "build"]
+CI_TARGETS = ["install-dev", "lint", "test", "audit", "build", "ci-pip-audit-parity"]
 
 
 def test_help_lists_every_target_with_a_description() -> None:
@@ -127,3 +127,15 @@ def test_ci_stops_after_failed_submake(tmp_path: Path) -> None:
         "finish test",
     ]
     assert maximum == 1
+
+
+def test_ci_workflows_audit_same_dependency_scope_as_makefile() -> None:
+    """CI pip-audit jobs must audit project dependencies, not pip-audit's own tooling."""
+    for workflow in ("pr_gate.yml", "release.yml"):
+        content = (ROOT / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
+        assert re.search(r"^\s*- run: pip-audit -r requirements\.txt\s*$", content, re.MULTILINE), (
+            f"{workflow} must run 'pip-audit -r requirements.txt'"
+        )
+        assert not re.search(r"^\s*- run: pip-audit\s*$", content, re.MULTILINE), (
+            f"{workflow} must not run bare 'pip-audit'"
+        )
