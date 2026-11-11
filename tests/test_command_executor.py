@@ -17,6 +17,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -171,6 +173,39 @@ class TestCommandExecutor(unittest.TestCase):
         mock_logger.error.assert_not_called()
         self.mock_services.notify_user.assert_not_called()
 
+    def test_execute_command_wait_oserror(self):
+        """execute_command should catch OSError from process.wait() and notify user."""
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = None
+        mock_proc.returncode = None
+        mock_proc.wait.side_effect = OSError("Unable to wait for command")
+
+        class _SynchronousThread:
+            """Run the completion target in start() so assertions are deterministic."""
+
+            def __init__(self, target, args=(), **kwargs):
+                self._target = target
+                self._args = args
+
+            def start(self):
+                self._target(*self._args)
+
+        with patch("modules.command_executor.subprocess.Popen", return_value=mock_proc):
+            with patch("modules.command_executor.logger") as mock_logger:
+                with patch("modules.command_executor.threading.Thread", _SynchronousThread):
+                    self.executor.execute_command("longcmd")
+
+        # OSError should be logged once, with the command and the failure reason.
+        mock_logger.error.assert_called_once()
+        logged = " ".join(str(part) for part in mock_logger.error.call_args[0])
+        self.assertIn("Unable to wait", logged)
+        self.assertIn("longcmd", logged)
+
+        # The failure should be surfaced to the user exactly once.
+        self.mock_services.notify_user.assert_called_once()
+        self.assertIn("longcmd", self.mock_services.notify_user.call_args.kwargs["message"])
+
     # ------------------------------------------------------------------
     # execute_command_process (QProcess path)
     # ------------------------------------------------------------------
@@ -300,6 +335,19 @@ class TestCommandExecutor(unittest.TestCase):
 
         mock_logger.warning.assert_called_once()
 
+    def test_execute_command_process_finished_notifies_on_nonzero_exit(self):
+        """A non-zero QProcess exit should surface the same failure notification."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
+            self.executor.execute_command_process(mock_app, "false")
+            finished_cb = mock_process.finished.connect.call_args[0][0]
+            finished_cb(1, "NormalExit")
+
+        self.mock_services.notify_user.assert_called_once()
+        self.assertIn("false", self.mock_services.notify_user.call_args.kwargs["message"])
+
     def test_execute_command_process_finished_logs_info_on_zero_exit(self):
         """finished lambda should call logger.info when exit code == 0."""
         mock_process = MagicMock()
@@ -421,8 +469,7 @@ class TestPromptInputSanitisation(unittest.TestCase):
         from core.tray_app import TrayApp
 
         tray_app = object.__new__(TrayApp)
-        tray_app.executor = CommandExecutor.__new__(CommandExecutor)
-        tray_app.executor.services = MagicMock()
+        tray_app.executor = CommandExecutor(MagicMock())
         tray_app.module_controller = MagicMock()
         tray_app.module_controller.get_executor.return_value = tray_app.executor
         tray_app.reload_history_commands = MagicMock()
@@ -458,6 +505,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
+@pytest.mark.skipif(os.name == "nt", reason="FIFO gate requires a POSIX OS")
 def test_shell_failure_is_reported_once_on_gui_thread_without_blocking(tmp_path):
     """A shell blocked on a deterministic FIFO gate is observed asynchronously."""
     fifo = tmp_path / "release"

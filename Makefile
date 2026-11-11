@@ -2,7 +2,7 @@ SHELL := /usr/bin/env bash
 
 PYTHON ?= $(shell if command -v python3.12 >/dev/null 2>&1; then command -v python3.12; else command -v python3; fi)
 PIP ?= pip
-PYTEST ?= $(CI_VENV)/bin/pytest
+PYTEST ?= pytest
 RUFF ?= ruff
 PIP_MIN_SAFE ?= 26.1.2
 WHEEL_MIN_SAFE ?= 0.46.2
@@ -186,7 +186,7 @@ release-workflow: ## Build and package the release AppImage (VERSION defaults to
 
 .PHONY: ci
 ci: ## Run install, lint, tests, audit, executable build, and CI workflow parity checks sequentially
-	$(MAKE) install-dev && $(MAKE) lint && $(MAKE) test && $(MAKE) audit && $(MAKE) build && $(MAKE) ci-pip-audit-parity
+	$(MAKE) install-dev && $(MAKE) lint && $(MAKE) test PYTEST=$(CI_VENV)/bin/pytest && $(MAKE) audit && $(MAKE) build && $(MAKE) ci-pip-audit-parity
 
 .PHONY: ci-pip-audit-parity
 ci-pip-audit-parity: ## Verify CI workflows audit the same dependency scope as the Makefile audit target

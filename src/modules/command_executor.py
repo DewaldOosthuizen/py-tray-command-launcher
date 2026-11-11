@@ -4,7 +4,7 @@ import logging
 import subprocess
 import threading
 
-from PyQt6.QtCore import QObject, QProcess, Qt, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QProcess, Qt, pyqtSignal
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,6 @@ class _NotificationDispatcher(QObject):
         self._services = services
         self.notification_requested.connect(self._notify_user, Qt.ConnectionType.QueuedConnection)
 
-    @pyqtSlot(str, str)
     def _notify_user(self, title: str, message: str) -> None:
         try:
             self._services.notify_user(title=title, message=message)
@@ -62,12 +61,11 @@ class CommandExecutor:
             return
 
         # Detect immediate shell-level failures (e.g. missing executable,
-        # permission denied) without blocking or sleeping.
+        # permission denied) without blocking or sleeping.  Popen.poll() sets
+        # returncode before returning it, so returncode is authoritative here.
         poll_result = proc.poll()
         if poll_result is not None:
             return_code = proc.returncode
-            if return_code is None:
-                return_code = poll_result
             if return_code != 0:
                 self._report_nonzero_exit(command, return_code)
             return
@@ -84,10 +82,8 @@ class CommandExecutor:
         self._notify_user("Command failed", f"Failed to start command '{command}': {error}")
 
     def _notify_user(self, title: str, message: str) -> None:
-        try:
-            self.services.notify_user(title=title, message=message)
-        except Exception:
-            logger.exception("Unable to deliver command failure notification")
+        """Queue a user notification; delivery errors are logged, never raised."""
+        self._notification_dispatcher.notification_requested.emit(title, message)
 
     def _wait_for_completion(self, process, command: str) -> None:
         """Wait outside the GUI thread and queue a notification for failed exits."""
@@ -101,9 +97,7 @@ class CommandExecutor:
                 exc,
                 extra={"command": command, "pid": process.pid, "error": str(exc)},
             )
-            self._notification_dispatcher.notification_requested.emit(
-                "Command failed", f"Unable to track command '{command}': {exc}"
-            )
+            self._notify_user("Command failed", f"Unable to track command '{command}': {exc}")
             return
         if return_code != 0:
             self._report_nonzero_exit(command, return_code, process.pid)
@@ -127,10 +121,25 @@ class CommandExecutor:
                 extra={"command": command, "exit_code": return_code, "pid": pid},
             )
             message = f"Command '{command}' exited (exit code {return_code})"
-        if pid is None:
-            self._notify_user("Command failed", message)
+        self._notify_user("Command failed", message)
+
+    def _handle_qprocess_finished(self, code: int, status: str, command: str) -> None:
+        """Handle QProcess finished signal, logging and notifying on non-zero exit."""
+        if code != 0:
+            logger.warning(
+                "QProcess exited with non-zero code for command '%s': exit_code=%d status=%s",
+                command,
+                code,
+                status,
+            )
+            self._notify_user("Command failed", f"Command '{command}' exited with code {code}")
         else:
-            self._notification_dispatcher.notification_requested.emit("Command failed", message)
+            logger.info(
+                "QProcess finished successfully for command '%s': exit_code=%d status=%s",
+                command,
+                code,
+                status,
+            )
 
     def execute_command_process(self, app, command):
         """Start a shell command as a tracked QProcess and return the running handle.
@@ -147,21 +156,7 @@ class CommandExecutor:
             lambda err: logger.error("QProcess error for command '%s': %s", command, err)
         )
         process.finished.connect(
-            lambda code, status: (
-                logger.warning(
-                    "QProcess exited with non-zero code for command '%s': exit_code=%d status=%s",
-                    command,
-                    code,
-                    status,
-                )
-                if code != 0
-                else logger.info(
-                    "QProcess finished successfully for command '%s': exit_code=%d status=%s",
-                    command,
-                    code,
-                    status,
-                )
-            )
+            lambda code, status: self._handle_qprocess_finished(code, status, command)
         )
         process.start()
         logger.debug("QProcess started (program: bash -c %s)", command)

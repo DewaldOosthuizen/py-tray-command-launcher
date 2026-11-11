@@ -52,7 +52,9 @@ def _make_with_recorder(
 
             state = Path(os.environ["RECORDER_STATE"])
             events = Path(os.environ["RECORDER_EVENTS"])
-            target = sys.argv[-1]
+            # The submake may receive variable assignments (e.g. PYTEST=...)
+            # alongside the target name; the target is the bare argument.
+            target = next((arg for arg in sys.argv[1:] if "=" not in arg), sys.argv[-1])
             with state.open("a+") as stream:
                 fcntl.flock(stream, fcntl.LOCK_EX)
                 stream.seek(0)
