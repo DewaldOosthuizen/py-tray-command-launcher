@@ -318,7 +318,11 @@ class TrayApp:
 
         proc_id = self.process_tracker.track(process)
         relay = ProcessOutputRelay(process, output_win, tab, command)
-        relay.wire(on_finished=lambda *_args: self.process_tracker.remove(proc_id))
+        relay.wire(
+            on_finished=lambda *_args: self.process_tracker.remove(
+                proc_id, expected_process=process
+            )
+        )
         # process.start() is called inside execute_command_process
 
     def _on_output_window_closed(self, win):

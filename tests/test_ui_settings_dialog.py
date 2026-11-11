@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt6.QtGui import QCloseEvent  # noqa: F401  # needed for closeEvent tests
 
 from ui.settings_dialog import SettingsDialog
 
@@ -248,7 +247,7 @@ def test_window_close_restores_original_theme(qtbot):
     dialog, services, theme_manager = _real_qt_settings_dialog()
     qtbot.addWidget(dialog)
     dialog._original_theme = "light"
-    close_event = QCloseEvent()
+    close_event = MagicMock()
     close_event.isAccepted.return_value = False
     # The rollback runs inside closeEvent before super() is reached.
     try:
@@ -267,7 +266,7 @@ def test_window_close_with_accepted_event_keeps_selected_theme(qtbot):
     dialog._theme_combo.setCurrentIndex(dialog._theme_combo.findText("light"))
     # Save applies the selected theme.
     dialog._save()
-    close_event = QCloseEvent()
+    close_event = MagicMock()
     close_event.isAccepted.return_value = True
     try:
         dialog.closeEvent(close_event)

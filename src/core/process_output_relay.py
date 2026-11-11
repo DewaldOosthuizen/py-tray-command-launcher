@@ -24,6 +24,8 @@ class ProcessOutputRelay:
         self._output_win_ref = weakref.ref(output_win)
         self._tab = tab
         self._command = command
+        self._finished = False
+        self._error_reported = False
 
     def wire(self, on_finished) -> None:
         """Connect stdout/stderr/finished/errorOccurred signals.
@@ -35,7 +37,7 @@ class ProcessOutputRelay:
 
         process.readyReadStandardOutput.connect(self._on_stdout)
         process.readyReadStandardError.connect(self._on_stderr)
-        process.finished.connect(on_finished)
+        process.finished.connect(lambda *_args: self._finish_once(on_finished))
         process.errorOccurred.connect(lambda error: self._on_error(error, on_finished))
 
     def _on_stdout(self) -> None:
@@ -51,17 +53,27 @@ class ProcessOutputRelay:
         self._append(output, "stderr")
 
     def _on_error(self, error, on_finished) -> None:
-        logger.error("QProcess error for command '%s': %s", self._command, error)
-        self._append(f"\n[ERROR] Process error: {error}\n", "error", swallow=True)
-        on_finished()
+        if not self._error_reported:
+            self._error_reported = True
+            logger.error("QProcess error for command '%s': %s", self._command, error)
+            self._append(f"\n[ERROR] Process error: {error}\n", "error")
+        self._finish_once(on_finished)
 
-    def _append(self, text: str, stream: str, swallow: bool = False) -> None:
+    def _finish_once(self, on_finished) -> None:
+        """Run lifecycle cleanup once even if Qt emits both error and finished."""
+        if self._finished:
+            return
+        self._finished = True
+        try:
+            on_finished()
+        except Exception:
+            logger.exception("QProcess cleanup failed for command '%s'", self._command)
+
+    def _append(self, text: str, stream: str) -> None:
         win = self._output_win_ref()
         if win is None:
             return
         try:
             win.append_output(self._tab, text)
         except RuntimeError as exc:
-            if swallow:
-                return
             logger.debug("Output window destroyed before %s could be written: %s", stream, exc)

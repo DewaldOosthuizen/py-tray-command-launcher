@@ -9,10 +9,15 @@ silent execution modes, using the actual public API:
   - execute_command_process_silently(app, command)
 """
 
+import os
+import shlex
+import subprocess
 import sys
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -114,6 +119,24 @@ class TestCommandExecutor(unittest.TestCase):
                 self.executor.execute_command("secret-cmd")
         self.mock_services.notify_user.assert_called_once()
 
+    def test_execute_command_launch_failure_notifies_and_logs_context(self):
+        error = OSError("resource temporarily unavailable")
+        with (
+            patch("modules.command_executor.subprocess.Popen", side_effect=error),
+            patch("modules.command_executor.logger") as mock_logger,
+        ):
+            self.executor.execute_command("blocked-command")
+
+        mock_logger.error.assert_called_once()
+        self.assertIn("blocked-command", str(mock_logger.error.call_args))
+        self.assertIn(str(error), str(mock_logger.error.call_args))
+        self.assertEqual(
+            mock_logger.error.call_args.kwargs["extra"],
+            {"command": "blocked-command", "error": str(error)},
+        )
+        self.mock_services.notify_user.assert_called_once()
+        self.assertIn("blocked-command", self.mock_services.notify_user.call_args.kwargs["message"])
+
     def test_execute_command_poll_immediate_failure(self):
         mock_proc = MagicMock()
         mock_proc.pid = 1
@@ -132,6 +155,7 @@ class TestCommandExecutor(unittest.TestCase):
         mock_proc.pid = 1
         mock_proc.poll.return_value = None
         mock_proc.returncode = None
+        mock_proc.wait.return_value = 0
         with patch("modules.command_executor.subprocess.Popen", return_value=mock_proc):
             with patch("modules.command_executor.logger") as mock_logger:
                 self.executor.execute_command("longcmd")
@@ -148,6 +172,39 @@ class TestCommandExecutor(unittest.TestCase):
                 self.executor.execute_command("fastcmd")
         mock_logger.error.assert_not_called()
         self.mock_services.notify_user.assert_not_called()
+
+    def test_execute_command_wait_oserror(self):
+        """execute_command should catch OSError from process.wait() and notify user."""
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = None
+        mock_proc.returncode = None
+        mock_proc.wait.side_effect = OSError("Unable to wait for command")
+
+        class _SynchronousThread:
+            """Run the completion target in start() so assertions are deterministic."""
+
+            def __init__(self, target, args=(), **kwargs):
+                self._target = target
+                self._args = args
+
+            def start(self):
+                self._target(*self._args)
+
+        with patch("modules.command_executor.subprocess.Popen", return_value=mock_proc):
+            with patch("modules.command_executor.logger") as mock_logger:
+                with patch("modules.command_executor.threading.Thread", _SynchronousThread):
+                    self.executor.execute_command("longcmd")
+
+        # OSError should be logged once, with the command and the failure reason.
+        mock_logger.error.assert_called_once()
+        logged = " ".join(str(part) for part in mock_logger.error.call_args[0])
+        self.assertIn("Unable to wait", logged)
+        self.assertIn("longcmd", logged)
+
+        # The failure should be surfaced to the user exactly once.
+        self.mock_services.notify_user.assert_called_once()
+        self.assertIn("longcmd", self.mock_services.notify_user.call_args.kwargs["message"])
 
     # ------------------------------------------------------------------
     # execute_command_process (QProcess path)
@@ -239,6 +296,41 @@ class TestCommandExecutor(unittest.TestCase):
             connect_idx, start_idx, "errorOccurred.connect() must be called before start()"
         )
 
+    def test_execute_command_process_start_failure_notifies_user(self):
+        """A FailedToStart QProcess error must surface the same failure notification."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch(
+            "modules.command_executor.QProcess", return_value=mock_process
+        ) as mock_qprocess_cls:
+            with patch("modules.command_executor.logger") as mock_logger:
+                self.executor.execute_command_process(mock_app, "missing-binary")
+                error_callback = mock_process.errorOccurred.connect.call_args[0][0]
+                error_callback(mock_qprocess_cls.ProcessError.FailedToStart)
+
+        mock_logger.error.assert_called_once()
+        self.assertIn("missing-binary", str(mock_logger.error.call_args))
+        self.mock_services.notify_user.assert_called_once()
+        self.assertIn(
+            "missing-binary",
+            self.mock_services.notify_user.call_args.kwargs["message"],
+        )
+
+    def test_execute_command_process_non_start_error_does_not_notify(self):
+        """Errors followed by finished (e.g. Crashed) are reported by the finished handler."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch(
+            "modules.command_executor.QProcess", return_value=mock_process
+        ) as mock_qprocess_cls:
+            self.executor.execute_command_process(mock_app, "crashy")
+            error_callback = mock_process.errorOccurred.connect.call_args[0][0]
+            error_callback(mock_qprocess_cls.ProcessError.Crashed)
+
+        self.mock_services.notify_user.assert_not_called()
+
     def test_execute_command_process_wires_finished_signal(self):
         """execute_command_process should connect finished before start()."""
         mock_process = MagicMock()
@@ -264,8 +356,8 @@ class TestCommandExecutor(unittest.TestCase):
 
         mock_process.errorOccurred.connect.assert_called_once()
 
-    def test_execute_command_process_finished_logs_warning_on_nonzero_exit(self):
-        """finished lambda should call logger.warning when exit code != 0."""
+    def test_execute_command_process_finished_logs_error_on_nonzero_exit(self):
+        """finished lambda should call logger.error when exit code != 0."""
         mock_process = MagicMock()
         mock_app = MagicMock()
 
@@ -276,7 +368,20 @@ class TestCommandExecutor(unittest.TestCase):
                 finished_cb = mock_process.finished.connect.call_args[0][0]
                 finished_cb(1, "NormalExit")
 
-        mock_logger.warning.assert_called_once()
+        mock_logger.error.assert_called_once()
+
+    def test_execute_command_process_finished_notifies_on_nonzero_exit(self):
+        """A non-zero QProcess exit should surface the same failure notification."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch("modules.command_executor.QProcess", return_value=mock_process):
+            self.executor.execute_command_process(mock_app, "false")
+            finished_cb = mock_process.finished.connect.call_args[0][0]
+            finished_cb(1, "NormalExit")
+
+        self.mock_services.notify_user.assert_called_once()
+        self.assertIn("false", self.mock_services.notify_user.call_args.kwargs["message"])
 
     def test_execute_command_process_finished_logs_info_on_zero_exit(self):
         """finished lambda should call logger.info when exit code == 0."""
@@ -399,8 +504,7 @@ class TestPromptInputSanitisation(unittest.TestCase):
         from core.tray_app import TrayApp
 
         tray_app = object.__new__(TrayApp)
-        tray_app.executor = CommandExecutor.__new__(CommandExecutor)
-        tray_app.executor.services = MagicMock()
+        tray_app.executor = CommandExecutor(MagicMock())
         tray_app.module_controller = MagicMock()
         tray_app.module_controller.get_executor.return_value = tray_app.executor
         tray_app.reload_history_commands = MagicMock()
@@ -434,3 +538,94 @@ class TestPromptInputSanitisation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="FIFO gate requires a POSIX OS")
+def test_shell_failure_is_reported_once_on_gui_thread_without_blocking(tmp_path):
+    """A shell blocked on a deterministic FIFO gate is observed asynchronously."""
+    fifo = tmp_path / "release"
+    os.mkfifo(fifo)
+    missing_executable = tmp_path / "not-installed-command"
+    command = f"read -r _ < {shlex.quote(str(fifo))}; {shlex.quote(str(missing_executable))}"
+    script = """
+import os
+import subprocess
+import sys
+import threading
+from pathlib import Path
+from unittest.mock import patch
+
+from PyQt6.QtCore import QCoreApplication, QTimer
+
+sys.path.insert(0, str(Path.cwd() / "src"))
+from modules.command_executor import CommandExecutor
+
+application = QCoreApplication([])
+main_thread = threading.get_ident()
+notifications = []
+notification_threads = []
+timer_ticks = []
+ready_to_release = threading.Event()
+release_gate = threading.Event()
+timed_out = []
+
+class Services:
+    def notify_user(self, title, message):
+        notifications.append((title, message))
+        notification_threads.append(threading.get_ident())
+        application.quit()
+
+fifo = Path(__FIFO__)
+command = __COMMAND__
+created_processes = []
+real_popen = subprocess.Popen
+
+def capture_process(*args, **kwargs):
+    process = real_popen(*args, **kwargs)
+    created_processes.append(process)
+    return process
+
+def release_when_shell_is_waiting():
+    with fifo.open("w", encoding="utf-8") as gate:
+        ready_to_release.set()
+        if release_gate.wait(5):
+            gate.write("release\\n")
+
+def keep_event_loop_responsive():
+    timer_ticks.append(True)
+    if ready_to_release.is_set() and len(timer_ticks) >= 2:
+        release_gate.set()
+    else:
+        QTimer.singleShot(0, keep_event_loop_responsive)
+
+with patch("modules.command_executor.subprocess.Popen", side_effect=capture_process):
+    executor = CommandExecutor(Services())
+    executor.execute_command(command)
+
+assert len(created_processes) == 1
+process = created_processes[0]
+assert process.poll() is None
+threading.Thread(target=release_when_shell_is_waiting, daemon=True).start()
+QTimer.singleShot(0, keep_event_loop_responsive)
+QTimer.singleShot(5000, lambda: (timed_out.append(True), application.quit()))
+application.exec()
+process.wait(timeout=1)
+assert not timed_out, "completion notification did not arrive"
+assert process.returncode not in (None, 0)
+assert len(notifications) == 1
+assert notification_threads == [main_thread]
+assert len(timer_ticks) >= 2
+""".replace("__FIFO__", repr(str(fifo))).replace("__COMMAND__", repr(command))
+    environment = os.environ.copy()
+    environment["PY_TRAY_NO_STUB"] = "1"
+    environment["QT_QPA_PLATFORM"] = "offscreen"
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=PROJECT_ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    assert result.returncode == 0, f"{result.stdout}\n{result.stderr}"
