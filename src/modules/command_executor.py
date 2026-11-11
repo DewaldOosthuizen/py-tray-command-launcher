@@ -37,7 +37,10 @@ class CommandExecutor:
 
         Contract: accepts a ``command`` string, returns ``None``, and never
         raises.  Launch or immediate-execution failures are logged at ERROR
-        and surfaced to the user through ``self.services.notify_user``.
+        and surfaced to the user.  A command that is still running is awaited
+        in a background thread, and a non-zero exit is reported asynchronously.
+        Notifications are queued through ``_NotificationDispatcher`` and
+        delivered on the Qt thread via ``self.services.notify_user``.
 
         NOTE: shell=True is intentional — this is a user-defined command
         launcher whose commands are authored by the user in commands.json.
@@ -126,7 +129,7 @@ class CommandExecutor:
     def _handle_qprocess_finished(self, code: int, status: str, command: str) -> None:
         """Handle QProcess finished signal, logging and notifying on non-zero exit."""
         if code != 0:
-            logger.warning(
+            logger.error(
                 "QProcess exited with non-zero code for command '%s': exit_code=%d status=%s",
                 command,
                 code,
@@ -141,6 +144,20 @@ class CommandExecutor:
                 status,
             )
 
+    def _handle_qprocess_error(self, error, command: str) -> None:
+        """Handle QProcess errorOccurred, notifying when no finished signal follows.
+
+        Qt emits ``finished`` for every error except ``FailedToStart``, so only
+        that case needs its own notification here; crashes and other errors are
+        reported by ``_handle_qprocess_finished``.
+        """
+        logger.error("QProcess error for command '%s': %s", command, error)
+        if error == QProcess.ProcessError.FailedToStart:
+            self._notify_user(
+                "Command failed",
+                f"Failed to start command '{command}': {error}",
+            )
+
     def execute_command_process(self, app, command):
         """Start a shell command as a tracked QProcess and return the running handle.
 
@@ -152,9 +169,7 @@ class CommandExecutor:
         process = QProcess(app)
         process.setProgram("bash")
         process.setArguments(["-c", command])
-        process.errorOccurred.connect(
-            lambda err: logger.error("QProcess error for command '%s': %s", command, err)
-        )
+        process.errorOccurred.connect(lambda err: self._handle_qprocess_error(err, command))
         process.finished.connect(
             lambda code, status: self._handle_qprocess_finished(code, status, command)
         )

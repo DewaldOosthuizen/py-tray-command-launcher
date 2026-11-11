@@ -296,6 +296,41 @@ class TestCommandExecutor(unittest.TestCase):
             connect_idx, start_idx, "errorOccurred.connect() must be called before start()"
         )
 
+    def test_execute_command_process_start_failure_notifies_user(self):
+        """A FailedToStart QProcess error must surface the same failure notification."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch(
+            "modules.command_executor.QProcess", return_value=mock_process
+        ) as mock_qprocess_cls:
+            with patch("modules.command_executor.logger") as mock_logger:
+                self.executor.execute_command_process(mock_app, "missing-binary")
+                error_callback = mock_process.errorOccurred.connect.call_args[0][0]
+                error_callback(mock_qprocess_cls.ProcessError.FailedToStart)
+
+        mock_logger.error.assert_called_once()
+        self.assertIn("missing-binary", str(mock_logger.error.call_args))
+        self.mock_services.notify_user.assert_called_once()
+        self.assertIn(
+            "missing-binary",
+            self.mock_services.notify_user.call_args.kwargs["message"],
+        )
+
+    def test_execute_command_process_non_start_error_does_not_notify(self):
+        """Errors followed by finished (e.g. Crashed) are reported by the finished handler."""
+        mock_process = MagicMock()
+        mock_app = MagicMock()
+
+        with patch(
+            "modules.command_executor.QProcess", return_value=mock_process
+        ) as mock_qprocess_cls:
+            self.executor.execute_command_process(mock_app, "crashy")
+            error_callback = mock_process.errorOccurred.connect.call_args[0][0]
+            error_callback(mock_qprocess_cls.ProcessError.Crashed)
+
+        self.mock_services.notify_user.assert_not_called()
+
     def test_execute_command_process_wires_finished_signal(self):
         """execute_command_process should connect finished before start()."""
         mock_process = MagicMock()
@@ -321,8 +356,8 @@ class TestCommandExecutor(unittest.TestCase):
 
         mock_process.errorOccurred.connect.assert_called_once()
 
-    def test_execute_command_process_finished_logs_warning_on_nonzero_exit(self):
-        """finished lambda should call logger.warning when exit code != 0."""
+    def test_execute_command_process_finished_logs_error_on_nonzero_exit(self):
+        """finished lambda should call logger.error when exit code != 0."""
         mock_process = MagicMock()
         mock_app = MagicMock()
 
@@ -333,7 +368,7 @@ class TestCommandExecutor(unittest.TestCase):
                 finished_cb = mock_process.finished.connect.call_args[0][0]
                 finished_cb(1, "NormalExit")
 
-        mock_logger.warning.assert_called_once()
+        mock_logger.error.assert_called_once()
 
     def test_execute_command_process_finished_notifies_on_nonzero_exit(self):
         """A non-zero QProcess exit should surface the same failure notification."""

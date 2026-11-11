@@ -131,13 +131,29 @@ def test_ci_stops_after_failed_submake(tmp_path: Path) -> None:
     assert maximum == 1
 
 
+def _pip_audit_args_from_makefile() -> str:
+    """Read the pip-audit arguments shared by the audit target and CI parity check."""
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    match = re.search(r"^PIP_AUDIT_ARGS\s*\?=\s*(.+)$", makefile, re.MULTILINE)
+    assert match, "Makefile must define PIP_AUDIT_ARGS for the audit target"
+    return match.group(1).strip()
+
+
+def test_audit_target_uses_shared_pip_audit_args() -> None:
+    """The audit target must invoke pip-audit with the shared PIP_AUDIT_ARGS."""
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "$(CI_VENV_PIP_AUDIT) $(PIP_AUDIT_ARGS)" in makefile, (
+        "audit target must invoke '$(CI_VENV_PIP_AUDIT) $(PIP_AUDIT_ARGS)'"
+    )
+
+
 def test_ci_workflows_audit_same_dependency_scope_as_makefile() -> None:
-    """CI pip-audit jobs must audit project dependencies, not pip-audit's own tooling."""
+    """CI pip-audit jobs must match the Makefile audit target's dependency scope."""
+    args = _pip_audit_args_from_makefile()
+    expected_step = re.compile(rf"^\s*- run: pip-audit {re.escape(args)}\s*$", re.MULTILINE)
     for workflow in ("pr_gate.yml", "release.yml"):
         content = (ROOT / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
-        assert re.search(r"^\s*- run: pip-audit -r requirements\.txt\s*$", content, re.MULTILINE), (
-            f"{workflow} must run 'pip-audit -r requirements.txt'"
-        )
+        assert expected_step.search(content), f"{workflow} must run 'pip-audit {args}'"
         assert not re.search(r"^\s*- run: pip-audit\s*$", content, re.MULTILINE), (
             f"{workflow} must not run bare 'pip-audit'"
         )
