@@ -30,9 +30,16 @@ class ProcessTracker(QObject):
         self.add(proc_id, process)
         return proc_id
 
-    def remove(self, proc_id: str) -> None:
-        """Remove a process (no-op if proc_id is unknown) and emit the new count."""
-        self._processes.pop(proc_id, None)
+    def remove(self, proc_id: str, expected_process=None) -> None:
+        """Remove a registered process unless it has already been replaced.
+
+        ``expected_process`` guards completion callbacks against removing a newer
+        process that was registered under the same id. Unknown ids remain safe
+        no-ops; every call emits the current tracked count for compatibility.
+        """
+        current_process = self._processes.get(proc_id)
+        if expected_process is None or current_process is expected_process:
+            self._processes.pop(proc_id, None)
         self.process_count_changed.emit(self.count())
 
     def count(self) -> int:

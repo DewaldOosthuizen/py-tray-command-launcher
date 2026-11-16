@@ -32,7 +32,11 @@ output capture, and UI integration.
 ### `execute_command(command)` — fire-and-forget
 
 Uses `subprocess.Popen(command, shell=True)` and returns immediately.  The
-child process is not tracked after launch.  `shell=True` is intentional and
+child process is not tracked by the UI, but a background waiter thread
+observes its exit: a non-zero exit code is logged at ERROR and reported to
+the user asynchronously, while a launch failure is reported immediately.
+Notifications are queued through `CommandExecutor`'s `_NotificationDispatcher`
+and delivered on the Qt thread.  `shell=True` is intentional and
 acknowledged in the docstring: these are user-authored commands in a personal
 launcher; the security model is that the user controls both the command file
 and the input.
@@ -89,7 +93,8 @@ that users commonly put in a launcher.
 + Output window commands stream output live as the process produces it;
   the user sees partial output for long-running commands.
 + Fire-and-forget commands do not hold a reference in the Qt object tree,
-  keeping memory usage bounded.
+  keeping memory usage bounded; the daemon waiter thread exits with the
+  process it observes.
 + The `{promptInput}` pattern covers the common case of parametric commands
   (e.g. `ssh {promptInput}`) without requiring a dedicated dialog per command.
 - `shell=True` with unescaped `{promptInput}` substitution means a user who

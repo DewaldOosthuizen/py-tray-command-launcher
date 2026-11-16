@@ -9,7 +9,7 @@ import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CI_TARGETS = ["install-dev", "lint", "test", "audit", "build"]
+CI_TARGETS = ["install-dev", "lint", "test", "audit", "build", "ci-pip-audit-parity"]
 
 
 def test_help_lists_every_target_with_a_description() -> None:
@@ -52,7 +52,9 @@ def _make_with_recorder(
 
             state = Path(os.environ["RECORDER_STATE"])
             events = Path(os.environ["RECORDER_EVENTS"])
-            target = sys.argv[-1]
+            # The submake may receive variable assignments (e.g. PYTEST=...)
+            # alongside the target name; the target is the bare argument.
+            target = next((arg for arg in sys.argv[1:] if "=" not in arg), sys.argv[-1])
             with state.open("a+") as stream:
                 fcntl.flock(stream, fcntl.LOCK_EX)
                 stream.seek(0)
@@ -127,3 +129,31 @@ def test_ci_stops_after_failed_submake(tmp_path: Path) -> None:
         "finish test",
     ]
     assert maximum == 1
+
+
+def _pip_audit_args_from_makefile() -> str:
+    """Read the pip-audit arguments shared by the audit target and CI parity check."""
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    match = re.search(r"^PIP_AUDIT_ARGS\s*\?=\s*(.+)$", makefile, re.MULTILINE)
+    assert match, "Makefile must define PIP_AUDIT_ARGS for the audit target"
+    return match.group(1).strip()
+
+
+def test_audit_target_uses_shared_pip_audit_args() -> None:
+    """The audit target must invoke pip-audit with the shared PIP_AUDIT_ARGS."""
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "$(CI_VENV_PIP_AUDIT) $(PIP_AUDIT_ARGS)" in makefile, (
+        "audit target must invoke '$(CI_VENV_PIP_AUDIT) $(PIP_AUDIT_ARGS)'"
+    )
+
+
+def test_ci_workflows_audit_same_dependency_scope_as_makefile() -> None:
+    """CI pip-audit jobs must match the Makefile audit target's dependency scope."""
+    args = _pip_audit_args_from_makefile()
+    expected_step = re.compile(rf"^\s*- run: pip-audit {re.escape(args)}\s*$", re.MULTILINE)
+    for workflow in ("pr_gate.yml", "release.yml"):
+        content = (ROOT / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
+        assert expected_step.search(content), f"{workflow} must run 'pip-audit {args}'"
+        assert not re.search(r"^\s*- run: pip-audit\s*$", content, re.MULTILINE), (
+            f"{workflow} must not run bare 'pip-audit'"
+        )

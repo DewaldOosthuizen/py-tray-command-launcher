@@ -28,7 +28,10 @@ def test_wire_connects_all_signals():
 
     process.readyReadStandardOutput.connect.assert_called_once_with(relay._on_stdout)
     process.readyReadStandardError.connect.assert_called_once_with(relay._on_stderr)
-    process.finished.connect.assert_called_once_with(on_finished)
+    finished_callback = process.finished.connect.call_args.args[0]
+    assert callable(finished_callback)
+    finished_callback(0, 0)
+    on_finished.assert_called_once()
     process.errorOccurred.connect.assert_called_once()
 
 
@@ -81,3 +84,42 @@ def test_append_is_noop_when_window_garbage_collected():
     # Must not raise for any of the append paths.
     relay._on_stdout()
     relay._append("text", "stdout")
+
+
+def test_startup_error_is_written_to_output_tab():
+    relay, process, output_win, tab = _make_relay()
+    on_finished = MagicMock()
+    relay.wire(on_finished)
+
+    error_callback = process.errorOccurred.connect.call_args.args[0]
+    error_callback("FailedToStart")
+
+    output_win.append_output.assert_called_once()
+    assert output_win.append_output.call_args.args[0] is tab
+    assert "FailedToStart" in output_win.append_output.call_args.args[1]
+    on_finished.assert_called_once()
+
+
+def test_error_and_finished_callbacks_clean_up_only_once():
+    relay, process, _output_win, _tab = _make_relay()
+    on_finished = MagicMock()
+    relay.wire(on_finished)
+
+    error_callback = process.errorOccurred.connect.call_args.args[0]
+    error_callback("FailedToStart")
+    process.finished.connect.call_args.args[0](1, 0)
+    error_callback("FailedToStart")
+
+    on_finished.assert_called_once()
+
+
+def test_error_cleanup_runs_when_output_window_is_unavailable():
+    relay, process, _output_win, _tab = _make_relay()
+    relay._output_win_ref = lambda: None
+    on_finished = MagicMock()
+    relay.wire(on_finished)
+
+    error_callback = process.errorOccurred.connect.call_args.args[0]
+    error_callback("FailedToStart")
+
+    on_finished.assert_called_once()
