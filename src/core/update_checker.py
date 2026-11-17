@@ -25,7 +25,9 @@ LATEST_RELEASE_URL = (
 )
 REQUEST_TIMEOUT_SECONDS = 10
 _API_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
-_ALLOWED_DOWNLOAD_HOSTS = frozenset({"github.com", "objects.githubusercontent.com"})
+_ALLOWED_DOWNLOAD_HOSTS = frozenset(
+    {"github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"}
+)
 _USER_AGENT = "py-tray-command-launcher-updater"
 _DOWNLOAD_CHUNK_SIZE = 64 * 1024
 _MANIFEST_MAX_BYTES = 2 * 1024 * 1024
