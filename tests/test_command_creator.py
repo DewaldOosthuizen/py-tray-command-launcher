@@ -120,6 +120,9 @@ def test_create_command_preserves_multiline_text_through_persistence(tmp_path, m
     line_edits[2].text.return_value = ""
     command_edit = MagicMock()
     command_edit.toPlainText.return_value = command
+    checkboxes = [MagicMock(), MagicMock(), MagicMock()]
+    for checkbox in checkboxes:
+        checkbox.isChecked.return_value = False
     create_button = MagicMock()
     dialog = MagicMock()
     dialog.exec.side_effect = lambda: create_button.clicked.connect.call_args.args[0]()
@@ -129,6 +132,8 @@ def test_create_command_preserves_multiline_text_through_persistence(tmp_path, m
         patch("modules.command_creator.QComboBox", return_value=group_combo),
         patch("modules.command_creator.QLineEdit", side_effect=line_edits),
         patch("modules.command_creator.QPlainTextEdit", return_value=command_edit, create=True),
+        patch("modules.command_creator.QSizePolicy") as size_policy,
+        patch("modules.command_creator.QCheckBox", side_effect=checkboxes),
         patch(
             "modules.command_creator.QPushButton",
             side_effect=lambda text: create_button if text == "Create" else MagicMock(),
@@ -137,6 +142,10 @@ def test_create_command_preserves_multiline_text_through_persistence(tmp_path, m
     ):
         CommandCreator(services).show_dialog()
 
+    command_edit.setMinimumHeight.assert_called_once_with(120)
+    command_edit.setSizePolicy.assert_called_once_with(
+        size_policy.Policy.Expanding, size_policy.Policy.Expanding
+    )
     reloaded = json.loads(commands_file.read_text(encoding="utf-8"))
     assert reloaded["System"]["Multiline Script"]["command"] == command
 

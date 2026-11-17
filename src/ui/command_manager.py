@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QPlainTextEdit,
     QPushButton,
+    QSizePolicy,
     QToolBar,
     QTreeWidget,
     QTreeWidgetItem,
@@ -136,7 +137,10 @@ class _CommandFormDialog(QDialog):
         form.addRow("Name:", self._name_edit)
 
         # Command
-        self._cmd_edit = QLineEdit(initial.get("command", ""))
+        self._cmd_edit = QPlainTextEdit()
+        self._cmd_edit.setPlainText(initial.get("command", ""))
+        self._cmd_edit.setMinimumHeight(120)
+        self._cmd_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         form.addRow("Command:", self._cmd_edit)
 
         # Icon
@@ -196,7 +200,7 @@ class _CommandFormDialog(QDialog):
         if not self._name_edit.text().strip():
             show_warning(self, "Error", "Name is required.")
             return
-        if not self._cmd_edit.text().strip():
+        if not self._cmd_edit.toPlainText().strip():
             show_warning(self, "Error", "Command is required.")
             return
         self.accept()
@@ -215,7 +219,7 @@ class _CommandFormDialog(QDialog):
             "group": current_group,
             "group_path": tuple(group_path),
             "label": self._name_edit.text().strip(),
-            "command": self._cmd_edit.text().strip(),
+            "command": self._cmd_edit.toPlainText(),
             "showOutput": self._show_output_check.isChecked(),
             "confirm": self._confirm_check.isChecked(),
         }

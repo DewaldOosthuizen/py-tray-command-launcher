@@ -139,6 +139,9 @@ Create new commands through a graphical dialog without editing JSON directly.
 3. Fill in the command name, shell command, icon path, and toggle options (showOutput, confirm).
 4. Click **Save** — the command appears in the tray immediately.
 
+The shell-command field is a resizable multiline editor. Commands may contain
+embedded newlines; saving and reloading preserves the entered command string.
+
 ---
 
 ## Command Manager
@@ -153,6 +156,8 @@ Select a command to inspect its full configured details, including its exact
 group path and options, in the read-only preview. Searching and previewing are
 presentation-only and do not save configuration or rebuild the tray menu;
 configuration changes are saved only through explicit management actions.
+The Add and Edit forms use a resizable multiline shell-command editor and
+preserve embedded newlines when saving and reloading commands.
 
 ---
 

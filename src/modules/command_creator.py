@@ -9,7 +9,9 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
 )
 
@@ -49,7 +51,9 @@ class CommandCreator:
         # Command
         cmd_layout = QHBoxLayout()
         cmd_layout.addWidget(QLabel("Command:"))
-        cmd_edit = QLineEdit()
+        cmd_edit = QPlainTextEdit()
+        cmd_edit.setMinimumHeight(120)
+        cmd_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         cmd_layout.addWidget(cmd_edit)
         layout.addLayout(cmd_layout)
 
@@ -105,9 +109,9 @@ class CommandCreator:
         def create_command():
             group = group_combo.currentText()
             name = name_edit.text()
-            command = cmd_edit.text()
+            command = cmd_edit.toPlainText()
 
-            if not group or not name or not command:
+            if not group or not name or not command.strip():
                 QMessageBox.critical(dialog, "Error", "Group, Name, and Command are required!")
                 return
 

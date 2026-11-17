@@ -108,7 +108,10 @@ def _command_form_result(command, label):
 def test_command_form_initializes_multiline_editor_with_stored_command():
     initial_command = "#!/bin/sh\necho original"
     command_editor = MagicMock()
-    with patch("ui.command_manager.QPlainTextEdit", return_value=command_editor) as editor_class:
+    with (
+        patch("ui.command_manager.QPlainTextEdit", return_value=command_editor) as editor_class,
+        patch("ui.command_manager.QSizePolicy") as size_policy,
+    ):
         _CommandFormDialog(
             [("System",)],
             initial={"group_path": ("System",), "label": "Script", "command": initial_command},
@@ -116,6 +119,10 @@ def test_command_form_initializes_multiline_editor_with_stored_command():
 
     editor_class.assert_called_once()
     command_editor.setPlainText.assert_called_once_with(initial_command)
+    command_editor.setMinimumHeight.assert_called_once_with(120)
+    command_editor.setSizePolicy.assert_called_once_with(
+        size_policy.Policy.Expanding, size_policy.Policy.Expanding
+    )
 
 
 def test_add_command_preserves_multiline_text_through_persistence(tmp_path, monkeypatch):
