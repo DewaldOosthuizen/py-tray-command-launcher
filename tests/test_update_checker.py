@@ -289,6 +289,46 @@ def test_download_rejects_unsafe_redirect_target(monkeypatch):
         _open_response("https://github.com/asset")
 
 
+def test_download_accepts_github_release_asset_redirect(monkeypatch):
+    requested_hosts = []
+
+    class RedirectResponse:
+        status = 302
+
+        def getheader(self, _name):
+            return "https://release-assets.githubusercontent.com/releases/asset"
+
+        def close(self):
+            pass
+
+    class AssetResponse(io.BytesIO):
+        status = 200
+
+    class FakeConnection:
+        def __init__(self, host, port=None, timeout=None):
+            self.host = host
+            requested_hosts.append(host)
+
+        def request(self, *_args, **_kwargs):
+            pass
+
+        def getresponse(self):
+            if self.host == "github.com":
+                return RedirectResponse()
+            return AssetResponse(b"asset")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr("core.update_checker.http.client.HTTPSConnection", FakeConnection)
+
+    with _open_response("https://github.com/releases/download/asset") as response:
+        assert response.geturl() == "https://release-assets.githubusercontent.com/releases/asset"
+        assert response.read() == b"asset"
+
+    assert requested_hosts == ["github.com", "release-assets.githubusercontent.com"]
+
+
 def test_interrupted_download_removes_partial_asset(monkeypatch, tmp_path):
     data = b"payload"
     filename = "release.AppImage"
