@@ -125,7 +125,7 @@ Output: `dist\py-tray-command-launcher.exe`
 
 The project ships a GitHub Actions workflow (`.github/workflows/release.yml`) that
 builds the AppImage automatically and publishes it as a GitHub Release asset whenever
-a version tag is pushed.
+there is a new unreleased push to `main` (or a manual workflow dispatch).
 
 ### How it works
 
@@ -135,16 +135,27 @@ tagging step; the workflow computes the next CalVer tag (`YYYY.MM.DD`, or
 
 The workflow:
 1. Validates the commit (ruff, tests, pip-audit).
-2. Installs system and Python dependencies on an `ubuntu-latest` runner and builds the
+2. Computes the next CalVer candidate before the build and stamps that exact version
+   into `src/_version.py` before PyInstaller runs.
+3. Installs system and Python dependencies on an `ubuntu-latest` runner and builds the
    Linux executable with PyInstaller.
-3. Downloads `appimagetool`, assembles `AppDir/`, and produces the AppImage.
-4. Smoke-tests the AppImage: it is launched headlessly and must still be running after
+4. Downloads `appimagetool`, assembles `AppDir/`, and produces the AppImage.
+5. Runs the packaged AppImage with `--version` and fails the release if the reported
+   version is a placeholder or differs from the candidate tag.
+6. Smoke-tests the AppImage: it is launched headlessly and must still be running after
    15 seconds. A crash on startup fails the run before anything is published.
-5. Computes the next CalVer tag and pushes it (skipped if `HEAD` is already released).
-6. Creates a GitHub Release with auto-generated notes scoped to the changes since the
+7. Bumps `pyproject.toml` and pushes the computed tag (skipped if `HEAD` is already released).
+8. Creates a GitHub Release with auto-generated notes scoped to the changes since the
    previous release tag (`--notes-start-tag`), so notes are not repeated between releases.
-7. Uploads two assets: `py-tray-command-launcher-<tag>-x86_64.AppImage` and
-   `py-tray-command-launcher-<tag>-x86_64.AppImage.tar.gz`.
+9. Uploads the AppImage, its mode-preserving `.tar.gz`, and a `SHA256SUMS` manifest
+   covering both release assets.
+
+The application contacts the unauthenticated GitHub latest-release API at
+`api.github.com` for opt-in/automatic update checks. Downloads are currently
+supported only for Linux x86_64 AppImages; other platforms open the release page
+until a matching asset is published. Downloaded assets must match the API size
+and their entry in `SHA256SUMS`. They are saved as non-executable files and are
+never automatically launched or used to replace the running installation.
 
 ### Running a downloaded AppImage
 

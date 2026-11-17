@@ -81,6 +81,35 @@ continue to use the existing command execution flow.
 
 ---
 
+## Update checks
+
+The tray tooltip includes the running application version. **Check for updates**
+manually checks the latest stable GitHub release even when automatic checks are
+disabled. Automatic checks run at startup and then at the configured interval
+(24 hours by default). The request goes to the public
+`api.github.com/repos/DewaldOosthuizen/py-tray-command-launcher/releases/latest`
+endpoint; no account or credential is sent.
+
+Only valid CalVer versions (`YYYY.MM.DD` or `YYYY.MM.DD.N`) are compared.
+Development and non-CalVer builds do not show an update indicator. A newer
+release appears as **Update available: <version>** and is announced once per
+release version.
+
+Linux x86_64 releases currently provide an AppImage. The application downloads
+that asset to `~/Downloads` in the background, checks its byte size against
+GitHub release metadata, and verifies its SHA256 against the matching filename
+entry in the release's `SHA256SUMS` manifest. The verified file is shown in the
+Downloads folder and is never executed or used to replace the running app. If
+the platform has no matching asset (including Windows until such an asset is
+published), or a download cannot be verified, the release page is opened
+instead. Update checks and downloads use HTTPS and only accept GitHub asset
+hosts supplied by the release API.
+
+Disable **Check for updates automatically** in Settings to opt out of startup
+and periodic requests; the manual check remains available.
+
+---
+
 ## Favorites
 
 Mark any command as a favorite to pin it to the Favorites submenu near the top

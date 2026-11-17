@@ -16,6 +16,7 @@ import logging
 from PyQt6.QtGui import QCursor, QGuiApplication
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -135,6 +136,19 @@ class SettingsDialog(QDialog):
 
         settings_layout.addWidget(behaviour_box)
 
+        # --- Updates ----------------------------------------------------
+        updates_box = QGroupBox("Updates")
+        updates_form = QFormLayout(updates_box)
+        configure_dialog_layout(updates_form)
+        self._update_check_enabled = QCheckBox("Check for updates automatically")
+        self._update_check_enabled.setChecked(settings.get("update_check_enabled", True))
+        updates_form.addRow(self._update_check_enabled)
+        self._update_check_interval = QSpinBox()
+        self._update_check_interval.setRange(1, 2_147_483_647)
+        self._update_check_interval.setValue(int(settings.get("update_check_interval_hours", 24)))
+        updates_form.addRow("Check interval (hours):", self._update_check_interval)
+        settings_layout.addWidget(updates_box)
+
         # --- Output Window ----------------------------------------------
         output_box = QGroupBox("Output Window")
         output_form = QFormLayout(output_box)
@@ -202,6 +216,8 @@ class SettingsDialog(QDialog):
             self._hotkey_edit,
             self._app_launcher_hotkey_edit,
             self._history_spin,
+            self._update_check_enabled,
+            self._update_check_interval,
             self._font_family_edit,
             self._font_size_spin,
             self._log_level_combo,
@@ -261,6 +277,8 @@ class SettingsDialog(QDialog):
             settings["hotkey"] = self._hotkey_edit.text().strip()
             settings["app_launcher_hotkey"] = self._app_launcher_hotkey_edit.text().strip()
             settings["history_limit"] = self._history_spin.value()
+            settings["update_check_enabled"] = self._update_check_enabled.isChecked()
+            settings["update_check_interval_hours"] = self._update_check_interval.value()
             settings["output_font"] = {
                 "family": self._font_family_edit.text().strip() or "monospace",
                 "size": self._font_size_spin.value(),

@@ -54,6 +54,22 @@ Reads the persisted startup theme and delegates theme changes to `ThemeManager`.
 
 Singleton that owns all file I/O for configuration. Resolves the user config directory (XDG on Linux, `%APPDATA%` on Windows), copies bundled defaults on first run, migrates legacy paths, loads/saves `commands.json`, `settings.json`, `history.json`, and `favorites.json`. All other modules use `config_manager` (the module-level singleton instance) rather than reading files directly.
 
+### `core/version.py` and `core/update_checker.py`
+
+`version.py` resolves the application version from the release-stamped bundled
+module, installed package metadata, or the `0.0.0` fallback, and parses only
+valid CalVer tags for comparisons. `update_checker.py` is Qt-independent: it
+fetches and validates the GitHub latest stable release, selects supported
+assets, and downloads only after enforcing HTTPS GitHub asset hosts and
+verifying both published size and the matching SHA256 manifest entry.
+
+`TrayApp` runs these operations through retained `QThread` workers. It owns
+workers until their `finished` signals, prevents overlapping checks, and on
+shutdown stops the timer, guards UI callbacks, closes active responses through
+cooperative cancellation, and waits for workers before tearing down modules.
+Worker progress and results are applied on the Qt side only while the tray is
+alive.
+
 ### `core/logging_config.py`
 
 Configures the root logger once at startup. Resolves the effective log level by checking the `PY_TRAY_LOG_LEVEL` environment variable first, then the `log_level` field from `settings.json`. Sets a standard format: `timestamp | level | logger name | message`.
@@ -284,6 +300,7 @@ main.py
        ├─ config_manager (singleton)     # load commands.json and settings
        ├─ ThemeController                # apply startup theme via ThemeManager
        ├─ ModuleController               # explicit lazy feature/UI factories
+       ├─ UpdateWorker                   # startup and periodic release check off the UI thread
        ├─ MenuController                 # attach now; render on first display
        │    └─ MenuBuilder               # render via typed dependencies
        └─ Qt event loop (app.exec())
@@ -329,3 +346,6 @@ dependency contract and its fields are unchanged.
 settings callbacks likewise inspect loaded slots without constructing them.
 `MenuController` attaches the context menu and defers heavy rendering until the
 first `aboutToShow` signal, so startup does not construct lazy feature modules.
+Update-check timers are configured from persisted settings; manual checks remain
+available when automatic checks are disabled. Update workers are cancelled and
+joined before application-owned UI or module state is destroyed.

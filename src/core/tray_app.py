@@ -1,13 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from __future__ import annotations
+
 import datetime
 import logging
 import os
 import shlex
 import subprocess
 import sys
+import time
+from pathlib import Path
 
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QObject, QThread, QTimer, QUrl, pyqtSignal
+from PyQt6.QtGui import QDesktopServices, QIcon
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
 from core.badge_manager import BadgeManager
@@ -20,12 +25,83 @@ from core.process_output_relay import ProcessOutputRelay
 from core.process_tracker import ProcessTracker
 from core.services import AppServices
 from core.theme_controller import ThemeController
+from core.update_checker import (
+    CancellationToken,
+    ReleaseInfo,
+    check_for_update,
+    current_platform,
+    download_release_asset,
+    select_release_asset,
+)
+from core.version import VERSION, get_current_version
 from ui.command_manager import CommandManagerDialog
 from ui.output_window import RichOutputWindow
 from ui.settings_dialog import SettingsDialog
 from utils.dialogs import confirm_execute, confirm_exit, prompt_text, show_error_and_raise
 
 logger = logging.getLogger(__name__)
+
+
+class UpdateWorker(QThread):
+    """Execute a release lookup or download away from the Qt main thread."""
+
+    result = pyqtSignal(object)
+    failed = pyqtSignal(object)
+    progress = pyqtSignal(int)
+
+    def __init__(self, kind: str, operation, cancellation: CancellationToken) -> None:
+        """Initialize a worker with its operation and cooperative cancellation token."""
+        super().__init__()
+        self.kind = kind
+        self.operation = operation
+        self.cancellation = cancellation
+
+    def run(self) -> None:
+        """Run the operation and report one result or failure through Qt signals."""
+        try:
+            value = self.operation(self)
+        except InterruptedError:
+            logger.info("Update %s operation cancelled", self.kind)
+            self.failed.emit((self.kind, "cancelled"))
+        except Exception as exc:
+            logger.warning("Update %s operation failed: %s", self.kind, exc, exc_info=True)
+            self.failed.emit((self.kind, str(exc)))
+        else:
+            self.result.emit((self.kind, value))
+
+
+class UpdateWorkerBridge(QObject):
+    """Deliver worker signals to TrayApp through a main-thread QObject receiver."""
+
+    def __init__(self, tray_app: TrayApp, worker: UpdateWorker) -> None:
+        """Bind one worker's callbacks to the tray application's Qt thread."""
+        super().__init__()
+        self.tray_app: TrayApp | None = tray_app
+        self.worker: UpdateWorker | None = worker
+
+    def on_result(self, outcome) -> None:
+        """Forward a worker result to the owning tray application."""
+        if self.tray_app is not None:
+            self.tray_app._on_update_worker_result(outcome)
+
+    def on_failure(self, failure) -> None:
+        """Forward a worker failure to the owning tray application."""
+        if self.tray_app is not None:
+            self.tray_app._on_update_worker_failure(failure)
+
+    def on_progress(self, received: int) -> None:
+        """Forward byte progress to the owning tray application."""
+        if self.tray_app is not None:
+            self.tray_app._on_update_download_progress(received)
+
+    def on_finished(self) -> None:
+        """Release the retained worker after its QThread has stopped."""
+        tray_app = self.tray_app
+        worker = self.worker
+        if tray_app is not None and worker is not None:
+            tray_app._on_update_worker_finished(worker)
+        self.tray_app = None
+        self.worker = None
 
 
 class TrayApp:
@@ -48,6 +124,14 @@ class TrayApp:
         """
         self.app = app
         self.instance_checker = instance_checker
+        self._update_workers: set[UpdateWorker] = set()
+        self._update_worker_bridges: dict[UpdateWorker, UpdateWorkerBridge] = {}
+        self._shutting_down = False
+        self._available_update: ReleaseInfo | None = None
+        self._download_release: ReleaseInfo | None = None
+        self._download_progress = 0
+        self._update_interval_ms = 0
+        self._update_deadline: float | None = None
 
         self._setup_paths()
         self._setup_theme()
@@ -55,6 +139,7 @@ class TrayApp:
         self._build_services()
         self._build_modules()
         self._build_menu()
+        self._configure_update_timer(run_startup_check=True)
 
     # ------------------------------------------------------------------ #
     # Initialisation steps                                                 #
@@ -100,6 +185,8 @@ class TrayApp:
         self.output_windows: list = []
         self.process_tracker = ProcessTracker(self.app)
         self._running_action = None
+        self._update_timer = QTimer(self.app)
+        self._update_timer.timeout.connect(self._on_update_timer_timeout)
 
     def _build_services(self) -> None:
         """Construct the AppServices dataclass and load the initial command menu."""
@@ -202,6 +289,9 @@ class TrayApp:
             set_running_action=lambda action: setattr(self, "_running_action", action),
             restart_app=self.restart_app,
             confirm_exit=self.confirm_exit,
+            check_for_updates=self.check_for_updates,
+            get_update=lambda: self._available_update,
+            open_update=self.open_update,
         )
         builder = MenuBuilder(dependencies)
         self.menu_controller = MenuController(
@@ -229,12 +319,177 @@ class TrayApp:
     # ------------------------------------------------------------------ #
 
     def _update_tray_tooltip(self) -> None:
-        """Set the tray tooltip to show the app name and the number of loaded commands."""
+        """Show the resolved application version and loaded command count."""
         try:
             count = len(self.get_all_commands())
-            self.tray_icon.setToolTip(f"Py Tray Command Launcher — {count} command(s) loaded")
+            self.tray_icon.setToolTip(
+                f"Py Tray Command Launcher {get_current_version()} — {count} command(s) loaded"
+            )
         except Exception:
-            self.tray_icon.setToolTip("Py Tray Command Launcher")
+            self.tray_icon.setToolTip(f"Py Tray Command Launcher {get_current_version()}")
+
+    def _configure_update_timer(self, run_startup_check: bool = False) -> None:
+        """Apply persisted automatic-check settings and optionally check at startup."""
+        settings = config_manager.get_settings()
+        enabled = settings.get("update_check_enabled", True)
+        interval = settings.get("update_check_interval_hours", 24)
+        if (
+            not isinstance(enabled, bool)
+            or not isinstance(interval, int)
+            or isinstance(interval, bool)
+            or interval < 1
+        ):
+            logger.warning("Invalid update-check settings; using safe defaults")
+            enabled, interval = True, 24
+        self._update_timer.stop()
+        self._update_deadline = None
+        if enabled:
+            self._update_interval_ms = interval * 60 * 60 * 1000
+            self._update_deadline = time.monotonic() + self._update_interval_ms / 1000
+            self._schedule_update_timer()
+            if run_startup_check:
+                self._start_update_check()
+
+    def _schedule_update_timer(self) -> None:
+        """Schedule the next timer chunk without truncating large hour values."""
+        if self._update_deadline is None or self._shutting_down:
+            return
+        remaining_ms = max(1, int((self._update_deadline - time.monotonic()) * 1000))
+        self._update_timer.start(min(remaining_ms, 2_147_483_647))
+
+    def _on_update_timer_timeout(self) -> None:
+        """Run an automatic check when the configured interval has elapsed."""
+        if self._shutting_down or self._update_deadline is None:
+            return
+        if time.monotonic() < self._update_deadline:
+            self._schedule_update_timer()
+            return
+        self._update_deadline = time.monotonic() + self._update_interval_ms / 1000
+        self._schedule_update_timer()
+        self._start_update_check()
+
+    def check_for_updates(self) -> None:
+        """Start a manual release check, even when automatic checks are disabled."""
+        self._start_update_check()
+
+    def _start_update_check(self) -> None:
+        """Start one background release check unless one is already active."""
+        if self._shutting_down or any(worker.kind == "check" for worker in self._update_workers):
+            return
+        self._start_update_worker(
+            "check",
+            lambda _worker: check_for_update(VERSION),
+        )
+
+    def _start_update_worker(self, kind: str, operation) -> UpdateWorker:
+        """Retain, connect, and start an update worker."""
+        cancellation = CancellationToken()
+        worker = UpdateWorker(kind, operation, cancellation)
+        bridge = UpdateWorkerBridge(self, worker)
+        self._update_workers.add(worker)
+        self._update_worker_bridges[worker] = bridge
+        worker.result.connect(bridge.on_result)
+        worker.failed.connect(bridge.on_failure)
+        worker.progress.connect(bridge.on_progress)
+        worker.finished.connect(bridge.on_finished)
+        worker.start()
+        return worker
+
+    def _on_update_worker_result(self, outcome) -> None:
+        """Apply a completed worker result only while the tray is alive."""
+        if self._shutting_down:
+            return
+        kind, value = outcome
+        if kind == "check":
+            self._available_update = value
+            if hasattr(self, "menu_controller"):
+                self.menu_controller.refresh_update_action()
+            if value is not None:
+                settings = config_manager.get_settings()
+                if settings.get("dismissed_update_version") != value.version:
+                    self.notify_user(
+                        "Update available",
+                        f"py-tray-command-launcher {value.version} is available.",
+                    )
+                    settings["dismissed_update_version"] = value.version
+                    try:
+                        config_manager.save_settings(settings)
+                    except ConfigurationError:
+                        logger.exception("Could not persist update notification state")
+        elif kind == "download":
+            self._download_progress = 0
+            self._download_release = None
+            self._reveal_downloaded_file(value.path)
+
+    def _on_update_worker_failure(self, failure) -> None:
+        """Fall back to the release page after a failed transfer, unless shutting down."""
+        if self._shutting_down:
+            return
+        kind, _message = failure
+        if kind == "check":
+            self._available_update = None
+            if hasattr(self, "menu_controller"):
+                self.menu_controller.refresh_update_action()
+        elif kind == "download" and self._download_release is not None:
+            self._open_release_page(self._download_release.html_url)
+            self._download_release = None
+
+    def _on_update_worker_finished(self, worker: UpdateWorker) -> None:
+        """Release a worker reference only after its QThread has finished."""
+        self._update_workers.discard(worker)
+        self._update_worker_bridges.pop(worker, None)
+
+    def _on_update_download_progress(self, received: int) -> None:
+        """Expose download progress in the tray tooltip while the transfer runs."""
+        if self._shutting_down:
+            return
+        self._download_progress = received
+        self.tray_icon.setToolTip(
+            f"Py Tray Command Launcher {get_current_version()} — downloading update ({received} bytes)"
+        )
+
+    def open_update(self, release: ReleaseInfo) -> None:
+        """Download a compatible release or open the release page as fallback."""
+        if self._shutting_down:
+            return
+        system, architecture = current_platform()
+        asset = select_release_asset(release.assets, system, architecture)
+        checksum_asset = release.asset("SHA256SUMS")
+        if asset is None or checksum_asset is None:
+            self._open_release_page(release.html_url)
+            return
+        self._download_release = release
+
+        def download(worker: UpdateWorker):
+            return download_release_asset(
+                asset,
+                checksum_asset,
+                Path.home() / "Downloads",
+                progress_callback=worker.progress.emit,
+                cancellation=worker.cancellation,
+            )
+
+        self._start_update_worker("download", download)
+
+    def _open_release_page(self, url: str) -> None:
+        """Open the validated GitHub release page in the user's browser."""
+        if self._shutting_down or not url.startswith("https://github.com/"):
+            return
+        QDesktopServices.openUrl(QUrl(url))
+
+    def _reveal_downloaded_file(self, path: Path) -> None:
+        """Open the containing folder in a file manager without launching the asset."""
+        if self._shutting_down:
+            return
+        try:
+            if sys.platform == "win32":
+                subprocess.Popen(["explorer", f"/select,{path}"])
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", "-R", str(path)])
+            else:
+                subprocess.Popen(["xdg-open", str(path.parent)])
+        except OSError:
+            logger.exception("Could not reveal verified update file %s", path)
 
     # ------------------------------------------------------------------ #
     # Command execution                                                    #
@@ -465,6 +720,7 @@ class TrayApp:
             app_launcher_hotkey_callback=self._reregister_app_launcher_hotkey,
         )
         dlg.exec()
+        self._configure_update_timer()
 
     # ------------------------------------------------------------------ #
     # Hotkey re-registration                                               #
@@ -515,7 +771,22 @@ class TrayApp:
 
     def cleanup(self):
         """Perform cleanup before quitting."""
+        if self._shutting_down:
+            return
+        self._shutting_down = True
         logger.info("Cleaning up before exit")
+        self._update_timer.stop()
+        workers = tuple(self._update_workers)
+        for worker in workers:
+            worker.result.disconnect()
+            worker.failed.disconnect()
+            worker.progress.disconnect()
+            worker.finished.disconnect()
+            worker.cancellation.cancel()
+        for worker in workers:
+            worker.wait()
+        self._update_workers.clear()
+        self._update_worker_bridges.clear()
         for window in self.output_windows:
             window.close()
         self.module_controller.cleanup()

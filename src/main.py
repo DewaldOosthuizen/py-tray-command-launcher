@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from core.logging_config import configure_logging
+from core.version import get_current_version
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -62,7 +63,15 @@ if __name__ == "__main__":
         action="store_true",
         help="Force-release a stale single-instance lock",
     )
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Print the running application version and exit",
+    )
     args, qt_args = parser.parse_known_args()
+    if args.version:
+        print(get_current_version())
+        sys.exit(0)
 
     app = QApplication([sys.argv[0]] + qt_args)
     app.setApplicationName("Py Tray Command Launcher")

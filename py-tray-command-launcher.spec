@@ -21,6 +21,8 @@ a = Analysis(
         'rapidfuzz',
         'rapidfuzz.fuzz',
         'pynput.keyboard',
+        '_version',
+        'core.version',
     ],
     hookspath=[],
     hooksconfig={},

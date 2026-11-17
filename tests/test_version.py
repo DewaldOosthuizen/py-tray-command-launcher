@@ -36,5 +36,7 @@ def test_installed_metadata_is_used_when_no_bundled_version(monkeypatch):
 
 def test_missing_version_sources_fall_back_to_zero(monkeypatch):
     monkeypatch.delitem(sys.modules, "_version", raising=False)
-    with patch("core.version.metadata.version", side_effect=importlib.metadata.PackageNotFoundError):
+    with patch(
+        "core.version.metadata.version", side_effect=importlib.metadata.PackageNotFoundError
+    ):
         assert get_current_version() == "0.0.0"

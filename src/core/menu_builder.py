@@ -94,6 +94,9 @@ class MenuBuilderDependencies:
     set_running_action: Callable[[QAction], None]
     restart_app: Callable[[], None]
     confirm_exit: Callable[[], None]
+    check_for_updates: Callable[[], None] = lambda: None
+    get_update: Callable[[], Any | None] = lambda: None
+    open_update: Callable[[Any], None] = lambda _release: None
 
 
 class MenuBuilder:
@@ -113,6 +116,8 @@ class MenuBuilder:
             dependencies: Data providers and action callbacks used for rendering.
         """
         self.dependencies = dependencies
+        self._update_action: QAction | None = None
+        self._running_action: QAction | None = None
 
     def build(self, menu, command_menu):
         """Build the complete tray menu from command configuration.
@@ -125,6 +130,8 @@ class MenuBuilder:
             ValueError: If the command root, a group, or a command definition is invalid.
         """
         clear_command_search_cache()
+        self._update_action = None
+        self._running_action = None
 
         # Check if commands is a dictionary
         if not isinstance(command_menu, dict):
@@ -237,15 +244,36 @@ class MenuBuilder:
 
         menu.addMenu(tools_menu)
         menu.addAction("Settings", self.dependencies.open_settings)
+        menu.addAction("Check for updates", self.dependencies.check_for_updates)
+        self.refresh_update_action(menu)
 
         # Dynamic "Running: N" indicator (non-interactive, hidden when idle)
         running_action = QAction("Running: 0", menu)
         running_action.setEnabled(False)
         running_action.setVisible(False)
+        self._running_action = running_action
         self.dependencies.set_running_action(running_action)
         menu.addAction(running_action)
 
         menu.addAction("Exit", self.dependencies.confirm_exit)
+
+    def refresh_update_action(self, menu: QMenu) -> None:
+        """Replace the update action to reflect the latest checked release."""
+        if self._update_action is not None:
+            menu.removeAction(self._update_action)
+            self._update_action = None
+        release = self.dependencies.get_update()
+        if release is None:
+            return
+        action = QAction(f"Update available: {release.version}", menu)
+        action.triggered.connect(
+            lambda checked=False, selected=release: self.dependencies.open_update(selected)
+        )
+        if self._running_action is not None:
+            menu.insertAction(self._running_action, action)
+        else:
+            menu.addAction(action)
+        self._update_action = action
 
     def _add_menu_items(self, menu, items, parent_icon_path, group_name=""):
         """Recursively add items to the menu.

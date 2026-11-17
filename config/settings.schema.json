@@ -62,6 +62,19 @@
       "minimum": 0,
       "description": "Number of days to cache icons (0 = no cache)"
     },
+    "update_check_enabled": {
+      "type": "boolean",
+      "description": "Check GitHub for stable releases automatically"
+    },
+    "update_check_interval_hours": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Hours between automatic update checks"
+    },
+    "dismissed_update_version": {
+      "type": "string",
+      "description": "Latest update version already announced to the user"
+    },
     "logging": {
       "type": "object",
       "properties": {
