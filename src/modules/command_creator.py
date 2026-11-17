@@ -17,14 +17,39 @@ from PyQt6.QtWidgets import (
 
 
 class CommandCreator:
-    """Handles the creation of new commands via a GUI interface."""
+    """Create command entries through a dialog using injected AppServices.
+
+    The dialog loads existing groups and captures a group, command name, and
+    command string, plus optional icon, output, confirmation, and prompt
+    settings. On creation it updates the command mapping, saves through the
+    injected service, and requests a menu reload. See
+    [the architecture guide](../../docs/architecture.md) and
+    [the configuration reference](../../docs/configuration.md).
+    """
 
     def __init__(self, services):
-        """Initialize with an AppServices instance."""
+        """Initialize with the application service contract.
+
+        Args:
+            services: AppServices providing command configuration, save, and
+                reload operations.
+        """
         self.services = services
 
     def show_dialog(self):
-        """Show a dialog to create a new command."""
+        """Show the modal dialog for collecting and saving a command entry.
+
+        The dialog captures the group, name, command, and optional command
+        settings. A valid submission is saved through ``services`` and
+        requests a menu rebuild; cancelling makes no configuration changes.
+
+        Returns:
+            None.
+
+        Raises:
+            Exceptions raised while loading, saving, or reloading commands are
+            allowed to propagate from the injected services.
+        """
         dialog = QDialog()
         dialog.setWindowTitle("Create New Command")
         layout = QVBoxLayout()

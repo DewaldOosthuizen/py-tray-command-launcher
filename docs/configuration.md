@@ -59,6 +59,17 @@ Any other key inside a category object is treated as a **command entry**.
 | `icon` | string | `""` | Path to an image file used as this command's menu icon. Overrides the category icon for this entry. |
 | `prompt` | string | `""` | Custom prompt label shown in the input dialog when `{promptInput}` is present in `command`. Defaults to a generic prompt if omitted. |
 
+### Creating entries with Command Creator
+
+The creator's Group and Name values become the category and command-entry keys
+in `commands.json`. Command maps to `command`; the optional controls map to
+`icon`, `showOutput`, `confirm`, and `prompt`. The icon is included when a value
+is provided, and `prompt` is included when prompting is enabled and a label is
+entered; `showOutput` and `confirm` are saved as boolean values. See [the
+architecture flow](architecture.md#command-creation-flow) and
+[`src/modules/command_creator.py`](../src/modules/command_creator.py). The
+field definitions above remain authoritative for their meanings and defaults.
+
 ### {promptInput} placeholder
 
 Use `{promptInput}` anywhere in the `command` string to insert user-supplied text at runtime. When the command is triggered, an input dialog appears first; the text entered replaces `{promptInput}` before execution.

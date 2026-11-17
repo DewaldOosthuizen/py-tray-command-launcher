@@ -239,7 +239,20 @@ Implements the command search dialog. Builds a flat list of all commands across 
 
 ### `modules/command_creator.py`
 
-Provides the GUI wizard for creating new commands without editing JSON. Writes the new entry via `config_manager` and triggers a menu refresh.
+Provides the GUI wizard for creating new commands without editing JSON. The
+dialog reads existing groups through the injected `AppServices.config_manager`,
+collects the group, command name, command string, and optional settings, then
+updates the command mapping. It persists through `AppServices.save_commands`
+and requests a menu refresh through `AppServices.reload_commands`.
+
+### Command creation flow
+
+`ModuleController.get_creator()` lazily constructs and caches `CommandCreator`
+with `AppServices`. The dialog reads existing groups, collects the new entry
+and optional settings, calls `save_commands`, then requests
+`reload_commands(rebuild_menu=True)`. See [the configuration field
+reference](configuration.md#command-entry-fields) and
+[`src/modules/command_creator.py`](../src/modules/command_creator.py).
 
 ### `modules/command_history.py`
 
