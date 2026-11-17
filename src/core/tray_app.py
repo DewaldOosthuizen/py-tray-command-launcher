@@ -139,7 +139,6 @@ class TrayApp:
         self._build_services()
         self._build_modules()
         self._build_menu()
-        self._configure_update_timer(run_startup_check=True)
 
     # ------------------------------------------------------------------ #
     # Initialisation steps                                                 #
@@ -794,4 +793,5 @@ class TrayApp:
 
     def run(self):
         """Run the application event loop."""
+        self._configure_update_timer(run_startup_check=True)
         sys.exit(self.app.exec())
