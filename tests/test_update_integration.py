@@ -237,6 +237,25 @@ def test_cleanup_cancels_waits_and_suppresses_late_worker_callbacks(monkeypatch)
     assert worker.wait_count == 1
 
 
+def test_tray_run_starts_update_checks_after_app_construction():
+    from core.tray_app import TrayApp
+
+    app = object.__new__(TrayApp)
+    events = []
+    app._configure_update_timer = MagicMock(
+        side_effect=lambda **_kwargs: events.append("configure_updates")
+    )
+    app.app = MagicMock()
+    app.app.exec.side_effect = lambda: events.append("event_loop") or 0
+
+    with patch("core.tray_app.sys.exit") as exit_process:
+        app.run()
+
+    assert events == ["configure_updates", "event_loop"]
+    app._configure_update_timer.assert_called_once_with(run_startup_check=True)
+    exit_process.assert_called_once_with(0)
+
+
 def test_update_notification_is_persisted_and_shown_once_per_version():
     from core.tray_app import TrayApp
 
