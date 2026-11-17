@@ -7,6 +7,7 @@ mock_services.config_manager is pre-configured, following the
 self.services.config_manager DI pattern.
 """
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -17,6 +18,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+from core.config_manager import ConfigManager
 from modules.command_creator import CommandCreator  # noqa: E402  # after src path setup
 
 
@@ -96,6 +98,56 @@ class TestCommandCreator(unittest.TestCase):
 
             # Dialog should be shown
             mock_dialog.exec.assert_called_once()
+
+
+def test_create_command_preserves_multiline_text_through_persistence(tmp_path, monkeypatch):
+    """The creator saves and reloads the exact multiline command text."""
+    monkeypatch.setattr(ConfigManager, "_get_user_config_dir", lambda self: tmp_path / "app-config")
+    config_manager = ConfigManager()
+    commands_file = tmp_path / "commands.json"
+    commands_file.write_text(json.dumps({"System": {}}), encoding="utf-8")
+    config_manager.set_commands_override(commands_file)
+
+    services = MagicMock()
+    services.config_manager = config_manager
+    services.save_commands.side_effect = config_manager.save_commands
+    command = "  #!/bin/sh\necho 'first line'\necho 'last line'  "
+    group_combo = MagicMock()
+    group_combo.currentText.return_value = "System"
+    line_edits = [MagicMock(), MagicMock(), MagicMock()]
+    line_edits[0].text.return_value = "Multiline Script"
+    line_edits[1].text.return_value = ""
+    line_edits[2].text.return_value = ""
+    command_edit = MagicMock()
+    command_edit.toPlainText.return_value = command
+    checkboxes = [MagicMock(), MagicMock(), MagicMock()]
+    for checkbox in checkboxes:
+        checkbox.isChecked.return_value = False
+    create_button = MagicMock()
+    dialog = MagicMock()
+    dialog.exec.side_effect = lambda: create_button.clicked.connect.call_args.args[0]()
+
+    with (
+        patch("modules.command_creator.QDialog", return_value=dialog),
+        patch("modules.command_creator.QComboBox", return_value=group_combo),
+        patch("modules.command_creator.QLineEdit", side_effect=line_edits),
+        patch("modules.command_creator.QPlainTextEdit", return_value=command_edit, create=True),
+        patch("modules.command_creator.QSizePolicy") as size_policy,
+        patch("modules.command_creator.QCheckBox", side_effect=checkboxes),
+        patch(
+            "modules.command_creator.QPushButton",
+            side_effect=lambda text: create_button if text == "Create" else MagicMock(),
+        ),
+        patch("modules.command_creator.QMessageBox"),
+    ):
+        CommandCreator(services).show_dialog()
+
+    command_edit.setMinimumHeight.assert_called_once_with(120)
+    command_edit.setSizePolicy.assert_called_once_with(
+        size_policy.Policy.Expanding, size_policy.Policy.Expanding
+    )
+    reloaded = json.loads(commands_file.read_text(encoding="utf-8"))
+    assert reloaded["System"]["Multiline Script"]["command"] == command
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
+import json
 from unittest.mock import MagicMock, patch
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QDialog
 
+from core.config_manager import ConfigManager
 from ui.command_manager import CommandManagerDialog, _CommandFormDialog
 
 
@@ -72,6 +74,96 @@ def test_command_form_dialog_with_groups_and_initial(qtbot):
     assert "group" in data
     assert "label" in data
     assert "command" in data
+
+
+def _persistent_command_manager(tmp_path, monkeypatch, commands):
+    monkeypatch.setattr(ConfigManager, "_get_user_config_dir", lambda self: tmp_path / "app-config")
+    config_manager = ConfigManager()
+    commands_file = tmp_path / "commands.json"
+    commands_file.write_text(json.dumps(commands), encoding="utf-8")
+    config_manager.set_commands_override(commands_file)
+    config_manager._commands_cache = commands
+    services = MagicMock()
+    services.config_manager = config_manager
+    dialog = CommandManagerDialog.__new__(CommandManagerDialog)
+    dialog._services = services
+    dialog._tree = MagicMock()
+    dialog._load_tree = MagicMock()
+    return dialog, config_manager, commands_file
+
+
+def _command_form_result(command, label):
+    form = MagicMock()
+    form._group_combo.currentText.return_value = "System"
+    form._group_combo.currentIndex.return_value = -1
+    form._name_edit.text.return_value = label
+    form._cmd_edit.toPlainText.return_value = command
+    form._show_output_check.isChecked.return_value = False
+    form._confirm_check.isChecked.return_value = False
+    form._icon_edit.text.return_value = ""
+    form._prompt_check.isChecked.return_value = False
+    return _CommandFormDialog.result_data(form)
+
+
+def test_command_form_initializes_multiline_editor_with_stored_command():
+    initial_command = "#!/bin/sh\necho original"
+    command_editor = MagicMock()
+    with (
+        patch("ui.command_manager.QPlainTextEdit", return_value=command_editor) as editor_class,
+        patch("ui.command_manager.QSizePolicy") as size_policy,
+    ):
+        _CommandFormDialog(
+            [("System",)],
+            initial={"group_path": ("System",), "label": "Script", "command": initial_command},
+        )
+
+    editor_class.assert_called_once()
+    command_editor.setPlainText.assert_called_once_with(initial_command)
+    command_editor.setMinimumHeight.assert_called_once_with(120)
+    command_editor.setSizePolicy.assert_called_once_with(
+        size_policy.Policy.Expanding, size_policy.Policy.Expanding
+    )
+
+
+def test_add_command_preserves_multiline_text_through_persistence(tmp_path, monkeypatch):
+    dialog, config_manager, commands_file = _persistent_command_manager(
+        tmp_path, monkeypatch, {"System": {}}
+    )
+    command = "  #!/bin/sh\necho 'first line'\necho 'last line'  "
+    accepted_form = _accepted_form(_command_form_result(command, "Multiline Script"))
+
+    with patch("ui.command_manager._CommandFormDialog", return_value=accepted_form):
+        dialog._add_command()
+
+    reloaded = json.loads(commands_file.read_text(encoding="utf-8"))
+    assert reloaded["System"]["Multiline Script"]["command"] == command
+    assert config_manager.get_commands()["System"]["Multiline Script"]["command"] == command
+
+
+def test_edit_command_preserves_multiline_text_through_persistence(tmp_path, monkeypatch):
+    initial_command = "#!/bin/sh\necho original"
+    dialog, config_manager, commands_file = _persistent_command_manager(
+        tmp_path,
+        monkeypatch,
+        {"System": {"Script": {"command": initial_command}}},
+    )
+    selected_item = MagicMock()
+    selected_item.data.return_value = {
+        "type": "command",
+        "group_path": ("System",),
+        "label": "Script",
+        "data": {"command": initial_command},
+    }
+    dialog._tree.currentItem.return_value = selected_item
+    command = "  #!/bin/sh\nprintf 'edited'\n\n "
+    accepted_form = _accepted_form(_command_form_result(command, "Script"))
+
+    with patch("ui.command_manager._CommandFormDialog", return_value=accepted_form):
+        dialog._edit_command()
+
+    reloaded = json.loads(commands_file.read_text(encoding="utf-8"))
+    assert reloaded["System"]["Script"]["command"] == command
+    assert config_manager.get_commands()["System"]["Script"]["command"] == command
 
 
 def test_command_form_validation_uses_shared_warning_helper():
