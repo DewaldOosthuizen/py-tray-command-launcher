@@ -176,6 +176,9 @@ class ConfigManager:
             "batch_delay_ms": 50,
         },
         "icon_cache_ttl_days": 7,
+        "update_check_enabled": True,
+        "update_check_interval_hours": 24,
+        "dismissed_update_version": "",
     }
 
     # Keys written by earlier versions for features that no longer exist. They are
@@ -303,7 +306,6 @@ class ConfigManager:
         try:
             if not isinstance(settings, dict):
                 raise ConfigurationError("Settings must be a dictionary")
-
             self._write_json_atomic(self.settings_file, settings)
 
             # Store the defaults-merged view so callers always see a fully-populated dict.

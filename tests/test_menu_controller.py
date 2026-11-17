@@ -95,3 +95,14 @@ def test_load_tray_menu_builds_immediately_and_marks_first_show_complete():
     menu.aboutToShow.emit()
 
     builder.build.assert_called_once_with(menu, commands)
+
+
+def test_update_action_refresh_waits_until_lazy_menu_is_built():
+    controller, menu, _, builder, commands, _ = _controller()
+
+    controller.refresh_update_action()
+    builder.refresh_update_action.assert_not_called()
+
+    controller.build_menu(commands)
+    controller.refresh_update_action()
+    builder.refresh_update_action.assert_called_once_with(menu)

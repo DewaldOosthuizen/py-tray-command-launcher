@@ -104,6 +104,12 @@ class MenuController:
             self._update_tooltip()
         return command_menu
 
+    def refresh_update_action(self) -> None:
+        """Refresh the top-level update action without rebuilding command menus."""
+        if not self._heavy_menu_built:
+            return
+        self.menu_builder.refresh_update_action(self.menu)
+
     def set_history_menu(self, menu: QMenu) -> None:
         """Store the history submenu created by the renderer.
 

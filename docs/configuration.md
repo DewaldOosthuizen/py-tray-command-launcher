@@ -140,16 +140,27 @@ Use `{promptInput}` anywhere in the `command` string to insert user-supplied tex
 | Field | Type | Default | Valid values | Description |
 |---|---|---|---|---|
 | `logging.level` | string | `"INFO"` | `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"` | Controls the verbosity of application log output to stderr. |
+| `update_check_enabled` | boolean | `true` | `true` or `false` | Enables automatic update checks at startup and on the configured interval. Turning this off does not remove the manual **Check for updates** tray action. |
+| `update_check_interval_hours` | integer | `24` | Positive integer | Number of hours between automatic checks. |
+| `dismissed_update_version` | string | `""` | Version string | Internal notice state used to avoid repeating the update notification for the same release. |
 
 ### Example
 
 ```json
 {
+  "update_check_enabled": true,
+  "update_check_interval_hours": 24,
   "logging": {
     "level": "DEBUG"
   }
 }
 ```
+
+Automatic checks make a timeout-bounded, unauthenticated HTTPS request to the
+GitHub latest-release API at `api.github.com`. Set `update_check_enabled` to
+`false` (or clear the checkbox in Settings) to opt out. The manual tray action
+remains available. Only stable CalVer release tags are compared; development
+builds with non-CalVer versions do not indicate updates.
 
 ### Environment variable override
 

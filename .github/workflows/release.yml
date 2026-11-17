@@ -16,11 +16,11 @@ name: Release
 #       way to guarantee we never release code that hasn't been checked.
 #
 # FLOW: validate (ruff-lint -> test; pip-audit parallel) -> validation-gate
-#       (summary, fails loudly on any non-success) -> build (AppImage, kept
-#       verbatim from the previous tag-triggered release.yml) -> version-tag
-#       -release (compute next CalVer tag, bump pyproject.toml, commit+push
+#       (summary, fails loudly on any non-success) -> release-version (compute
+#       candidate CalVer) -> build (stamp version, build and verify AppImage) ->
+#       version-tag-release (bump pyproject.toml, commit+push
 #       to main, tag+push tag, create the GitHub Release with the AppImage
-#       and a mode-preserving .tar.gz attached; release notes cover only the
+#       and a mode-preserving .tar.gz plus SHA256SUMS attached; notes cover only the
 #       changes since the previous release tag).
 #
 # CONCURRENCY: keyed on workflow+ref (not commit) so only one release run is
@@ -133,11 +133,63 @@ jobs:
   # ---------------------------------------------------------------------
   # Build phase — AppImage build steps kept verbatim from the old
   # tag-triggered release.yml (PyInstaller spec, appimagetool, AppDir
-  # assembly). Only the version/tag source changed (see version-tag-release).
+  # assembly). The CalVer tag is calculated before this build and stamped
+  # into the executable so the artifact and GitHub release share one version.
   # ---------------------------------------------------------------------
+  release-version:
+    name: Prepare release version
+    needs: validation-gate
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.compute_tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next CalVer tag
+        id: compute_tag
+        run: |
+          set -euo pipefail
+          git fetch --tags --force origin
+          BASE="$(date -u +%Y).$(date -u +%m).$(date -u +%d)"
+
+          EXISTING=$(git ls-remote --tags origin \
+            | sed -n "s#.*refs/tags/\(${BASE//./\\.}\(\.[0-9]\+\)\?\)\$#\1#p" \
+            | sort -u || true)
+
+          if [ -z "$EXISTING" ]; then
+            TAG="$BASE"
+          else
+            MAX=0
+            while IFS= read -r t; do
+              if [ "$t" = "$BASE" ]; then
+                N=0
+              else
+                N="${t#${BASE}.}"
+              fi
+              if [ "$N" -gt "$MAX" ] 2>/dev/null; then
+                MAX="$N"
+              fi
+            done <<< "$EXISTING"
+            TAG="${BASE}.$((MAX + 1))"
+          fi
+
+          if ! [[ "$TAG" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$ ]]; then
+            echo "Computed tag '$TAG' failed CalVer regex validation." >&2
+            exit 1
+          fi
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}\$"; then
+            echo "Computed tag '$TAG' already exists on origin." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Computed release tag: $TAG"
+
   build:
     name: Build AppImage
-    needs: validation-gate
+    needs: [validation-gate, release-version]
     runs-on: ubuntu-latest
     outputs:
       appimage-name: py-tray-command-launcher-x86_64.AppImage
@@ -166,8 +218,11 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-build.txt
 
-      - name: Build executable with PyInstaller
+      - name: Stamp version and build executable with PyInstaller
+        env:
+          APP_VERSION: ${{ needs.release-version.outputs.tag }}
         run: |
+          printf '%s\n' "__version__ = \"$APP_VERSION\"" > src/_version.py
           pyinstaller py-tray-command-launcher.spec
 
       - name: Verify executable
@@ -205,9 +260,24 @@ jobs:
           chmod +x AppDir/AppRun
 
       - name: Build AppImage
+        env:
+          APP_VERSION: ${{ needs.release-version.outputs.tag }}
         run: |
           ARCH=x86_64 ./tools/appimagetool --appimage-extract-and-run \
             AppDir "py-tray-command-launcher-x86_64.AppImage"
+
+      - name: Verify packaged AppImage version
+        env:
+          APP_VERSION: ${{ needs.release-version.outputs.tag }}
+        run: |
+          chmod +x py-tray-command-launcher-x86_64.AppImage
+          REPORTED_VERSION=$(QT_QPA_PLATFORM=offscreen \
+            ./py-tray-command-launcher-x86_64.AppImage --appimage-extract-and-run --version)
+          if [ "$REPORTED_VERSION" != "$APP_VERSION" ]; then
+            echo "Packaged version '$REPORTED_VERSION' does not match release tag '$APP_VERSION'." >&2
+            exit 1
+          fi
+          echo "Packaged AppImage reports release version $REPORTED_VERSION."
 
       - name: Verify AppImage
         run: |
@@ -242,7 +312,7 @@ jobs:
   # ---------------------------------------------------------------------
   version-tag-release:
     name: Version, tag, and release
-    needs: build
+    needs: [build, release-version]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -285,47 +355,6 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Compute next CalVer tag
-        id: compute_tag
-        if: steps.skip_check.outputs.skip != 'true'
-        run: |
-          set -euo pipefail
-          BASE="$(date -u +%Y).$(date -u +%m).$(date -u +%d)"
-
-          EXISTING=$(git ls-remote --tags origin \
-            | sed -n "s#.*refs/tags/\(${BASE//./\\.}\(\.[0-9]\+\)\?\)\$#\1#p" \
-            | sort -u || true)
-
-          if [ -z "$EXISTING" ]; then
-            TAG="$BASE"
-          else
-            MAX=0
-            while IFS= read -r t; do
-              if [ "$t" = "$BASE" ]; then
-                N=0
-              else
-                N="${t#${BASE}.}"
-              fi
-              if [ "$N" -gt "$MAX" ] 2>/dev/null; then
-                MAX="$N"
-              fi
-            done <<< "$EXISTING"
-            TAG="${BASE}.$((MAX + 1))"
-          fi
-
-          if ! [[ "$TAG" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$ ]]; then
-            echo "Computed tag '$TAG' failed CalVer regex validation." >&2
-            exit 1
-          fi
-
-          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}\$"; then
-            echo "Computed tag '$TAG' already exists on origin." >&2
-            exit 1
-          fi
-
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Computed release tag: $TAG"
-
       - name: Warn if HEAD is ahead of origin/main (non-fatal)
         if: steps.skip_check.outputs.skip != 'true'
         run: |
@@ -337,7 +366,7 @@ jobs:
       - name: Bump pyproject.toml, commit, tag, and push
         if: steps.skip_check.outputs.skip != 'true'
         env:
-          TAG: ${{ steps.compute_tag.outputs.tag }}
+          TAG: ${{ needs.release-version.outputs.tag }}
         run: |
           set -euo pipefail
           # pyproject.toml has no `npm version`-equivalent bump command, so
@@ -363,19 +392,20 @@ jobs:
         # for users who extract it (no manual chmod needed).
         if: steps.skip_check.outputs.skip != 'true'
         env:
-          TAG: ${{ steps.compute_tag.outputs.tag }}
+          TAG: ${{ needs.release-version.outputs.tag }}
         run: |
           set -euo pipefail
           NAME="py-tray-command-launcher-${TAG}-x86_64.AppImage"
           cp py-tray-command-launcher-x86_64.AppImage "$NAME"
           chmod +x "$NAME"
           tar -czf "${NAME}.tar.gz" "$NAME"
+          sha256sum "$NAME" "${NAME}.tar.gz" > SHA256SUMS
 
       - name: Create GitHub Release and upload assets
         if: steps.skip_check.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.compute_tag.outputs.tag }}
+          TAG: ${{ needs.release-version.outputs.tag }}
           LAST_TAG: ${{ steps.skip_check.outputs.last_tag }}
         run: |
           set -euo pipefail
@@ -392,5 +422,6 @@ jobs:
           gh release create "$TAG" \
             "$NAME" \
             "${NAME}.tar.gz" \
+            SHA256SUMS \
             --title "py-tray-command-launcher ${TAG}" \
             "${NOTES_ARGS[@]}"

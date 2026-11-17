@@ -57,6 +57,7 @@ def test_settings_sections_scroll_while_actions_remain_fixed(qtbot):
     assert [group.title() for group in groups] == [
         "Appearance",
         "Behaviour",
+        "Updates",
         "Output Window",
         "Logging",
     ]

@@ -425,6 +425,22 @@ class TestSettingsDialogSave(unittest.TestCase):
         dlg, cm, mock_services, theme_mgr = _build_dialog_direct({"hotkey": "ctrl+alt+p"})
         assert dlg._hotkey_edit.text() == "ctrl+alt+p"
 
+    def test_update_controls_load_and_save_enabled_state_and_interval(self):
+        """Update preferences are editable and persist through the settings save path."""
+        dlg, _cm, mock_services, _theme_mgr = _build_dialog_direct(
+            {"update_check_enabled": False, "update_check_interval_hours": 12}
+        )
+        assert dlg._update_check_enabled.isChecked() is False
+        assert dlg._update_check_interval.value() == 12
+
+        dlg._update_check_enabled.setChecked(True)
+        dlg._update_check_interval.setValue(6)
+        dlg._save()
+
+        saved = mock_services.config_manager.save_settings.call_args.args[0]
+        assert saved["update_check_enabled"] is True
+        assert saved["update_check_interval_hours"] == 6
+
 
 class TestSettingsDialogWindowClose(unittest.TestCase):
     """Test window-manager close (X button) path through closeEvent."""

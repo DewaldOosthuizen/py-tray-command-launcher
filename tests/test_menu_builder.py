@@ -152,6 +152,7 @@ def test_build_orders_primary_discovery_management_and_exit_actions():
         "Management",
         "Tools",
         "Settings",
+        "Check for updates",
         "Running: 0",
         "Exit",
     ]
