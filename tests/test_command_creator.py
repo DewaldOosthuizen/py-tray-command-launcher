@@ -203,6 +203,17 @@ def test_validate_group_path_rejects_final_command_collision():
     assert _validate_group_path(commands, ("System", "Tools")) is True
 
 
+def test_validate_group_path_rejects_intermediate_command_leaf():
+    """_validate_group_path should return False when an intermediate component is a command leaf.
+
+    A component that already holds a command cannot hold a subgroup, so paths
+    that descend through it (for example "System / Terminal / New") are
+    rejected rather than written inside the leaf.
+    """
+    commands = {"System": {"Terminal": {"command": "gnome-terminal"}}}
+    assert _validate_group_path(commands, ("System", "Terminal", "New")) is False
+
+
 # ---------------------------------------------------------------------------
 # Command Creator dialog integration tests
 # ---------------------------------------------------------------------------
@@ -459,6 +470,70 @@ def test_create_command_rejects_collision_with_existing_command(tmp_path, monkey
     assert services.save_commands.call_count == 0
     mock_box.critical.assert_called_once()
     dialog.accept.assert_not_called()
+
+
+def test_create_command_rejects_intermediate_command_leaf(tmp_path, monkeypatch):
+    """AC-4 — a path through an existing command leaf is rejected and saves nothing."""
+    monkeypatch.setattr(ConfigManager, "_get_user_config_dir", lambda self: tmp_path / "app-config")
+    config_manager = ConfigManager()
+    commands_file = tmp_path / "commands.json"
+    commands_file.write_text(
+        json.dumps(
+            {
+                "System": {
+                    "Terminal": {"command": "gnome-terminal", "showOutput": False, "confirm": False}
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_manager.set_commands_override(commands_file)
+
+    services = MagicMock()
+    services.config_manager = config_manager
+    services.save_commands.side_effect = config_manager.save_commands
+
+    group_combo = MagicMock()
+    group_combo.currentIndex.return_value = -1
+    group_combo.currentText.return_value = "System / Terminal / New"
+    line_edits = [MagicMock(), MagicMock(), MagicMock()]
+    line_edits[0].text.return_value = "New Tool"
+    line_edits[1].text.return_value = ""
+    line_edits[2].text.return_value = "echo hello"
+    checkboxes = [MagicMock(), MagicMock(), MagicMock()]
+    for checkbox in checkboxes:
+        checkbox.isChecked.return_value = False
+    create_button = MagicMock()
+    dialog = MagicMock()
+    command_edit = MagicMock()
+    command_edit.toPlainText.return_value = "echo hello"
+    dialog.exec.side_effect = lambda: create_button.clicked.connect.call_args.args[0]()
+
+    with (
+        patch("modules.command_creator.QDialog", return_value=dialog),
+        patch("modules.command_creator.QComboBox", return_value=group_combo),
+        patch("modules.command_creator.QLineEdit", side_effect=line_edits),
+        patch("modules.command_creator.QPlainTextEdit", return_value=command_edit, create=True),
+        patch("modules.command_creator.QSizePolicy"),
+        patch("modules.command_creator.QCheckBox", side_effect=checkboxes),
+        patch(
+            "modules.command_creator.QPushButton",
+            side_effect=lambda text: create_button if text == "Create" else MagicMock(),
+        ),
+        patch("modules.command_creator.QMessageBox") as mock_box,
+    ):
+        CommandCreator(services).show_dialog()
+
+    # Should reject: "Terminal" holds a command and cannot hold a subgroup.
+    assert services.save_commands.call_count == 0
+    mock_box.critical.assert_called_once()
+    dialog.accept.assert_not_called()
+
+    # The configuration must remain untouched (including the canonical command
+    # leaf shape: command + showOutput + confirm).
+    assert json.loads(commands_file.read_text(encoding="utf-8")) == {
+        "System": {"Terminal": {"command": "gnome-terminal", "showOutput": False, "confirm": False}}
+    }
 
 
 if __name__ == "__main__":

@@ -84,12 +84,17 @@ def _validate_group_path(commands: dict, group_path: tuple[str, ...]) -> bool:
             # Missing intermediate or leaf group: acceptable for
             # auto-creation, or the leaf is a genuine new group.
             continue
-        if not isinstance(target[component], dict):
+        candidate = target[component]
+        if not isinstance(candidate, dict):
             return False
-        # The leaf already holds a command (leaf dict with a "command" key).
-        if index == len(group_path) - 1 and "command" in target[component]:
+        # An intermediate component must be a group holder, not a command leaf:
+        # a component that already holds a command cannot contain a subgroup.
+        if index < len(group_path) - 1 and "command" in candidate:
             return False
-        target = target[component]
+        # The final component must not already hold a command.
+        if index == len(group_path) - 1 and "command" in candidate:
+            return False
+        target = candidate
 
     return True
 
@@ -255,8 +260,15 @@ class CommandCreator:
             # the command into the correct subgroup (no new top-level key).
             target = commands
             for component in selected_path:
-                if component not in target or not isinstance(target[component], dict):
+                if component not in target:
+                    # Missing intermediate group: create it so the path resolves.
                     target[component] = {}
+                elif "command" in target[component]:
+                    # The selected path reaches an existing command leaf, which
+                    # cannot hold a subgroup. Validation already rejected this
+                    # case, but guard against it so a stale path can never
+                    # corrupt the configuration.
+                    return
                 target = target[component]
             target[name] = cmd_data
 

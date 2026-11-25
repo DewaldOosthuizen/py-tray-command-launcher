@@ -135,9 +135,14 @@ The **Recent Commands** submenu shows the last commands you ran, ordered by most
 Create new commands through a graphical dialog without editing JSON directly.
 
 1. Open **Create Command** from the tray menu.
-2. Choose or create a category.
-3. Fill in the command name, shell command, icon path, and toggle options (showOutput, confirm).
-4. Click **Save** — the command appears in the tray immediately.
+2. Choose or create a category. Group selection accepts nested group paths
+   separated by ` / ` (for example `System / Tools` or `System / Tools / New`);
+   intermediate groups are auto-created as needed.
+3. Fill in the command name, shell command, icon path, and toggle options
+   (showOutput, confirm).
+4. Click **Save** — the command appears in the tray immediately. The Command
+   Manager remains the canonical editor for nested group paths, including
+   editing, renaming, and deleting them.
 
 The shell-command field is a resizable multiline editor. Commands may contain
 embedded newlines; saving and reloading preserves the entered command string.
