@@ -68,10 +68,11 @@ Tools are grouped separately; **Settings**, the active process indicator, and
 **Exit** follow those groups.
 
 Open **Command Palette** for the single searchable Commands and Apps surface.
-Type to filter, use Tab to move between the Commands and Apps views, use the
-arrow keys to move through results, and press Enter to launch the selected
-result. Press Escape to dismiss the palette. The Apps view uses the same
-keyboard-operable palette rather than opening a second search window.
+Type to filter, use Tab to move focus between the Commands and Apps tab
+buttons, use the arrow keys (↑/↓) to move through results, and press Enter to
+launch the selected result. Press Escape to dismiss the palette. The Apps view
+uses the same keyboard-operable palette rather than opening a second search
+window.
 
 Command results and launch shortcuts can show **Confirm**, **Input**, and
 **Output** cues when the configured command uses `confirm`, `prompt`, or
