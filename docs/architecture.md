@@ -256,7 +256,7 @@ reference](configuration.md#command-entry-fields) and
 
 ### `modules/command_history.py`
 
-Records executed commands to `history.json` via `config_manager`. Supplies the Recent Commands submenu and enforces the history depth limit.
+Records executed commands to `history.json` via `config_manager`. Supplies the Recent Commands submenu and caps the recorded history at a fixed 10 entries; `history_limit` (config default 50) is exposed in the settings UI but is not yet enforced by history recording (planned in issue #1).
 
 ### `modules/favorites.py`
 

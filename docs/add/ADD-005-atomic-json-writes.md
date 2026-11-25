@@ -68,5 +68,7 @@ would remove these properties without a clear benefit at this scale.
 - On NFS or other remote filesystems, `os.fsync` may not guarantee durability
   depending on mount options; this is documented but not mitigated.
 - A very large `history.json` causes a write of the full list on every
-  `add_to_history()` call; history is capped at `history_limit` (default 50)
-  to bound this cost.
+  `add_to_history()` call; history is capped at a fixed 10 entries to bound
+  this cost. The `history_limit` setting (config default 50) is read by the
+  settings UI but is not yet enforced by `add_to_history()` (planned in
+  issue #1).

@@ -125,7 +125,7 @@ of the tray menu for quick access.
 
 The **Recent Commands** submenu shows the last commands you ran, ordered by most recent. Click any entry to re-run it immediately.
 
-- History depth is configurable.
+- History is capped at a fixed 10 entries. The `history_limit` setting (config default 50) is read by the settings UI but is not yet enforced by history recording (planned in issue #1).
 - History persists between sessions in `history.json`.
 
 ---
