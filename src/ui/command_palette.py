@@ -200,7 +200,7 @@ class _PaletteWindow(QWidget):
         layout.addWidget(self._stack)
 
         # Footer hint
-        footer = QLabel("↑↓ navigate   ↵ execute   Esc close")
+        footer = QLabel("↑↓ navigate   ↵ execute   Esc close   Tab focus")
         footer.setObjectName("PaletteFooter")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(footer)
