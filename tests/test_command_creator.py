@@ -19,7 +19,12 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from core.config_manager import ConfigManager
-from modules.command_creator import CommandCreator  # noqa: E402  # after src path setup
+from modules.command_creator import (  # noqa: E402  # after src path setup
+    CommandCreator,
+    _collect_group_paths,
+    _parse_group_path,
+    _validate_group_path,
+)
 
 
 class TestCommandCreator(unittest.TestCase):
@@ -113,6 +118,7 @@ def test_create_command_preserves_multiline_text_through_persistence(tmp_path, m
     services.save_commands.side_effect = config_manager.save_commands
     command = "  #!/bin/sh\necho 'first line'\necho 'last line'  "
     group_combo = MagicMock()
+    group_combo.currentIndex.return_value = -1
     group_combo.currentText.return_value = "System"
     line_edits = [MagicMock(), MagicMock(), MagicMock()]
     line_edits[0].text.return_value = "Multiline Script"
@@ -148,6 +154,311 @@ def test_create_command_preserves_multiline_text_through_persistence(tmp_path, m
     )
     reloaded = json.loads(commands_file.read_text(encoding="utf-8"))
     assert reloaded["System"]["Multiline Script"]["command"] == command
+
+
+# ---------------------------------------------------------------------------
+# Group path helpers (private helpers of command_creator)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_group_path_splits_and_filters_empty():
+    """_parse_group_path should split a path on separators and drop empties."""
+    assert _parse_group_path("System / Tools / New") == ("System", "Tools", "New")
+    assert _parse_group_path("System /  / Tools") == ("System", "Tools")
+    assert _parse_group_path("System") == ("System",)
+    assert _parse_group_path("") == ()
+
+
+def test_collect_group_paths_returns_all_groups():
+    """_collect_group_paths should return every top-level and nested group path."""
+    commands = {
+        "System": {
+            "Tools": {},
+            "Terminal": {"command": "gnome-terminal"},
+        },
+        "Media": {
+            "icon": "icons/categories/media.png",
+            "Youtube Music": {"command": "brave"},
+        },
+    }
+    assert _collect_group_paths(commands) == [
+        ("System",),
+        ("System", "Tools"),
+        ("Media",),
+    ]
+
+
+def test_validate_group_path_rejects_empty_components():
+    """_validate_group_path should return False for paths containing empty components."""
+    commands = {"System": {"Tools": {}}}
+    assert _validate_group_path(commands, ("System", "", "Tools")) is False
+    assert _validate_group_path(commands, ("", "Tools")) is False
+    assert _validate_group_path(commands, ()) is False
+
+
+def test_validate_group_path_rejects_final_command_collision():
+    """_validate_group_path should return False when the leaf already holds a command."""
+    commands = {"System": {"Terminal": {"command": "gnome-terminal"}}}
+    assert _validate_group_path(commands, ("System", "Terminal")) is False
+    assert _validate_group_path(commands, ("System", "Tools")) is True
+
+
+# ---------------------------------------------------------------------------
+# Command Creator dialog integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_create_command_into_new_nested_group(tmp_path, monkeypatch):
+    """AC-1 — creating into a new nested group path lands the command under the correct subgroup."""
+    monkeypatch.setattr(ConfigManager, "_get_user_config_dir", lambda self: tmp_path / "app-config")
+    config_manager = ConfigManager()
+    commands_file = tmp_path / "commands.json"
+    commands_file.write_text(json.dumps({"System": {"Tools": {}}}), encoding="utf-8")
+    config_manager.set_commands_override(commands_file)
+
+    services = MagicMock()
+    services.config_manager = config_manager
+    services.save_commands.side_effect = config_manager.save_commands
+
+    group_combo = MagicMock()
+    group_combo.currentIndex.return_value = -1
+    group_combo.currentText.return_value = "System / Tools / New"
+    line_edits = [MagicMock(), MagicMock(), MagicMock()]
+    line_edits[0].text.return_value = "New Tool"
+    line_edits[1].text.return_value = ""
+    line_edits[2].text.return_value = "echo hello"
+    checkboxes = [MagicMock(), MagicMock(), MagicMock()]
+    for checkbox in checkboxes:
+        checkbox.isChecked.return_value = False
+    create_button = MagicMock()
+    dialog = MagicMock()
+    command_edit = MagicMock()
+    command_edit.toPlainText.return_value = "echo hello"
+    dialog.exec.side_effect = lambda: create_button.clicked.connect.call_args.args[0]()
+
+    with (
+        patch("modules.command_creator.QDialog", return_value=dialog),
+        patch("modules.command_creator.QComboBox", return_value=group_combo),
+        patch("modules.command_creator.QLineEdit", side_effect=line_edits),
+        patch("modules.command_creator.QPlainTextEdit", return_value=command_edit, create=True),
+        patch("modules.command_creator.QSizePolicy"),
+        patch("modules.command_creator.QCheckBox", side_effect=checkboxes),
+        patch(
+            "modules.command_creator.QPushButton",
+            side_effect=lambda text: create_button if text == "Create" else MagicMock(),
+        ),
+        patch("modules.command_creator.QMessageBox"),
+    ):
+        CommandCreator(services).show_dialog()
+
+    expected = {
+        "System": {
+            "Tools": {
+                "New": {
+                    "New Tool": {
+                        "command": "echo hello",
+                        "showOutput": False,
+                        "confirm": False,
+                    }
+                }
+            }
+        }
+    }
+    assert services.save_commands.call_count == 1
+    saved = services.save_commands.call_args[0][0]
+    assert saved == expected
+
+
+def test_create_command_into_existing_nested_group_merges(tmp_path, monkeypatch):
+    """AC-2 — creating into an existing nested group merges into that subgroup."""
+    monkeypatch.setattr(ConfigManager, "_get_user_config_dir", lambda self: tmp_path / "app-config")
+    config_manager = ConfigManager()
+    commands_file = tmp_path / "commands.json"
+    commands_file.write_text(json.dumps({"System": {"Tools": {}}}), encoding="utf-8")
+    config_manager.set_commands_override(commands_file)
+
+    services = MagicMock()
+    services.config_manager = config_manager
+    services.save_commands.side_effect = config_manager.save_commands
+
+    group_combo = MagicMock()
+    group_combo.currentIndex.return_value = 0
+    group_combo.itemData.return_value = ("System", "Tools")
+    line_edits = [MagicMock(), MagicMock(), MagicMock()]
+    line_edits[0].text.return_value = "New Tool"
+    line_edits[1].text.return_value = ""
+    line_edits[2].text.return_value = "echo hello"
+    checkboxes = [MagicMock(), MagicMock(), MagicMock()]
+    for checkbox in checkboxes:
+        checkbox.isChecked.return_value = False
+    create_button = MagicMock()
+    dialog = MagicMock()
+    command_edit = MagicMock()
+    command_edit.toPlainText.return_value = "echo hello"
+    dialog.exec.side_effect = lambda: create_button.clicked.connect.call_args.args[0]()
+
+    with (
+        patch("modules.command_creator.QDialog", return_value=dialog),
+        patch("modules.command_creator.QComboBox", return_value=group_combo),
+        patch("modules.command_creator.QLineEdit", side_effect=line_edits),
+        patch("modules.command_creator.QPlainTextEdit", return_value=command_edit, create=True),
+        patch("modules.command_creator.QSizePolicy"),
+        patch("modules.command_creator.QCheckBox", side_effect=checkboxes),
+        patch(
+            "modules.command_creator.QPushButton",
+            side_effect=lambda text: create_button if text == "Create" else MagicMock(),
+        ),
+        patch("modules.command_creator.QMessageBox"),
+    ):
+        CommandCreator(services).show_dialog()
+
+    expected = {
+        "System": {
+            "Tools": {
+                "New Tool": {
+                    "command": "echo hello",
+                    "showOutput": False,
+                    "confirm": False,
+                }
+            }
+        }
+    }
+    assert services.save_commands.call_count == 1
+    saved = services.save_commands.call_args[0][0]
+    assert saved == expected
+
+
+def test_create_command_preserves_existing_flat_groups(tmp_path, monkeypatch):
+    """AC-3 — save/reload round-trip leaves existing flat groups and commands unchanged."""
+    monkeypatch.setattr(ConfigManager, "_get_user_config_dir", lambda self: tmp_path / "app-config")
+    config_manager = ConfigManager()
+    commands_file = tmp_path / "commands.json"
+    commands_file.write_text(
+        json.dumps(
+            {
+                "System": {
+                    "Terminal": {"command": "gnome-terminal", "showOutput": False, "confirm": False}
+                },
+                "Media": {
+                    "icon": "icons/categories/media.png",
+                    "Youtube Music": {
+                        "command": "brave",
+                        "showOutput": False,
+                        "confirm": False,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_manager.set_commands_override(commands_file)
+
+    services = MagicMock()
+    services.config_manager = config_manager
+    services.save_commands.side_effect = config_manager.save_commands
+
+    group_combo = MagicMock()
+    group_combo.currentIndex.return_value = -1
+    group_combo.currentText.return_value = "System / Tools / New"
+    line_edits = [MagicMock(), MagicMock(), MagicMock()]
+    line_edits[0].text.return_value = "New Tool"
+    line_edits[1].text.return_value = ""
+    line_edits[2].text.return_value = "echo hello"
+    checkboxes = [MagicMock(), MagicMock(), MagicMock()]
+    for checkbox in checkboxes:
+        checkbox.isChecked.return_value = False
+    create_button = MagicMock()
+    dialog = MagicMock()
+    command_edit = MagicMock()
+    command_edit.toPlainText.return_value = "echo hello"
+    dialog.exec.side_effect = lambda: create_button.clicked.connect.call_args.args[0]()
+
+    with (
+        patch("modules.command_creator.QDialog", return_value=dialog),
+        patch("modules.command_creator.QComboBox", return_value=group_combo),
+        patch("modules.command_creator.QLineEdit", side_effect=line_edits),
+        patch("modules.command_creator.QPlainTextEdit", return_value=command_edit, create=True),
+        patch("modules.command_creator.QSizePolicy"),
+        patch("modules.command_creator.QCheckBox", side_effect=checkboxes),
+        patch(
+            "modules.command_creator.QPushButton",
+            side_effect=lambda text: create_button if text == "Create" else MagicMock(),
+        ),
+        patch("modules.command_creator.QMessageBox"),
+    ):
+        CommandCreator(services).show_dialog()
+
+    saved = json.loads(commands_file.read_text(encoding="utf-8"))
+    # Existing flat groups and previously saved commands unchanged
+    assert "System" in saved
+    assert "Terminal" in saved["System"]
+    assert saved["System"]["Terminal"]["command"] == "gnome-terminal"
+    assert "Media" in saved
+    assert "icon" in saved["Media"]
+    assert "Youtube Music" in saved["Media"]
+    assert saved["Media"]["Youtube Music"]["command"] == "brave"
+    # New nested group created under System
+    assert "Tools" in saved["System"]
+    assert "New Tool" in saved["System"]["Tools"]["New"]
+    assert saved["System"]["Tools"]["New"]["New Tool"]["command"] == "echo hello"
+
+
+def test_create_command_rejects_collision_with_existing_command(tmp_path, monkeypatch):
+    """Path validation rejects a final component that collides with an existing command."""
+    monkeypatch.setattr(ConfigManager, "_get_user_config_dir", lambda self: tmp_path / "app-config")
+    config_manager = ConfigManager()
+    commands_file = tmp_path / "commands.json"
+    commands_file.write_text(
+        json.dumps(
+            {
+                "System": {
+                    "Terminal": {"command": "gnome-terminal", "showOutput": False, "confirm": False}
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_manager.set_commands_override(commands_file)
+
+    services = MagicMock()
+    services.config_manager = config_manager
+    services.save_commands.side_effect = config_manager.save_commands
+
+    group_combo = MagicMock()
+    group_combo.currentIndex.return_value = -1
+    group_combo.currentText.return_value = "System / Terminal"  # final component is a command
+    line_edits = [MagicMock(), MagicMock(), MagicMock()]
+    line_edits[0].text.return_value = "New Tool"
+    line_edits[1].text.return_value = ""
+    line_edits[2].text.return_value = "echo hello"
+    checkboxes = [MagicMock(), MagicMock(), MagicMock()]
+    for checkbox in checkboxes:
+        checkbox.isChecked.return_value = False
+    create_button = MagicMock()
+    dialog = MagicMock()
+    command_edit = MagicMock()
+    command_edit.toPlainText.return_value = "echo hello"
+    dialog.exec.side_effect = lambda: create_button.clicked.connect.call_args.args[0]()
+
+    with (
+        patch("modules.command_creator.QDialog", return_value=dialog),
+        patch("modules.command_creator.QComboBox", return_value=group_combo),
+        patch("modules.command_creator.QLineEdit", side_effect=line_edits),
+        patch("modules.command_creator.QPlainTextEdit", return_value=command_edit, create=True),
+        patch("modules.command_creator.QSizePolicy"),
+        patch("modules.command_creator.QCheckBox", side_effect=checkboxes),
+        patch(
+            "modules.command_creator.QPushButton",
+            side_effect=lambda text: create_button if text == "Create" else MagicMock(),
+        ),
+        patch("modules.command_creator.QMessageBox") as mock_box,
+    ):
+        CommandCreator(services).show_dialog()
+
+    # Should reject and not save anything
+    assert services.save_commands.call_count == 0
+    mock_box.critical.assert_called_once()
+    dialog.accept.assert_not_called()
 
 
 if __name__ == "__main__":
