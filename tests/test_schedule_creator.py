@@ -365,3 +365,79 @@ def test_create_schedule_rejects_injection():
         result = creator.create_schedule(cmd_info, 9, 0, ["Monday"])
     assert result is False
     mock_linux.assert_not_called()
+
+
+# === NEW TESTS FOR ISSUE #196 — glob metacharacters in scheduled commands ===
+
+
+def test_validate_command_accepts_glob_patterns():
+    """Path-name glob metacharacters (*, ?, []) are safe expansion operators and are allowed."""
+    assert ScheduleCreator.validate_command("ls /tmp/*.log") is True
+    assert ScheduleCreator.validate_command("grep -l pattern /var/log/?.txt") is True
+    assert ScheduleCreator.validate_command('find /data -name "[0-9]*.txt"') is True
+    assert ScheduleCreator.validate_command("*.log") is True
+    assert ScheduleCreator.validate_command("?.txt") is True
+    assert ScheduleCreator.validate_command("[0-9]*.txt") is True
+
+
+def test_validate_command_rejects_approved_metacharacters():
+    """The rejected set (; & | $ ` ( ) { } < > \ ! newline) is still enforced."""
+    for bad in [
+        ";",
+        "&",
+        "|",
+        "$",
+        "`",
+        "(",
+        ")",
+        "{",
+        "}",
+        "<",
+        ">",
+        "\\",
+        "\n",
+        "!",
+        ";$",
+        "&|",
+        "$()",
+        "`id`",
+        "echo hello > file",
+        "cat < input",
+        "echo {a,b}",
+        "echo (test)",
+        "a && b",
+        "a || b",
+        "rm -rf /;",
+    ]:
+        assert ScheduleCreator.validate_command(bad) is False, f"expected reject {bad!r}"
+
+
+def test_create_schedule_accepts_glob_command():
+    """create_schedule with a glob-bearing command passes validation, installs the cron
+    entry, and returns True."""
+    svc = MagicMock()
+    creator = ScheduleCreator(svc)
+    cmd_info = {"label": "LogWatch", "command": "grep -c . /var/log/*.log"}
+
+    list_result = MagicMock(returncode=0, stdout="", stderr="")
+    install_result = MagicMock(returncode=0, stdout="", stderr="")
+    verify_result = MagicMock(
+        returncode=0,
+        stdout="30 9 * * 1 grep -c . /var/log/*.log\n",
+        stderr="",
+    )
+
+    with (
+        patch("modules.schedule_creator.sys.platform", "linux"),
+        patch(
+            "modules.schedule_creator.subprocess.run",
+            side_effect=[list_result, install_result, verify_result],
+        ) as mock_run,
+        patch("modules.schedule_creator.QMessageBox"),
+    ):
+        result = creator.create_schedule(cmd_info, hour=9, minute=30, selected_days=["Monday"])
+
+    assert result is True
+    # The glob-bearing command was written verbatim into the cron entry.
+    assert "grep -c . /var/log/*.log" in verify_result.stdout
+    mock_run.assert_called_once()
