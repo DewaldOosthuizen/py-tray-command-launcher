@@ -381,7 +381,7 @@ def test_validate_command_accepts_glob_patterns():
 
 
 def test_validate_command_rejects_approved_metacharacters():
-    """The rejected set (; & | $ ` ( ) { } < > \ ! newline) is still enforced."""
+    r"""The rejected set (; & | $ ` ( ) { } < > \ ! newline) is still enforced."""
     for bad in [
         ";",
         "&",
@@ -440,4 +440,5 @@ def test_create_schedule_accepts_glob_command():
     assert result is True
     # The glob-bearing command was written verbatim into the cron entry.
     assert "grep -c . /var/log/*.log" in verify_result.stdout
-    mock_run.assert_called_once()
+    # crontab -l (read) + crontab install + crontab -l (verify) = 3 invocations.
+    assert mock_run.call_count == 3

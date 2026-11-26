@@ -233,10 +233,12 @@ Open **View Schedules** to see a list of all scheduled commands. Remove a schedu
 ### Safe scheduling
 
 Scheduled command payloads are validated before being handed to the scheduler.
-The command is tokenized and shell control operators are rejected
-(`;`, `&`, `|`, `$`, backticks, parentheses, braces, redirections, glob
-characters, backslashes and newlines). Multi-token payloads such as
-`echo hello` or `python script.py` are accepted; the command is **not**
+The command is tokenized and shell control operators and substitution are
+rejected (`;`, `&`, `|`, `$`, backticks, parentheses, braces, redirections,
+backslashes and newlines). The history-expansion token `!` is also rejected.
+Path-name glob metacharacters (`*`, `?`, `[`, `]`) are allowed: they are safe
+expansion operators and are not injection vectors. Multi-token payloads such
+as `echo hello` or `python script.py` are accepted; the command is **not**
 shell-quoted, so it runs as a normal argv command. Task names and comment
 markers passed to the scheduler are the only scheduler-facing strings escaped
 with `shlex.quote`.

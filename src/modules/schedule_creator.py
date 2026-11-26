@@ -331,7 +331,7 @@ class ScheduleCreator:
             return False
         if "\n" in command or "\r" in command:
             return False
-        rejected = set("; &|$`(){ }<> *?!\\")
+        rejected = set("; &|$`(){ }<> !\\")
         # Remove accidental space
         rejected.discard(" ")
         for ch in command:
